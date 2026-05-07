@@ -1,0 +1,43 @@
+spring:
+  #Redis
+  redis:
+    host: 127.0.0.1
+  #Mysql
+  datasource:
+    #数据源基本配置
+    username: root
+    password: 123456789
+    url: jdbc:mysql://127.0.0.1:3306/llm-gateway?characterEncoding=utf8&useSSL=false&serverTimezone=GMT%2B8
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      #初始化时建立物理连接的个数
+      initial-size: 5
+      #最小连接池数量
+      min-idle: 5
+      #最大连接池数量
+      max-active: 20
+      #获取连接时最大等待时间，单位毫秒
+      max-wait: 6000
+
+mybatis:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+gateway:
+  aes-secret: 2026-advanceWithAI-LLMGateway-QY-DEV
+  # 上游供应商调用超时（秒）
+  forward-timeout-seconds: 65
+  rate-limit:
+    redisson:
+      enabled: true
+      # 每个虚拟 API Key 每秒请求上限
+      api-key-per-second: 3
+      # 每个用户每秒请求上限
+      user-per-second: 5
+      # 每个模型每秒请求上限
+      model-per-second: 20
+      # 每个供应商每秒请求上限
+      vendor-per-second: 50
+      # 网关全局每秒请求上限
+      global-per-second: 100
