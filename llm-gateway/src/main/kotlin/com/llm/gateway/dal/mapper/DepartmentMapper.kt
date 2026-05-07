@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-04-24T09:36:04.302+08:00
+ * Generation date: 2026-05-07T18:46:02.162214+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -51,7 +51,7 @@ interface DepartmentMapper {
         Result(column="parent_id", property="parentId", jdbcType=JdbcType.BIGINT),
         Result(column="dept_name", property="deptName", jdbcType=JdbcType.VARCHAR),
         Result(column="order_num", property="orderNum", jdbcType=JdbcType.INTEGER),
-        Result(column="leader", property="leader", jdbcType=JdbcType.VARCHAR),
+        Result(column="leader_user_id", property="leaderUserId", jdbcType=JdbcType.BIGINT),
         Result(column="tel", property="tel", jdbcType=JdbcType.VARCHAR),
         Result(column="status", property="status", jdbcType=JdbcType.INTEGER),
         Result(column="del_flag", property="delFlag", jdbcType=JdbcType.BIT),

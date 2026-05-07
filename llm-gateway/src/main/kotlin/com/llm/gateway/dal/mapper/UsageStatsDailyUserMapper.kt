@@ -1,15 +1,14 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-07T18:46:02.171357+08:00
+ * Generation date: 2026-05-07T18:46:02.175156+08:00
  */
 package com.llm.gateway.dal.mapper
 
-import com.llm.gateway.dal.model.MasterKeysRecord
+import com.llm.gateway.dal.model.UsageStatsDailyUserRecord
 import org.apache.ibatis.annotations.DeleteProvider
 import org.apache.ibatis.annotations.Insert
 import org.apache.ibatis.annotations.InsertProvider
 import org.apache.ibatis.annotations.Mapper
-import org.apache.ibatis.annotations.Options
 import org.apache.ibatis.annotations.Param
 import org.apache.ibatis.annotations.Result
 import org.apache.ibatis.annotations.ResultMap
@@ -24,7 +23,7 @@ import org.mybatis.dynamic.sql.update.render.UpdateStatementProvider
 import org.mybatis.dynamic.sql.util.SqlProviderAdapter
 
 @Mapper
-interface MasterKeysMapper {
+interface UsageStatsDailyUserMapper {
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
     fun count(selectStatement: SelectStatementProvider): Long
 
@@ -32,32 +31,28 @@ interface MasterKeysMapper {
     fun delete(deleteStatement: DeleteStatementProvider): Int
 
     @InsertProvider(type=SqlProviderAdapter::class, method="insert")
-    @Options(useGeneratedKeys=true,keyProperty="record.id")
-    fun insert(insertStatement: InsertStatementProvider<MasterKeysRecord>): Int
+    fun insert(insertStatement: InsertStatementProvider<UsageStatsDailyUserRecord>): Int
 
     @Insert(
         "\${insertStatement}"
     )
-    @Options(useGeneratedKeys=true,keyProperty="records.id")
-    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("records") records: List<MasterKeysRecord>): Int
+    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("records") records: List<UsageStatsDailyUserRecord>): Int
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
-    @ResultMap("MasterKeysRecordResult")
-    fun selectOne(selectStatement: SelectStatementProvider): MasterKeysRecord?
+    @ResultMap("UsageStatsDailyUserRecordResult")
+    fun selectOne(selectStatement: SelectStatementProvider): UsageStatsDailyUserRecord?
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
-    @Results(id="MasterKeysRecordResult", value = [
-        Result(column="id", property="id", jdbcType=JdbcType.BIGINT, id=true),
-        Result(column="vendor_id", property="vendorId", jdbcType=JdbcType.BIGINT),
-        Result(column="weight", property="weight", jdbcType=JdbcType.INTEGER),
-        Result(column="status", property="status", jdbcType=JdbcType.INTEGER),
-        Result(column="error_count", property="errorCount", jdbcType=JdbcType.INTEGER),
-        Result(column="last_checked_at", property="lastCheckedAt", jdbcType=JdbcType.TIMESTAMP),
-        Result(column="created_time", property="createdTime", jdbcType=JdbcType.TIMESTAMP),
-        Result(column="updated_time", property="updatedTime", jdbcType=JdbcType.TIMESTAMP),
-        Result(column="api_key_encrypted", property="apiKeyEncrypted", jdbcType=JdbcType.LONGVARCHAR)
+    @Results(id="UsageStatsDailyUserRecordResult", value = [
+        Result(column="stat_date", property="statDate", jdbcType=JdbcType.DATE, id=true),
+        Result(column="user_id", property="userId", jdbcType=JdbcType.BIGINT, id=true),
+        Result(column="dept_id", property="deptId", jdbcType=JdbcType.BIGINT),
+        Result(column="total_tokens", property="totalTokens", jdbcType=JdbcType.BIGINT),
+        Result(column="request_cnt", property="requestCnt", jdbcType=JdbcType.BIGINT),
+        Result(column="error_cnt", property="errorCnt", jdbcType=JdbcType.BIGINT),
+        Result(column="updated_at", property="updatedAt", jdbcType=JdbcType.TIMESTAMP)
     ])
-    fun selectMany(selectStatement: SelectStatementProvider): List<MasterKeysRecord>
+    fun selectMany(selectStatement: SelectStatementProvider): List<UsageStatsDailyUserRecord>
 
     @UpdateProvider(type=SqlProviderAdapter::class, method="update")
     fun update(updateStatement: UpdateStatementProvider): Int

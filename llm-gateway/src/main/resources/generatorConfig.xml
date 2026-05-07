@@ -61,5 +61,21 @@
             <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
         </table>
 
+        <table tableName="department_quotas">
+            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
+        </table>
+
+        <table tableName="usage_logs">
+            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
+        </table>
+
+        <table tableName="usage_stats_daily_department">
+            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
+        </table>
+
+        <table tableName="usage_stats_daily_user">
+            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
+        </table>
+
     </context>
 </generatorConfiguration>

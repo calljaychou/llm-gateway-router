@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-04-24T09:36:04.322+08:00
+ * Generation date: 2026-05-07T18:46:02.170846+08:00
  */
 package com.llm.gateway.dal.mapper
 

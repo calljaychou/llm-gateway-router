@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-04-24T09:36:04.307+08:00
+ * Generation date: 2026-05-07T18:46:02.164182+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -9,7 +9,7 @@ import com.llm.gateway.dal.mapper.DepartmentDynamicSqlSupport.Department.created
 import com.llm.gateway.dal.mapper.DepartmentDynamicSqlSupport.Department.delFlag
 import com.llm.gateway.dal.mapper.DepartmentDynamicSqlSupport.Department.deptName
 import com.llm.gateway.dal.mapper.DepartmentDynamicSqlSupport.Department.id
-import com.llm.gateway.dal.mapper.DepartmentDynamicSqlSupport.Department.leader
+import com.llm.gateway.dal.mapper.DepartmentDynamicSqlSupport.Department.leaderUserId
 import com.llm.gateway.dal.mapper.DepartmentDynamicSqlSupport.Department.orderNum
 import com.llm.gateway.dal.mapper.DepartmentDynamicSqlSupport.Department.parentId
 import com.llm.gateway.dal.mapper.DepartmentDynamicSqlSupport.Department.status
@@ -40,7 +40,7 @@ fun DepartmentMapper.insert(record: DepartmentRecord) =
         map(parentId).toProperty("parentId")
         map(deptName).toProperty("deptName")
         map(orderNum).toProperty("orderNum")
-        map(leader).toProperty("leader")
+        map(leaderUserId).toProperty("leaderUserId")
         map(tel).toProperty("tel")
         map(status).toProperty("status")
         map(delFlag).toProperty("delFlag")
@@ -53,7 +53,7 @@ fun DepartmentMapper.insertMultiple(records: Collection<DepartmentRecord>) =
         map(parentId).toProperty("parentId")
         map(deptName).toProperty("deptName")
         map(orderNum).toProperty("orderNum")
-        map(leader).toProperty("leader")
+        map(leaderUserId).toProperty("leaderUserId")
         map(tel).toProperty("tel")
         map(status).toProperty("status")
         map(delFlag).toProperty("delFlag")
@@ -69,7 +69,7 @@ fun DepartmentMapper.insertSelective(record: DepartmentRecord) =
         map(parentId).toPropertyWhenPresent("parentId", record::parentId)
         map(deptName).toPropertyWhenPresent("deptName", record::deptName)
         map(orderNum).toPropertyWhenPresent("orderNum", record::orderNum)
-        map(leader).toPropertyWhenPresent("leader", record::leader)
+        map(leaderUserId).toPropertyWhenPresent("leaderUserId", record::leaderUserId)
         map(tel).toPropertyWhenPresent("tel", record::tel)
         map(status).toPropertyWhenPresent("status", record::status)
         map(delFlag).toPropertyWhenPresent("delFlag", record::delFlag)
@@ -77,7 +77,7 @@ fun DepartmentMapper.insertSelective(record: DepartmentRecord) =
         map(updatedTime).toPropertyWhenPresent("updatedTime", record::updatedTime)
     }
 
-private val columnList = listOf(id, parentId, deptName, orderNum, leader, tel, status, delFlag, createdTime, updatedTime)
+private val columnList = listOf(id, parentId, deptName, orderNum, leaderUserId, tel, status, delFlag, createdTime, updatedTime)
 
 fun DepartmentMapper.selectOne(completer: SelectCompleter) =
     selectOne(this::selectOne, columnList, Department, completer)
@@ -101,7 +101,7 @@ fun KotlinUpdateBuilder.updateAllColumns(record: DepartmentRecord) =
         set(parentId).equalTo(record::parentId)
         set(deptName).equalTo(record::deptName)
         set(orderNum).equalTo(record::orderNum)
-        set(leader).equalTo(record::leader)
+        set(leaderUserId).equalTo(record::leaderUserId)
         set(tel).equalTo(record::tel)
         set(status).equalTo(record::status)
         set(delFlag).equalTo(record::delFlag)
@@ -114,7 +114,7 @@ fun KotlinUpdateBuilder.updateSelectiveColumns(record: DepartmentRecord) =
         set(parentId).equalToWhenPresent(record::parentId)
         set(deptName).equalToWhenPresent(record::deptName)
         set(orderNum).equalToWhenPresent(record::orderNum)
-        set(leader).equalToWhenPresent(record::leader)
+        set(leaderUserId).equalToWhenPresent(record::leaderUserId)
         set(tel).equalToWhenPresent(record::tel)
         set(status).equalToWhenPresent(record::status)
         set(delFlag).equalToWhenPresent(record::delFlag)
@@ -127,7 +127,7 @@ fun DepartmentMapper.updateByPrimaryKey(record: DepartmentRecord) =
         set(parentId).equalTo(record::parentId)
         set(deptName).equalTo(record::deptName)
         set(orderNum).equalTo(record::orderNum)
-        set(leader).equalTo(record::leader)
+        set(leaderUserId).equalTo(record::leaderUserId)
         set(tel).equalTo(record::tel)
         set(status).equalTo(record::status)
         set(delFlag).equalTo(record::delFlag)
@@ -141,7 +141,7 @@ fun DepartmentMapper.updateByPrimaryKeySelective(record: DepartmentRecord) =
         set(parentId).equalToWhenPresent(record::parentId)
         set(deptName).equalToWhenPresent(record::deptName)
         set(orderNum).equalToWhenPresent(record::orderNum)
-        set(leader).equalToWhenPresent(record::leader)
+        set(leaderUserId).equalToWhenPresent(record::leaderUserId)
         set(tel).equalToWhenPresent(record::tel)
         set(status).equalToWhenPresent(record::status)
         set(delFlag).equalToWhenPresent(record::delFlag)

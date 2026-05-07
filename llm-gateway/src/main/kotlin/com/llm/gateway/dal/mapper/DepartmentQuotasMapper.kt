@@ -1,10 +1,10 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-07T18:46:02.168248+08:00
+ * Generation date: 2026-05-07T18:46:02.173385+08:00
  */
 package com.llm.gateway.dal.mapper
 
-import com.llm.gateway.dal.model.UsersRecord
+import com.llm.gateway.dal.model.DepartmentQuotasRecord
 import org.apache.ibatis.annotations.DeleteProvider
 import org.apache.ibatis.annotations.Insert
 import org.apache.ibatis.annotations.InsertProvider
@@ -24,7 +24,7 @@ import org.mybatis.dynamic.sql.update.render.UpdateStatementProvider
 import org.mybatis.dynamic.sql.util.SqlProviderAdapter
 
 @Mapper
-interface UsersMapper {
+interface DepartmentQuotasMapper {
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
     fun count(selectStatement: SelectStatementProvider): Long
 
@@ -33,36 +33,30 @@ interface UsersMapper {
 
     @InsertProvider(type=SqlProviderAdapter::class, method="insert")
     @Options(useGeneratedKeys=true,keyProperty="record.id")
-    fun insert(insertStatement: InsertStatementProvider<UsersRecord>): Int
+    fun insert(insertStatement: InsertStatementProvider<DepartmentQuotasRecord>): Int
 
     @Insert(
         "\${insertStatement}"
     )
     @Options(useGeneratedKeys=true,keyProperty="records.id")
-    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("records") records: List<UsersRecord>): Int
+    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("records") records: List<DepartmentQuotasRecord>): Int
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
-    @ResultMap("UsersRecordResult")
-    fun selectOne(selectStatement: SelectStatementProvider): UsersRecord?
+    @ResultMap("DepartmentQuotasRecordResult")
+    fun selectOne(selectStatement: SelectStatementProvider): DepartmentQuotasRecord?
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
-    @Results(id="UsersRecordResult", value = [
+    @Results(id="DepartmentQuotasRecordResult", value = [
         Result(column="id", property="id", jdbcType=JdbcType.BIGINT, id=true),
         Result(column="dept_id", property="deptId", jdbcType=JdbcType.BIGINT),
-        Result(column="username", property="username", jdbcType=JdbcType.VARCHAR),
-        Result(column="email", property="email", jdbcType=JdbcType.VARCHAR),
-        Result(column="mobile", property="mobile", jdbcType=JdbcType.VARCHAR),
-        Result(column="gender", property="gender", jdbcType=JdbcType.INTEGER),
-        Result(column="avatar_url", property="avatarUrl", jdbcType=JdbcType.VARCHAR),
-        Result(column="password", property="password", jdbcType=JdbcType.VARCHAR),
-        Result(column="password_changed", property="passwordChanged", jdbcType=JdbcType.BIT),
-        Result(column="remark", property="remark", jdbcType=JdbcType.VARCHAR),
-        Result(column="status", property="status", jdbcType=JdbcType.INTEGER),
-        Result(column="del_flag", property="delFlag", jdbcType=JdbcType.BIT),
-        Result(column="created_time", property="createdTime", jdbcType=JdbcType.TIMESTAMP),
-        Result(column="updated_time", property="updatedTime", jdbcType=JdbcType.TIMESTAMP)
+        Result(column="total_tokens", property="totalTokens", jdbcType=JdbcType.BIGINT),
+        Result(column="used_tokens", property="usedTokens", jdbcType=JdbcType.BIGINT),
+        Result(column="period", property="period", jdbcType=JdbcType.CHAR),
+        Result(column="last_reset_at", property="lastResetAt", jdbcType=JdbcType.TIMESTAMP),
+        Result(column="created_at", property="createdAt", jdbcType=JdbcType.TIMESTAMP),
+        Result(column="updated_at", property="updatedAt", jdbcType=JdbcType.TIMESTAMP)
     ])
-    fun selectMany(selectStatement: SelectStatementProvider): List<UsersRecord>
+    fun selectMany(selectStatement: SelectStatementProvider): List<DepartmentQuotasRecord>
 
     @UpdateProvider(type=SqlProviderAdapter::class, method="update")
     fun update(updateStatement: UpdateStatementProvider): Int

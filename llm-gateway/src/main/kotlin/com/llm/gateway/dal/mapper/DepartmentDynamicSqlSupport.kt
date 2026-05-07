@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-04-24T09:36:04.295+08:00
+ * Generation date: 2026-05-07T18:46:02.161582+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -18,7 +18,7 @@ object DepartmentDynamicSqlSupport {
 
         val orderNum = column<Int>("order_num", JDBCType.INTEGER)
 
-        val leader = column<String>("leader", JDBCType.VARCHAR)
+        val leaderUserId = column<Long>("leader_user_id", JDBCType.BIGINT)
 
         val tel = column<String>("tel", JDBCType.VARCHAR)
 

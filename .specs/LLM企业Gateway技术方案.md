@@ -49,12 +49,12 @@ flowchart TD
 
 ### 3.1 核心概念
 - **User (用户)**：企业员工，拥有虚拟账号。
-- **Team (团队)**：用户的聚合，共享 Token 配额。
+- **Department (部门)**：组织结构单元，用户归属部门，Token 配额在部门维度管理。
 - **Model (模型)**：对外部模型的抽象（如 `gpt-4-enterprise`），可关联多个 Vendor。
 - **Vendor (供应商)**：真实的 LLM 提供商（如 OpenAI, Google AI）。
 - **MasterKey (主密钥)**：管理员配置的、真实的 API Key。
 - **VirtualKey (虚拟密钥)**：分发给用户的 API Key，格式遵循 `sk-vkey-...`。
-- **Quota (配额)**：Token 预算管理，支持按月重置。
+- **Quota (配额)**：Token 预算管理（部门维度），支持按月重置。
 
 ---
 
@@ -115,7 +115,7 @@ CREATE TABLE `department` (
   `parent_id` bigint DEFAULT '0' COMMENT '父部门id',
   `dept_name` varchar(50) NOT NULL COMMENT '部门名称',
   `order_num` int DEFAULT '0' COMMENT '显示顺序',
-  `leader` varchar(50) DEFAULT NULL COMMENT '负责人',
+  `leader_user_id` bigint DEFAULT NULL COMMENT '负责人用户ID',
   `tel` varchar(20) DEFAULT NULL COMMENT '联系电话',
   `status` int DEFAULT '1' COMMENT '部门状态（1正常 2停用）',
   `del_flag` tinyint(1) DEFAULT '0' COMMENT '删除标志（0代表存在 1代表删除）',
@@ -246,37 +246,82 @@ CREATE TABLE `api_keys` (
   `expires_at` TIMESTAMP NULL
 );
 
--- Token 配额表
-CREATE TABLE `quotas` (
+-- 部门 Token 配额表
+CREATE TABLE `department_quotas` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
-  `owner_type` ENUM('USER', 'TEAM') NOT NULL,
-  `owner_id` BIGINT NOT NULL,
-  `total_tokens` BIGINT NOT NULL,
-  `used_tokens` BIGINT DEFAULT 0,
-  `period` ENUM('MONTHLY', 'FOREVER') DEFAULT 'MONTHLY',
-  `last_reset_at` TIMESTAMP
-);
+  `dept_id` BIGINT NOT NULL COMMENT '部门ID',
+  `total_tokens` BIGINT NOT NULL COMMENT '周期内总额度',
+  `used_tokens` BIGINT NOT NULL DEFAULT 0 COMMENT '周期内已使用',
+  `period` ENUM('MONTHLY', 'FOREVER') NOT NULL DEFAULT 'MONTHLY' COMMENT 'MONTHLY-月维度，FOREVER-永久有效',
+  `last_reset_at` DATETIME DEFAULT NULL COMMENT '上次重置时间（MONTHLY时使用）',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP(3),
+  UNIQUE KEY `uk_dept_id` (`dept_id`),
+  KEY `idx_period_reset` (`period`, `last_reset_at`)
+) COMMENT='部门维度Token配额';
 
 -- 用量记录日志表
 CREATE TABLE `usage_logs` (
-  `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `request_id` VARCHAR(64) NOT NULL COMMENT '幂等/链路ID',
+  `user_id` BIGINT NOT NULL COMMENT '调用用户',
+  `dept_id` BIGINT NOT NULL COMMENT '冗余：便于按部门聚合（避免实时Join users）',
+  `api_key_id` BIGINT DEFAULT NULL COMMENT '虚拟Key ID',
+  `vendor_id` BIGINT NOT NULL COMMENT '供应商ID',
+  `model_id` BIGINT NOT NULL COMMENT '模型ID',
+  `endpoint` VARCHAR(32) NOT NULL COMMENT 'OpenAI路径语义，如 chat.completions/embeddings',
+  `is_stream` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否流式',
+  `prompt_tokens` INT NOT NULL DEFAULT 0,
+  `completion_tokens` INT NOT NULL DEFAULT 0,
+  `total_tokens` INT NOT NULL DEFAULT 0,
+  `latency_ms` INT DEFAULT NULL COMMENT '网关侧端到端耗时',
+  `status_code` INT NOT NULL COMMENT 'HTTP状态码',
+  `error_code` VARCHAR(64) DEFAULT NULL COMMENT '业务错误码（如 RBAC_MODEL_FORBIDDEN）',
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_request_id` (`request_id`),
+  KEY `idx_user_time_id` (`user_id`, `created_at`, `id`),
+  KEY `idx_dept_time_id` (`dept_id`, `created_at`, `id`),
+  KEY `idx_vendor_model_time` (`vendor_id`, `model_id`, `created_at`),
+  KEY `idx_status_time` (`status_code`, `created_at`)
+) COMMENT='LLM调用用量明细（事实表）';
+
+-- 部门维度日聚合（仪表盘主查询表）
+CREATE TABLE `usage_stats_daily_department` (
+  `stat_date` DATE NOT NULL,
+  `dept_id` BIGINT NOT NULL,
+  `total_tokens` BIGINT NOT NULL DEFAULT 0,
+  `request_cnt` BIGINT NOT NULL DEFAULT 0,
+  `error_cnt` BIGINT NOT NULL DEFAULT 0,
+  `active_users` INT NOT NULL DEFAULT 0,
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`stat_date`, `dept_id`),
+  KEY `idx_dept_date` (`dept_id`, `stat_date`)
+) COMMENT='部门维度日聚合';
+
+-- 用户维度日聚合（个人视角报表）
+CREATE TABLE `usage_stats_daily_user` (
+  `stat_date` DATE NOT NULL,
   `user_id` BIGINT NOT NULL,
-  `team_id` BIGINT,
-  `model_id` BIGINT NOT NULL,
-  `request_id` VARCHAR(64) UNIQUE NOT NULL,
-  `prompt_tokens` INT,
-  `completion_tokens` INT,
-  `total_tokens` INT,
-  `status_code` INT,
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+  `dept_id` BIGINT NOT NULL,
+  `total_tokens` BIGINT NOT NULL DEFAULT 0,
+  `request_cnt` BIGINT NOT NULL DEFAULT 0,
+  `error_cnt` BIGINT NOT NULL DEFAULT 0,
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`stat_date`, `user_id`),
+  KEY `idx_dept_user_date` (`dept_id`, `user_id`, `stat_date`)
+) COMMENT='用户维度日聚合';
 ```
 
 ### 5.2 索引建议
 -   `api_keys(api_key_hash)`: 唯一索引，用于快速身份验证。
--   `quotas(owner_id, owner_type)`: 组合索引，用于配额检查。
+-   `department_quotas(dept_id)`: 唯一索引，用于部门配额检查。
 -   `department_model_permissions(dept_id, status)`: 部门授权模型查询高频索引。
 -   `department_model_permissions(model_id, status)`: 模型维度反查被授权部门索引。
+-   `usage_logs(dept_id, created_at, id)`: 部门维度明细导出/增量聚合的主索引（范围扫描 + 游标分页）。
+-   `usage_logs(user_id, created_at, id)`: 个人维度明细导出索引。
+-   `usage_stats_daily_department(stat_date, dept_id)`: 仪表盘趋势查询主键（天然覆盖）。
+-   `usage_stats_daily_user(stat_date, user_id)`: 个人趋势查询主键（天然覆盖）。
 
 ---
 
@@ -385,9 +430,9 @@ sequenceDiagram
   - **限流响应**：当 Redis 计数器超过阈值，返回 `429 Too Many Requests`，并在 Header 中包含 `Retry-After`。
 - **时序图**：参考 2.2 核心业务流程图。
 
-### 6.5 故事 5：团队配额与 Token 统计 (US-004, US-010)
-- **设计**：按月重置团队 Token 配额，支持多用户共享额度。
-- **数据模型**：`quotas`, `usage_logs`
+### 6.5 故事 5：部门配额与 Token 统计 (US-004, US-010)
+- **设计**：按月重置部门 Token 配额，同部门用户共享额度。
+- **数据模型**：`department_quotas`, `usage_logs`
 - **关键逻辑**：
   - **配额告警**：在扣减逻辑中检查 `used/total > 0.9`，若触发则通过消息队列异步发送邮件告警。
   - **配额耗尽**：返回 `402 Payment Required` 或自定义错误码。
@@ -395,12 +440,12 @@ sequenceDiagram
 
 ### 6.6 故事 6：监控仪表盘与数据导出 (US-005, US-008)
 - **设计**：提供管理员全局视角和开发者个人视角的统计报表。
-- **数据模型**：`usage_logs`
+- **数据模型**：`usage_logs`, `usage_stats_daily_department`, `usage_stats_daily_user`
 - **接口**：
   - `GET /admin/stats/summary`：全局活跃用户、总 Token、错误率。
   - `GET /admin/stats/export`：导出 CSV 格式明细数据。
 - **关键逻辑**：
-  - **异步聚合**：使用 Spring Task 定时任务或按需从 `usage_logs` 进行索引覆盖查询（Index-only scan）以保证查询性能。
+  - **异步聚合**：使用 Spring Task 定时任务对 `usage_logs` 做“按时间窗口 + 游标（id）”的增量扫描，Upsert 写入 `usage_stats_daily_department` / `usage_stats_daily_user`；仪表盘查询只读聚合表，避免在大明细表上做重聚合。
   - **实时刷新**：前端通过轮询或 WebSocket 刷新 US-008 要求的首页指标。
 
 ---
