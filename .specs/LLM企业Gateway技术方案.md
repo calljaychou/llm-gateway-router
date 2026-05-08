@@ -49,12 +49,12 @@ flowchart TD
 
 ### 3.1 核心概念
 - **User (用户)**：企业员工，拥有虚拟账号。
-- **Department (部门)**：组织结构单元，用户归属部门，Token 配额在部门维度管理。
+- **Department (部门)**：组织结构单元，用户归属部门；部门可配置“每用户额度策略”。
 - **Model (模型)**：对外部模型的抽象（如 `gpt-4-enterprise`），可关联多个 Vendor。
 - **Vendor (供应商)**：真实的 LLM 提供商（如 OpenAI, Google AI）。
 - **MasterKey (主密钥)**：管理员配置的、真实的 API Key。
 - **VirtualKey (虚拟密钥)**：分发给用户的 API Key，格式遵循 `sk-vkey-...`。
-- **Quota (配额)**：Token 预算管理（部门维度），支持按月重置。
+- **Quota (配额)**：Token 预算管理（用户维度生效，策略由部门配置决定）。
 
 ---
 
@@ -73,7 +73,7 @@ graph LR
         GW[LLM Gateway]
         Auth[Auth & RBAC Service]
         RL[Rate Limiter - Redis]
-        QS[Quota Service - Redis Lua]
+        QS[Quota Service - Policy + Usage]
         Router[Dynamic Router]
     end
     
@@ -100,8 +100,8 @@ graph LR
     -   **决策**：使用 Spring Boot 默认的 Servlet 容器，但对转发逻辑采用异步非阻塞 HTTP 客户端（如 `WebClient` 或 `Apache HttpAsyncClient`），避免阻塞 Tomcat 工作线程。
     -   **理由**：现有技术栈是 Spring Boot，且转发逻辑主要是 IO 等待，非阻塞客户端能极大提升吞吐。
 2.  **Token 统计策略**：
-    -   **决策**：**预扣费 + 差额补回**。针对流式输出（Streaming），先根据请求长度预估 Token 并冻结配额，流结束时根据 Vendor 返回的 `usage` 字段（或本地 Tiktoken 计算）修正真实消耗。
-    -   **理由**：防止超额使用，同时保证统计精度。
+    -   **决策**：**统计判断型**。按用户所属部门读取配额策略（`MONTHLY`/`FOREVER`），以用户已用 Token 统计值进行准入判断；请求完成后更新统计。
+    -   **理由**：实现简单、主链路性能稳定，适合高并发场景；接受极小并发窗口误差，并通过 Redis 计数器收敛。
 
 ---
 
@@ -246,19 +246,19 @@ CREATE TABLE `api_keys` (
   `expires_at` TIMESTAMP NULL
 );
 
--- 部门 Token 配额表
+-- 部门配额策略表（策略作用于部门下每个用户）
 CREATE TABLE `department_quotas` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
   `dept_id` BIGINT NOT NULL COMMENT '部门ID',
-  `total_tokens` BIGINT NOT NULL COMMENT '周期内总额度',
-  `used_tokens` BIGINT NOT NULL DEFAULT 0 COMMENT '周期内已使用',
-  `period` ENUM('MONTHLY', 'FOREVER') NOT NULL DEFAULT 'MONTHLY' COMMENT 'MONTHLY-月维度，FOREVER-永久有效',
-  `last_reset_at` DATETIME DEFAULT NULL COMMENT '上次重置时间（MONTHLY时使用）',
+  `quota_tokens` BIGINT NOT NULL COMMENT '每用户可用Token额度',
+  `period` ENUM('MONTHLY', 'FOREVER') NOT NULL DEFAULT 'MONTHLY' COMMENT 'MONTHLY-每月刷新用户额度，FOREVER-用户永久总额度',
+  `status` INT NOT NULL DEFAULT 1 COMMENT '1-启用，0-停用',
+  `remark` VARCHAR(255) DEFAULT NULL COMMENT '备注',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY `uk_dept_id` (`dept_id`),
-  KEY `idx_period_reset` (`period`, `last_reset_at`)
-) COMMENT='部门维度Token配额';
+  KEY `idx_period_status` (`period`, `status`)
+) COMMENT='部门配额策略（按部门定义每用户额度）';
 
 -- 用量记录日志表
 CREATE TABLE `usage_logs` (
@@ -277,7 +277,7 @@ CREATE TABLE `usage_logs` (
   `latency_ms` INT DEFAULT NULL COMMENT '网关侧端到端耗时',
   `status_code` INT NOT NULL COMMENT 'HTTP状态码',
   `error_code` VARCHAR(64) DEFAULT NULL COMMENT '业务错误码（如 RBAC_MODEL_FORBIDDEN）',
-  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_request_id` (`request_id`),
   KEY `idx_user_time_id` (`user_id`, `created_at`, `id`),
@@ -294,7 +294,7 @@ CREATE TABLE `usage_stats_daily_department` (
   `request_cnt` BIGINT NOT NULL DEFAULT 0,
   `error_cnt` BIGINT NOT NULL DEFAULT 0,
   `active_users` INT NOT NULL DEFAULT 0,
-  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`stat_date`, `dept_id`),
   KEY `idx_dept_date` (`dept_id`, `stat_date`)
 ) COMMENT='部门维度日聚合';
@@ -307,7 +307,7 @@ CREATE TABLE `usage_stats_daily_user` (
   `total_tokens` BIGINT NOT NULL DEFAULT 0,
   `request_cnt` BIGINT NOT NULL DEFAULT 0,
   `error_cnt` BIGINT NOT NULL DEFAULT 0,
-  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`stat_date`, `user_id`),
   KEY `idx_dept_user_date` (`dept_id`, `user_id`, `stat_date`)
 ) COMMENT='用户维度日聚合';
@@ -315,7 +315,7 @@ CREATE TABLE `usage_stats_daily_user` (
 
 ### 5.2 索引建议
 -   `api_keys(api_key_hash)`: 唯一索引，用于快速身份验证。
--   `department_quotas(dept_id)`: 唯一索引，用于部门配额检查。
+-   `department_quotas(dept_id)`: 唯一索引，用于按用户部门匹配配额策略。
 -   `department_model_permissions(dept_id, status)`: 部门授权模型查询高频索引。
 -   `department_model_permissions(model_id, status)`: 模型维度反查被授权部门索引。
 -   `usage_logs(dept_id, created_at, id)`: 部门维度明细导出/增量聚合的主索引（范围扫描 + 游标分页）。
@@ -430,15 +430,31 @@ sequenceDiagram
   - **限流响应**：当 Redis 计数器超过阈值，返回 `429 Too Many Requests`，并在 Header 中包含 `Retry-After`。
 - **时序图**：参考 2.2 核心业务流程图。
 
-### 6.5 故事 5：部门配额与 Token 统计 (US-004, US-010)
-- **设计**：按月重置部门 Token 配额，同部门用户共享额度。
-- **数据模型**：`department_quotas`, `usage_logs`
+### 6.5 故事 5：部门配额管理 (US-004)
+- **设计**：提供部门配额策略管理能力，支持按部门配置“每用户额度 + 刷新策略”。
+- **数据模型**：`department_quotas`
+- **接口**：
+  - `GET /admin/department-quotas`：分页查询配额策略列表（支持按部门/策略筛选）。
+  - `POST /admin/department-quotas`：新增部门配额策略。
+  - `PUT /admin/department-quotas/{id}`：修改部门配额策略。
+  - `DELETE /admin/department-quotas/{id}`：删除部门配额策略（逻辑删除或停用）。
 - **关键逻辑**：
-  - **配额告警**：在扣减逻辑中检查 `used/total > 0.9`，若触发则通过消息队列异步发送邮件告警。
-  - **配额耗尽**：返回 `402 Payment Required` 或自定义错误码。
+  - **唯一约束**：每个部门仅允许一条生效策略（`uk_dept_id`）。
+  - **参数约束**：`quota_tokens > 0`；`period in {MONTHLY, FOREVER}`。
+  - **权限控制**：仅管理员角色可操作；变更后触发缓存失效。
 - **时序图**：参考 6.2 (原 6.2 时序图)。
 
-### 6.6 故事 6：监控仪表盘与数据导出 (US-005, US-008)
+### 6.6 故事 6：用户额度刷新与统计判断 (US-010)
+- **设计**：用户额度不共享部门总池；每个用户按所属部门策略独立判断额度。
+- **数据模型**：`department_quotas`, `usage_logs`, `usage_stats_daily_user`
+- **关键逻辑**：
+  - **MONTHLY**：按自然月统计用户已用量，每月按策略额度“覆盖刷新”（新月份直接使用策略额度上限）。
+  - **FOREVER**：用户全生命周期累计已用量与策略额度比较，不执行月刷新。
+  - **准入判断**：请求前读取策略额度与用户已用统计，若已用 `>= quota_tokens` 则拒绝（`402` 或业务错误码）。
+  - **统计更新**：请求完成后更新 Redis 用户计数器并异步落 `usage_logs`；聚合任务回写 `usage_stats_daily_user` 做对账。
+- **时序图**：参考 6.5 与 6.7。
+
+### 6.7 故事 7：监控仪表盘与数据导出 (US-005, US-008)
 - **设计**：提供管理员全局视角和开发者个人视角的统计报表。
 - **数据模型**：`usage_logs`, `usage_stats_daily_department`, `usage_stats_daily_user`
 - **接口**：
@@ -469,7 +485,7 @@ sequenceDiagram
 ## 8、发布与回滚
 
 ### 8.1 发布策略
-- **灰度发布**：先切流 5% 内部测试账号，观察 Token 扣减是否准确。
+- **灰度发布**：先切流 5% 内部测试账号，观察额度策略（MONTHLY/FOREVER）与统计判断结果是否符合预期。
 - **配置热加载**：主密钥池配置支持 Apollo/Nacos 热更新，无需重启实例。
 
 ### 8.2 回滚方案

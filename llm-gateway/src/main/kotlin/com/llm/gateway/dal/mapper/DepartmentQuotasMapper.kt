@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-07T18:46:02.173385+08:00
+ * Generation date: 2026-05-08T17:25:34.952463+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -49,10 +49,10 @@ interface DepartmentQuotasMapper {
     @Results(id="DepartmentQuotasRecordResult", value = [
         Result(column="id", property="id", jdbcType=JdbcType.BIGINT, id=true),
         Result(column="dept_id", property="deptId", jdbcType=JdbcType.BIGINT),
-        Result(column="total_tokens", property="totalTokens", jdbcType=JdbcType.BIGINT),
-        Result(column="used_tokens", property="usedTokens", jdbcType=JdbcType.BIGINT),
+        Result(column="quota_tokens", property="quotaTokens", jdbcType=JdbcType.BIGINT),
         Result(column="period", property="period", jdbcType=JdbcType.CHAR),
-        Result(column="last_reset_at", property="lastResetAt", jdbcType=JdbcType.TIMESTAMP),
+        Result(column="status", property="status", jdbcType=JdbcType.INTEGER),
+        Result(column="remark", property="remark", jdbcType=JdbcType.VARCHAR),
         Result(column="created_at", property="createdAt", jdbcType=JdbcType.TIMESTAMP),
         Result(column="updated_at", property="updatedAt", jdbcType=JdbcType.TIMESTAMP)
     ])

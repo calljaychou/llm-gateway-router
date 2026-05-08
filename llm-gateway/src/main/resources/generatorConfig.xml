@@ -17,49 +17,49 @@
         <javaModelGenerator targetPackage="com.llm.gateway.dal.model" targetProject="src/main/kotlin"/>
         <javaClientGenerator targetPackage="com.llm.gateway.dal.mapper" targetProject="src/main/kotlin"/>
 
-        <table tableName="department">
-            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
-        </table>
+<!--        <table tableName="department">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
 
-        <table tableName="users">
-            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
-        </table>
+<!--        <table tableName="users">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
 
-        <table tableName="position">
-            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
-        </table>
+<!--        <table tableName="position">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
 
-        <table tableName="roles">
-            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
-        </table>
+<!--        <table tableName="roles">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
 
-        <table tableName="user_post_rel">
+<!--        <table tableName="user_post_rel">-->
 
-        </table>
+<!--        </table>-->
 
-        <table tableName="user_role_rel">
+<!--        <table tableName="user_role_rel">-->
 
-        </table>
+<!--        </table>-->
 
-        <table tableName="vendors">
-            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
-        </table>
+<!--        <table tableName="vendors">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
 
-        <table tableName="master_keys">
-            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
-        </table>
+<!--        <table tableName="master_keys">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
 
-        <table tableName="models">
-            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
-        </table>
+<!--        <table tableName="models">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
 
-        <table tableName="department_model_permissions">
-            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
-        </table>
+<!--        <table tableName="department_model_permissions">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
 
-        <table tableName="api_keys">
-            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
-        </table>
+<!--        <table tableName="api_keys">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
 
         <table tableName="department_quotas">
             <generatedKey column="id" sqlStatement="JDBC" identity="true"/>

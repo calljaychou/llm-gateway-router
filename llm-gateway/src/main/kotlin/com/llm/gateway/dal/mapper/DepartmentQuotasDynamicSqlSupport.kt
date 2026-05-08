@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-07T18:46:02.173296+08:00
+ * Generation date: 2026-05-08T17:25:34.952372+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -14,13 +14,13 @@ object DepartmentQuotasDynamicSqlSupport {
 
         val deptId = column<Long>("dept_id", JDBCType.BIGINT)
 
-        val totalTokens = column<Long>("total_tokens", JDBCType.BIGINT)
-
-        val usedTokens = column<Long>("used_tokens", JDBCType.BIGINT)
+        val quotaTokens = column<Long>("quota_tokens", JDBCType.BIGINT)
 
         val period = column<String>("period", JDBCType.CHAR)
 
-        val lastResetAt = column<Date>("last_reset_at", JDBCType.TIMESTAMP)
+        val status = column<Int>("status", JDBCType.INTEGER)
+
+        val remark = column<String>("remark", JDBCType.VARCHAR)
 
         val createdAt = column<Date>("created_at", JDBCType.TIMESTAMP)
 

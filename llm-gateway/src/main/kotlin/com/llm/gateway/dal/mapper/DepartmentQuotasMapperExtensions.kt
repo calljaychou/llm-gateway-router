@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-07T18:46:02.17348+08:00
+ * Generation date: 2026-05-08T17:25:34.952565+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -8,11 +8,11 @@ import com.llm.gateway.dal.mapper.DepartmentQuotasDynamicSqlSupport.DepartmentQu
 import com.llm.gateway.dal.mapper.DepartmentQuotasDynamicSqlSupport.DepartmentQuotas.createdAt
 import com.llm.gateway.dal.mapper.DepartmentQuotasDynamicSqlSupport.DepartmentQuotas.deptId
 import com.llm.gateway.dal.mapper.DepartmentQuotasDynamicSqlSupport.DepartmentQuotas.id
-import com.llm.gateway.dal.mapper.DepartmentQuotasDynamicSqlSupport.DepartmentQuotas.lastResetAt
 import com.llm.gateway.dal.mapper.DepartmentQuotasDynamicSqlSupport.DepartmentQuotas.period
-import com.llm.gateway.dal.mapper.DepartmentQuotasDynamicSqlSupport.DepartmentQuotas.totalTokens
+import com.llm.gateway.dal.mapper.DepartmentQuotasDynamicSqlSupport.DepartmentQuotas.quotaTokens
+import com.llm.gateway.dal.mapper.DepartmentQuotasDynamicSqlSupport.DepartmentQuotas.remark
+import com.llm.gateway.dal.mapper.DepartmentQuotasDynamicSqlSupport.DepartmentQuotas.status
 import com.llm.gateway.dal.mapper.DepartmentQuotasDynamicSqlSupport.DepartmentQuotas.updatedAt
-import com.llm.gateway.dal.mapper.DepartmentQuotasDynamicSqlSupport.DepartmentQuotas.usedTokens
 import com.llm.gateway.dal.model.DepartmentQuotasRecord
 import org.mybatis.dynamic.sql.SqlBuilder.isEqualTo
 import org.mybatis.dynamic.sql.insert.render.MultiRowInsertStatementProvider
@@ -36,10 +36,10 @@ fun DepartmentQuotasMapper.insertMultipleHelper(multipleInsertStatement: MultiRo
 fun DepartmentQuotasMapper.insert(record: DepartmentQuotasRecord) =
     insert(this::insert, record, DepartmentQuotas) {
         map(deptId).toProperty("deptId")
-        map(totalTokens).toProperty("totalTokens")
-        map(usedTokens).toProperty("usedTokens")
+        map(quotaTokens).toProperty("quotaTokens")
         map(period).toProperty("period")
-        map(lastResetAt).toProperty("lastResetAt")
+        map(status).toProperty("status")
+        map(remark).toProperty("remark")
         map(createdAt).toProperty("createdAt")
         map(updatedAt).toProperty("updatedAt")
     }
@@ -47,10 +47,10 @@ fun DepartmentQuotasMapper.insert(record: DepartmentQuotasRecord) =
 fun DepartmentQuotasMapper.insertMultiple(records: Collection<DepartmentQuotasRecord>) =
     insertMultiple(this::insertMultipleHelper, records, DepartmentQuotas) {
         map(deptId).toProperty("deptId")
-        map(totalTokens).toProperty("totalTokens")
-        map(usedTokens).toProperty("usedTokens")
+        map(quotaTokens).toProperty("quotaTokens")
         map(period).toProperty("period")
-        map(lastResetAt).toProperty("lastResetAt")
+        map(status).toProperty("status")
+        map(remark).toProperty("remark")
         map(createdAt).toProperty("createdAt")
         map(updatedAt).toProperty("updatedAt")
     }
@@ -61,15 +61,15 @@ fun DepartmentQuotasMapper.insertMultiple(vararg records: DepartmentQuotasRecord
 fun DepartmentQuotasMapper.insertSelective(record: DepartmentQuotasRecord) =
     insert(this::insert, record, DepartmentQuotas) {
         map(deptId).toPropertyWhenPresent("deptId", record::deptId)
-        map(totalTokens).toPropertyWhenPresent("totalTokens", record::totalTokens)
-        map(usedTokens).toPropertyWhenPresent("usedTokens", record::usedTokens)
+        map(quotaTokens).toPropertyWhenPresent("quotaTokens", record::quotaTokens)
         map(period).toPropertyWhenPresent("period", record::period)
-        map(lastResetAt).toPropertyWhenPresent("lastResetAt", record::lastResetAt)
+        map(status).toPropertyWhenPresent("status", record::status)
+        map(remark).toPropertyWhenPresent("remark", record::remark)
         map(createdAt).toPropertyWhenPresent("createdAt", record::createdAt)
         map(updatedAt).toPropertyWhenPresent("updatedAt", record::updatedAt)
     }
 
-private val columnList = listOf(id, deptId, totalTokens, usedTokens, period, lastResetAt, createdAt, updatedAt)
+private val columnList = listOf(id, deptId, quotaTokens, period, status, remark, createdAt, updatedAt)
 
 fun DepartmentQuotasMapper.selectOne(completer: SelectCompleter) =
     selectOne(this::selectOne, columnList, DepartmentQuotas, completer)
@@ -91,10 +91,10 @@ fun DepartmentQuotasMapper.update(completer: UpdateCompleter) =
 fun KotlinUpdateBuilder.updateAllColumns(record: DepartmentQuotasRecord) =
     apply {
         set(deptId).equalTo(record::deptId)
-        set(totalTokens).equalTo(record::totalTokens)
-        set(usedTokens).equalTo(record::usedTokens)
+        set(quotaTokens).equalTo(record::quotaTokens)
         set(period).equalTo(record::period)
-        set(lastResetAt).equalTo(record::lastResetAt)
+        set(status).equalTo(record::status)
+        set(remark).equalTo(record::remark)
         set(createdAt).equalTo(record::createdAt)
         set(updatedAt).equalTo(record::updatedAt)
     }
@@ -102,10 +102,10 @@ fun KotlinUpdateBuilder.updateAllColumns(record: DepartmentQuotasRecord) =
 fun KotlinUpdateBuilder.updateSelectiveColumns(record: DepartmentQuotasRecord) =
     apply {
         set(deptId).equalToWhenPresent(record::deptId)
-        set(totalTokens).equalToWhenPresent(record::totalTokens)
-        set(usedTokens).equalToWhenPresent(record::usedTokens)
+        set(quotaTokens).equalToWhenPresent(record::quotaTokens)
         set(period).equalToWhenPresent(record::period)
-        set(lastResetAt).equalToWhenPresent(record::lastResetAt)
+        set(status).equalToWhenPresent(record::status)
+        set(remark).equalToWhenPresent(record::remark)
         set(createdAt).equalToWhenPresent(record::createdAt)
         set(updatedAt).equalToWhenPresent(record::updatedAt)
     }
@@ -113,10 +113,10 @@ fun KotlinUpdateBuilder.updateSelectiveColumns(record: DepartmentQuotasRecord) =
 fun DepartmentQuotasMapper.updateByPrimaryKey(record: DepartmentQuotasRecord) =
     update {
         set(deptId).equalTo(record::deptId)
-        set(totalTokens).equalTo(record::totalTokens)
-        set(usedTokens).equalTo(record::usedTokens)
+        set(quotaTokens).equalTo(record::quotaTokens)
         set(period).equalTo(record::period)
-        set(lastResetAt).equalTo(record::lastResetAt)
+        set(status).equalTo(record::status)
+        set(remark).equalTo(record::remark)
         set(createdAt).equalTo(record::createdAt)
         set(updatedAt).equalTo(record::updatedAt)
         where(id, isEqualTo(record::id))
@@ -125,10 +125,10 @@ fun DepartmentQuotasMapper.updateByPrimaryKey(record: DepartmentQuotasRecord) =
 fun DepartmentQuotasMapper.updateByPrimaryKeySelective(record: DepartmentQuotasRecord) =
     update {
         set(deptId).equalToWhenPresent(record::deptId)
-        set(totalTokens).equalToWhenPresent(record::totalTokens)
-        set(usedTokens).equalToWhenPresent(record::usedTokens)
+        set(quotaTokens).equalToWhenPresent(record::quotaTokens)
         set(period).equalToWhenPresent(record::period)
-        set(lastResetAt).equalToWhenPresent(record::lastResetAt)
+        set(status).equalToWhenPresent(record::status)
+        set(remark).equalToWhenPresent(record::remark)
         set(createdAt).equalToWhenPresent(record::createdAt)
         set(updatedAt).equalToWhenPresent(record::updatedAt)
         where(id, isEqualTo(record::id))
