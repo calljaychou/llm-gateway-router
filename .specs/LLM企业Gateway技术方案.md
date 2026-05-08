@@ -431,13 +431,20 @@ sequenceDiagram
 - **时序图**：参考 2.2 核心业务流程图。
 
 ### 6.5 故事 5：部门配额管理 (US-004)
-- **设计**：提供部门配额策略管理能力，支持按部门配置“每用户额度 + 刷新策略”。
-- **数据模型**：`department_quotas`
+- **设计**：提供“部门级策略配置 + 用户侧实时生效”的配额治理能力。策略定义在部门维度，但实际限额按“部门下每个用户”独立计算与判断。
+- **数据模型**：`department_quotas`, `department`, `users`
 - **接口**：
-  - `GET /admin/department-quotas`：分页查询配额策略列表（支持按部门/策略筛选）。
-  - `POST /admin/department-quotas`：新增部门配额策略。
-  - `PUT /admin/department-quotas/{id}`：修改部门配额策略。
-  - `DELETE /admin/department-quotas/{id}`：删除部门配额策略（逻辑删除或停用）。
+  - `GET /admin/department-quotas`：分页查询策略列表（支持 `deptId`、`period`、`status` 条件）。
+  - `GET /admin/department-quotas/{deptId}`：查询指定部门当前策略（用于编辑页回填）。
+  - `POST /admin/department-quotas`：创建部门策略（若已存在则返回冲突）。
+  - `PUT /admin/department-quotas/{deptId}`：更新策略（额度、周期、状态、备注）。
+  - `PUT /admin/department-quotas/{deptId}/status`：启停策略（软开关，保留历史记录）。
+- **请求参数建议**：
+  - `deptId`：部门 ID，必填，必须存在且未删除。
+  - `quotaTokens`：每用户额度，必填，`1 <= quotaTokens <= 10^12`。
+  - `period`：刷新策略，必填，`MONTHLY` 或 `FOREVER`。
+  - `status`：策略状态，选填，默认 `1`（启用）。
+  - `remark`：备注，选填，长度不超过 255。
 - **关键逻辑**：
   - **唯一约束**：每个部门仅允许一条生效策略（`uk_dept_id`）。
   - **参数约束**：`quota_tokens > 0`；`period in {MONTHLY, FOREVER}`。
