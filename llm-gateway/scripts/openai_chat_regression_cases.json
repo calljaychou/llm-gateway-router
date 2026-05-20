@@ -1,0 +1,59 @@
+{
+  "variables": {
+    "virtual_api_key": "sk-vkey-EX5nYfigBhzYlzV8FzZA2WFurm6er255",
+    "model_alias": "deepseek-v4-flash"
+  },
+  "default_headers": {
+    "Authorization": "Bearer {virtual_api_key}",
+    "Content-Type": "application/json"
+  },
+  "cases": [
+    {
+      "name": "chat_completions_stream_true",
+      "method": "POST",
+      "path": "/v1/chat/completions",
+      "headers": {
+        "Accept": "text/event-stream"
+      },
+      "body": {
+        "model": "{model_alias}",
+        "stream": true,
+        "temperature": 0.2,
+        "messages": [
+          {
+            "role": "user",
+            "content": "hello"
+          }
+        ]
+      },
+      "expected_status": 200,
+      "expected_content_type_contains": "text/event-stream",
+      "expected_stream_done": true,
+      "expected_stream_contains": [
+        "data:"
+      ]
+    },
+    {
+      "name": "chat_completions_json",
+      "method": "POST",
+      "path": "/v1/chat/completions",
+      "headers": {
+        "Accept": "application/json"
+      },
+      "body": {
+        "model": "{model_alias}",
+        "stream": false,
+        "temperature": 0.2,
+        "messages": [
+          {
+            "role": "user",
+            "content": "hello"
+          }
+        ]
+      },
+      "expected_status": 200,
+      "expected_content_type_contains": "application/json"
+    }
+  ]
+}
+

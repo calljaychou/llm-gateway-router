@@ -11,21 +11,23 @@ import com.llm.gateway.dal.mapper.VendorsDynamicSqlSupport
 import com.llm.gateway.dal.mapper.VendorsMapper
 import com.llm.gateway.dal.mapper.selectOne
 import com.llm.gateway.model.dto.ForwardContextDto
+import io.reactivex.rxjava3.internal.util.NotificationLite.subscription
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.time.Duration
 import java.util.Base64
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
+import reactor.core.Disposable
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
@@ -86,7 +88,7 @@ class OpenAiForwardService(
         )
     }
 
-    fun forwardJson(context: ForwardContextDto): Mono<ResponseEntity<*>> {
+    fun forwardJson(context: ForwardContextDto): Mono<ResponseEntity<Any>> {
         return webClientBuilder.build().post()
             .uri(context.targetUrl)
             .contentType(MediaType.APPLICATION_JSON)
@@ -107,12 +109,13 @@ class OpenAiForwardService(
                         }
                         builder.body(parseBody(body))
                     }
-            }.timeout(Duration.ofSeconds(forwardTimeoutSeconds)) as Mono<ResponseEntity<*>>
+            }.timeout(Duration.ofSeconds(forwardTimeoutSeconds))
     }
 
-    fun forwardStream(context: ForwardContextDto): ResponseEntity<*> {
+    fun forwardStream(context: ForwardContextDto): SseEmitter {
         val emitter = SseEmitter(forwardTimeoutSeconds * 1000)
-        webClientBuilder.build().post()
+        val doneSent = AtomicBoolean(false)
+        val subscription: Disposable = webClientBuilder.build().post()
             .uri(context.targetUrl)
             .contentType(MediaType.APPLICATION_JSON)
             .accept(MediaType.TEXT_EVENT_STREAM, MediaType.APPLICATION_JSON)
@@ -120,24 +123,23 @@ class OpenAiForwardService(
             .bodyValue(context.payload)
             .exchange()
             .flatMapMany { response ->
-                if (response.statusCode().is2xxSuccessful) {
-                    response.bodyToFlux(String::class.java)
-                } else {
-                    response.bodyToMono(String::class.java)
-                        .defaultIfEmpty("")
-                        .flatMapMany { body ->
-                            Flux.error(
-                                BizException(
-                                    response.statusCode().value(),
-                                    "流式转发失败: ${body.take(200)}"
-                                )
+                if (response.statusCode().is2xxSuccessful) response.bodyToFlux(String::class.java)
+                else response.bodyToMono(String::class.java)
+                    .defaultIfEmpty("")
+                    .flatMapMany { body ->
+                        Flux.error(
+                            BizException(
+                                response.statusCode().value(), "流式转发失败: ${body.take(200)}"
                             )
-                        }
-                }
+                        )
+                    }
             }
             .timeout(Duration.ofSeconds(forwardTimeoutSeconds))
             .subscribe(
                 { chunk ->
+                    if (chunk.trim() == "[DONE]") {
+                        doneSent.set(true)
+                    }
                     runCatching { emitter.send(chunk) }.onFailure { emitter.completeWithError(it) }
                 },
                 { error ->
@@ -149,20 +151,24 @@ class OpenAiForwardService(
                         )
                     )
                     runCatching {
-                        emitter.send("data: ${JSON.toJSONString(errorPayload)}\n\n")
-                        emitter.send("data: [DONE]\n\n")
+                        emitter.send(JSON.toJSONString(errorPayload))
+                        emitter.send("[DONE]").also { doneSent.set(true) }
                     }
                     emitter.complete()
                 },
                 {
+                    if (!doneSent.get()) {
+                        runCatching { emitter.send("[DONE]") }.onSuccess { doneSent.set(true) }
+                    }
                     emitter.complete()
                 }
             )
-        val headers = HttpHeaders()
-        headers.contentType = MediaType.TEXT_EVENT_STREAM
-        return ResponseEntity.status(HttpStatus.OK)
-            .headers(headers)
-            .body(emitter)
+        emitter.onCompletion { subscription.dispose() }
+        emitter.onTimeout {
+            subscription.dispose()
+            emitter.complete()
+        }
+        return emitter
     }
 
     /**

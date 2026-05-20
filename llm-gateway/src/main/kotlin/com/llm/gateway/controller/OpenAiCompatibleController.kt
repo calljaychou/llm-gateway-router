@@ -7,6 +7,7 @@ import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import io.swagger.annotations.ApiParam
 import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 import org.springframework.security.core.Authentication
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 
 @Api(tags = ["OpenAI兼容接口"])
 @RestController
@@ -31,6 +33,7 @@ class OpenAiCompatibleController(
         @RequestBody payload: Map<String, Any?>,
         authentication: Authentication,
         request: HttpServletRequest,
+        response: HttpServletResponse,
     ): Any {
         val authorization = request.getHeader("Authorization").orEmpty().trim()
         if (!authorization.startsWith("Bearer sk-vkey-")) {
@@ -42,7 +45,12 @@ class OpenAiCompatibleController(
             ?: return openAiError("用户ID缺失", "UNAUTHORIZED")
         val virtualApiKey = authorization.removePrefix("Bearer ").trim()
 
-        return openAiForwardFacade.chatCompletions(userId, payload, virtualApiKey)
+        val result = openAiForwardFacade.chatCompletions(userId, payload, virtualApiKey)
+        if (result is SseEmitter) {
+            response.contentType = MediaType.TEXT_EVENT_STREAM_VALUE
+            response.characterEncoding = Charsets.UTF_8.name()
+        }
+        return result
     }
 
     /** 生成 OpenAI 协议格式的统一错误响应。 */

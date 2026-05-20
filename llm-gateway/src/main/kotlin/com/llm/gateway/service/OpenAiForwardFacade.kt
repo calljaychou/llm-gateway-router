@@ -62,7 +62,7 @@ class OpenAiForwardFacade(
     }
 
     /** 处理流式请求：构建上下文、限流决策，并返回 SSE 流。 */
-    private fun chatCompletionsStream(userId: Long, payload: Map<String, Any?>, virtualApiKey: String): ResponseEntity<*> {
+    private fun chatCompletionsStream(userId: Long, payload: Map<String, Any?>, virtualApiKey: String): Any {
         return try {
             val context = openAiForwardService.buildForwardContext(userId, payload)
             val decision = rateLimitService.evaluate(buildRateLimitContext(userId, virtualApiKey, context))

@@ -5,9 +5,9 @@ BASE_URL="${1:-http://127.0.0.1:8080}"
 USERNAME="${2:-admin}"
 PASSWORD="${3:-123456}"
 DEPT_ID="${4:-1}"
-OPENAI_BASE_URL="${5:-https://api.openai.com}"
-MASTER_API_KEY="${6:-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}"
-REAL_MODEL_NAME="${7:-gpt-4o-mini}"
+OPENAI_BASE_URL="${5:-https://api.deepseek.com}"
+MASTER_API_KEY="${6:-sk-72e12834312c4731a1fd9c9d5444cd9b}"
+REAL_MODEL_NAME="${7:-deepseek-v4-flash}"
 
 if [[ -z "${MASTER_API_KEY}" ]]; then
   echo "ERROR: 第6个参数 MASTER_API_KEY 不能为空。"
@@ -161,50 +161,3 @@ if [[ -z "${VIRTUAL_KEY}" ]]; then
   exit 1
 fi
 echo
-
-echo "==> 7) OpenAI 协议转发（打印原始返回）"
-STEP7_BODY="$(cat <<JSON
-{"model":"${MODEL_ALIAS}","temperature":0.2,"messages":[{"role":"system","content":"You are a helpful assistant."},{"role":"user","content":"Say hello in Chinese."}]}
-JSON
-)"
-send_json "POST" "${BASE_URL}/v1/chat/completions" "${STEP7_BODY}" "Bearer ${VIRTUAL_KEY}"
-echo "HTTP=${RESP_STATUS}"
-echo "Headers:"
-echo "${RESP_HEADERS}"
-echo "Body:"
-echo "${RESP_BODY}"
-echo
-
-echo "==> 8) 限流触发检查（连发 5 次）"
-for i in 1 2 3 4 5; do
-  RATE_BODY="$(cat <<JSON
-{"model":"${MODEL_ALIAS}","messages":[{"role":"user","content":"rate limit test ${i}"}]}
-JSON
-)"
-  send_json "POST" "${BASE_URL}/v1/chat/completions" "${RATE_BODY}" "Bearer ${VIRTUAL_KEY}"
-  echo "第${i}次: HTTP=${RESP_STATUS}"
-  if [[ "${RESP_STATUS}" == "429" ]]; then
-    echo "命中 429，Headers:"
-    echo "${RESP_HEADERS}"
-    echo "Body:"
-    echo "${RESP_BODY}"
-    break
-  fi
-done
-echo
-
-echo "==> 9) 流式转发验证（截取前 30 行）"
-STREAM_BODY="$(cat <<JSON
-{"model":"${MODEL_ALIAS}","stream":true,"messages":[{"role":"user","content":"请用三行介绍你自己"}]}
-JSON
-)"
-echo "执行: POST ${BASE_URL}/v1/chat/completions (stream=true)"
-curl -sS -N -X POST "${BASE_URL}/v1/chat/completions" \
-  -H "Authorization: Bearer ${VIRTUAL_KEY}" \
-  -H "Content-Type: application/json" \
-  -H "Accept: text/event-stream" \
-  -d "${STREAM_BODY}" | head -n 30 || true
-echo
-
-echo "==> 完成"
-echo "提示: 第7步若是 OpenAI insufficient_quota，表示网关链路正常但上游额度不足。"
