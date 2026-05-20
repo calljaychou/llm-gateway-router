@@ -77,7 +77,7 @@ class OpenAiForwardService(
         val stream = payload["stream"]?.toString()?.equals("true", ignoreCase = true) ?: false
 
         return ForwardContextDto(
-            targetUrl = vendorRecord.baseUrl!!.trimEnd('/'),
+            targetUrl = "${vendorRecord.baseUrl!!.trimEnd('/')}/chat/completions",
             apiKey = apiKey,
             payload = forwardPayload,
             stream = stream,
