@@ -61,7 +61,15 @@
 <!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
 <!--        </table>-->
 
-        <table tableName="department_quotas">
+        <table tableName="user_quota_accounts">
+            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
+        </table>
+
+        <table tableName="user_quota_grants">
+            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
+        </table>
+
+        <table tableName="user_quota_transactions">
             <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
         </table>
 
@@ -69,13 +77,13 @@
             <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
         </table>
 
-        <table tableName="usage_stats_daily_department">
-            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
-        </table>
+<!--        <table tableName="usage_stats_daily_department">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
 
-        <table tableName="usage_stats_daily_user">
-            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
-        </table>
+<!--        <table tableName="usage_stats_daily_user">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
 
     </context>
 </generatorConfiguration>

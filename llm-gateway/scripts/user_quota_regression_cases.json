@@ -1,0 +1,85 @@
+{
+  "variables": {
+    "base_url": "http://127.0.0.1:8080",
+    "admin_username": "admin",
+    "admin_password": "123456",
+    "from_username": "http-run-001",
+    "from_password": "123456",
+    "target_username": "http-us2-us3-001",
+    "target_password": "123456",
+    "grant_soon_tokens": 10000,
+    "grant_later_tokens": 20000,
+    "transfer_tokens": 3000
+  },
+  "grant_cases": [
+    {
+      "name": "grant_soon_expire_quota",
+      "target": "from_user",
+      "adjustTokens": "{grant_soon_tokens}",
+      "expiresInDays": 7,
+      "remark": "regression grant soon expire"
+    },
+    {
+      "name": "grant_later_expire_quota",
+      "target": "from_user",
+      "adjustTokens": "{grant_later_tokens}",
+      "expiresInDays": 30,
+      "remark": "regression grant later expire"
+    }
+  ],
+  "api_cases": [
+    {
+      "name": "from_user_current_quota",
+      "actor": "from_user",
+      "method": "GET",
+      "path": "/v1/user/quotas/current",
+      "expected_status": 200,
+      "expected_success": true
+    },
+    {
+      "name": "from_user_transactions",
+      "actor": "from_user",
+      "method": "GET",
+      "path": "/v1/user/quotas/transactions",
+      "query": {
+        "pageNum": 1,
+        "pageSize": 20
+      },
+      "expected_status": 200,
+      "expected_success": true
+    },
+    {
+      "name": "from_user_expired_grants",
+      "actor": "from_user",
+      "method": "GET",
+      "path": "/v1/user/quotas/expired-grants",
+      "query": {
+        "pageNum": 1,
+        "pageSize": 20
+      },
+      "expected_status": 200,
+      "expected_success": true
+    },
+    {
+      "name": "from_user_transfer_to_target",
+      "actor": "from_user",
+      "method": "POST",
+      "path": "/v1/user/quotas/transfer",
+      "body": {
+        "targetUserId": "{target_user_id}",
+        "transferTokens": "{transfer_tokens}",
+        "remark": "regression transfer"
+      },
+      "expected_status": 200,
+      "expected_success": true
+    },
+    {
+      "name": "target_user_current_quota_after_transfer",
+      "actor": "target_user",
+      "method": "GET",
+      "path": "/v1/user/quotas/current",
+      "expected_status": 200,
+      "expected_success": true
+    }
+  ]
+}

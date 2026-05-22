@@ -100,7 +100,7 @@ graph LR
     -   **决策**：使用 Spring Boot 默认的 Servlet 容器，但对转发逻辑采用异步非阻塞 HTTP 客户端（如 `WebClient` 或 `Apache HttpAsyncClient`），避免阻塞 Tomcat 工作线程。
     -   **理由**：现有技术栈是 Spring Boot，且转发逻辑主要是 IO 等待，非阻塞客户端能极大提升吞吐。
 2.  **Token 统计策略**：
-    -   **决策**：**统计判断型**。按用户所属部门读取配额策略（`MONTHLY`/`FOREVER`），以用户已用 Token 统计值进行准入判断；请求完成后更新统计。
+    -   **决策**：**统计判断型**。按用户当前仍在有效期内的可用配额进行准入判断；请求完成后更新统计，并由后台任务自动处理到期失效。
     -   **理由**：实现简单、主链路性能稳定，适合高并发场景；接受极小并发窗口误差，并通过 Redis 计数器收敛。
 
 ---
@@ -246,19 +246,68 @@ CREATE TABLE `api_keys` (
   `expires_at` TIMESTAMP NULL
 );
 
--- 部门配额策略表（策略作用于部门下每个用户）
-CREATE TABLE `department_quotas` (
-  `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
-  `dept_id` BIGINT NOT NULL COMMENT '部门ID',
-  `quota_tokens` BIGINT NOT NULL COMMENT '每用户可用Token额度',
-  `period` ENUM('MONTHLY', 'FOREVER') NOT NULL DEFAULT 'MONTHLY' COMMENT 'MONTHLY-每月刷新用户额度，FOREVER-用户永久总额度',
-  `status` INT NOT NULL DEFAULT 1 COMMENT '1-启用，0-停用',
+-- 用户配额账户表（US-004）
+CREATE TABLE `user_quota_accounts` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL COMMENT '用户ID',
+  `current_quota_tokens` BIGINT NOT NULL DEFAULT 0 COMMENT '当前仍在有效期内的总配额',
+  `used_tokens` BIGINT NOT NULL DEFAULT 0 COMMENT '当前已消耗Token',
+  `expired_tokens` BIGINT NOT NULL DEFAULT 0 COMMENT '当前已过期Token累计',
+  `transferred_in_tokens` BIGINT NOT NULL DEFAULT 0 COMMENT '累计转入Token',
+  `transferred_out_tokens` BIGINT NOT NULL DEFAULT 0 COMMENT '累计转出Token',
+  `available_tokens` BIGINT NOT NULL DEFAULT 0 COMMENT '当前可消费、可转配的剩余额度',
+  `allow_transfer_out` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否允许向外转配',
+  `earliest_expire_at` DATETIME DEFAULT NULL COMMENT '当前有效配额中的最早过期时间',
+  `updated_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_id` (`user_id`),
+  KEY `idx_earliest_expire_at` (`earliest_expire_at`)
+) COMMENT='用户配额账户表';
+
+-- 用户配额批次表（每笔配额都带有效期和来源）
+CREATE TABLE `user_quota_grants` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL COMMENT '用户ID',
+  `source_type` VARCHAR(32) NOT NULL COMMENT '配额来源：ADMIN_GRANT,TRANSFER_I,COMPENSATE',
+  `source_user_id` BIGINT DEFAULT NULL COMMENT '来源用户ID，管理员发放时为空',
+  `source_grant_id` BIGINT DEFAULT NULL COMMENT '来源配额批次ID，转配时用于追踪原始配额',
+  `granted_tokens` BIGINT NOT NULL COMMENT '发放额度',
+  `remaining_tokens` BIGINT NOT NULL COMMENT '当前剩余额度',
+  `consumed_tokens` BIGINT NOT NULL DEFAULT 0 COMMENT '已消费额度',
+  `expired_tokens` BIGINT NOT NULL DEFAULT 0 COMMENT '过期额度',
+  `expires_at` DATETIME NOT NULL COMMENT '过期时间',
+  `status` VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' COMMENT '批次状态:ACTIVE,DEPLETED,EXPIRED',
+  `granted_by` BIGINT DEFAULT NULL COMMENT '操作人',
   `remark` VARCHAR(255) DEFAULT NULL COMMENT '备注',
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY `uk_dept_id` (`dept_id`),
-  KEY `idx_period_status` (`period`, `status`)
-) COMMENT='部门配额策略（按部门定义每用户额度）';
+  `created_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_status_expire` (`user_id`, `status`, `expires_at`),
+  KEY `idx_expired_query` (`user_id`, `expires_at`)
+) COMMENT='用户配额批次表';
+
+-- 用户配额流水表（调额、转配、消费、补偿）
+CREATE TABLE `user_quota_transactions` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `biz_no` VARCHAR(64) NOT NULL COMMENT '业务流水号',
+  `user_id` BIGINT NOT NULL COMMENT '额度归属用户',
+  `grant_id` BIGINT DEFAULT NULL COMMENT '关联配额批次ID',
+  `change_type` VARCHAR(32) NOT NULL COMMENT '变更类型:'ADMIN_GRANT', 'ADMIN_RECLAIM', 'TRANSFER_OUT', 'TRANSFER_IN', 'USAGE_RESERVE', 'USAGE_SETTLE', 'USAGE_REFUND', 'QUOTA_EXPIRE'',
+  `delta_tokens` BIGINT NOT NULL COMMENT '变更额度，正负号表示增减',
+  `quota_before` BIGINT NOT NULL DEFAULT 0 COMMENT '变更前当前有效总配额',
+  `quota_after` BIGINT NOT NULL DEFAULT 0 COMMENT '变更后当前有效总配额',
+  `available_before` BIGINT NOT NULL DEFAULT 0 COMMENT '变更前剩余额度',
+  `available_after` BIGINT NOT NULL DEFAULT 0 COMMENT '变更后剩余额度',
+  `counterparty_user_id` BIGINT DEFAULT NULL COMMENT '转配对手方用户ID',
+  `request_id` VARCHAR(64) DEFAULT NULL COMMENT '关联请求ID',
+  `operator_user_id` BIGINT DEFAULT NULL COMMENT '操作人',
+  `remark` VARCHAR(255) DEFAULT NULL COMMENT '备注',
+  `created_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_created` (`user_id`, `created_time`),
+  KEY `idx_biz_no` (`biz_no`)
+) COMMENT='用户配额流水表';
 
 -- 用量记录日志表
 CREATE TABLE `usage_logs` (
@@ -271,12 +320,17 @@ CREATE TABLE `usage_logs` (
   `model_id` BIGINT NOT NULL COMMENT '模型ID',
   `endpoint` VARCHAR(32) NOT NULL COMMENT 'OpenAI路径语义，如 chat.completions/embeddings',
   `is_stream` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否流式',
+  `reserved_tokens` INT NOT NULL DEFAULT 0 COMMENT '本次请求预占Token(准入阶段写入)',
   `prompt_tokens` INT NOT NULL DEFAULT 0,
   `completion_tokens` INT NOT NULL DEFAULT 0,
-  `total_tokens` INT NOT NULL DEFAULT 0,
+  `total_tokens` INT NOT NULL DEFAULT 0 COMMENT '本次请求最终实际Token(结算阶段写入)',
   `latency_ms` INT DEFAULT NULL COMMENT '网关侧端到端耗时',
   `status_code` INT NOT NULL COMMENT 'HTTP状态码',
   `error_code` VARCHAR(64) DEFAULT NULL COMMENT '业务错误码（如 RBAC_MODEL_FORBIDDEN）',
+  `accounting_status` VARCHAR(32) NOT NULL DEFAULT 'PROCESSING' COMMENT '结算状态：PROCESSING/SUCCEEDED/FAILED/COMPENSATED',
+  `settled_at` DATETIME DEFAULT NULL COMMENT '最终结算时间',
+  `retry_count` INT NOT NULL DEFAULT 0 COMMENT '补偿次数',
+  `calc_source` VARCHAR(32) DEFAULT NULL COMMENT 'Token来源：UPSTREAM-上游usage；STREAM-流式累计；LOCAL_ESTIMATE-本地估算',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_request_id` (`request_id`),
@@ -315,7 +369,11 @@ CREATE TABLE `usage_stats_daily_user` (
 
 ### 5.2 索引建议
 -   `api_keys(api_key_hash)`: 唯一索引，用于快速身份验证。
--   `department_quotas(dept_id)`: 唯一索引，用于按用户部门匹配配额策略。
+-   `user_quota_accounts(user_id)`: 唯一索引，用于快速定位用户额度账户。
+-   `user_quota_accounts(earliest_expire_at)`: 当前额度即将过期查询索引。
+-   `user_quota_grants(user_id, status, expires_at)`: 当前有效批次与过期批次查询索引。
+-   `user_quota_grants(user_id, expires_at)`: 过期列表查询索引。
+-   `user_quota_transactions(user_id, created_time)`: 用户额度流水查询索引。
 -   `department_model_permissions(dept_id, status)`: 部门授权模型查询高频索引。
 -   `department_model_permissions(model_id, status)`: 模型维度反查被授权部门索引。
 -   `usage_logs(dept_id, created_at, id)`: 部门维度明细导出/增量聚合的主索引（范围扫描 + 游标分页）。
@@ -430,35 +488,72 @@ sequenceDiagram
   - **限流响应**：当 Redis 计数器超过阈值，返回 `429 Too Many Requests`，并在 Header 中包含 `Retry-After`。
 - **时序图**：参考 2.2 核心业务流程图。
 
-### 6.5 故事 5：部门配额管理 (US-004)
-- **设计**：提供“部门级策略配置 + 用户侧实时生效”的配额治理能力。策略定义在部门维度，但实际限额按“部门下每个用户”独立计算与判断。
-- **数据模型**：`department_quotas`, `department`, `users`
+### 6.5 故事 5：用户配额管理 (US-004)
+- **设计**：配额按“批次”发放，每笔配额都必须带 `expires_at`。系统为每个用户维护一个额度账户快照，并通过配额批次表记录来源、额度值和过期时间。普通用户可以将自己的剩余配额转配给其他用户，转入配额保留原始有效期。
+- **数据模型**：`user_quota_accounts`, `user_quota_grants`, `user_quota_transactions`, `users`
 - **接口**：
-  - `GET /admin/department-quotas`：分页查询策略列表（支持 `deptId`、`period`、`status` 条件）。
-  - `GET /admin/department-quotas/{deptId}`：查询指定部门当前策略（用于编辑页回填）。
-  - `POST /admin/department-quotas`：创建部门策略（若已存在则返回冲突）。
-  - `PUT /admin/department-quotas/{deptId}`：更新策略（额度、周期、状态、备注）。
-  - `PUT /admin/department-quotas/{deptId}/status`：启停策略（软开关，保留历史记录）。
-- **请求参数建议**：
-  - `deptId`：部门 ID，必填，必须存在且未删除。
-  - `quotaTokens`：每用户额度，必填，`1 <= quotaTokens <= 10^12`。
-  - `period`：刷新策略，必填，`MONTHLY` 或 `FOREVER`。
-  - `status`：策略状态，选填，默认 `1`（启用）。
-  - `remark`：备注，选填，长度不超过 255。
+  - `GET /admin/users/{id}/quota`：查询用户当前配额账户快照。
+  - `GET /admin/users/{id}/quota/expired-grants`：查询用户已过期的配额列表。
+  - `POST /admin/users/{id}/quota/adjustments`：管理员为用户新增配额或回收未使用配额。
+  - `POST /v1/user/quotas/transfer`：用户将剩余额度转配给其他用户。
+  - `GET /v1/user/quotas/current`：用户查看自己的当前配额。
+  - `GET /v1/user/quotas/expired-grants`：用户查看自己的已过期配额列表。
+  - `GET /v1/user/quotas/transactions`：查询当前用户的配额流水。
 - **关键逻辑**：
-  - **唯一约束**：每个部门仅允许一条生效策略（`uk_dept_id`）。
-  - **参数约束**：`quota_tokens > 0`；`period in {MONTHLY, FOREVER}`。
-  - **权限控制**：仅管理员角色可操作；变更后触发缓存失效。
-- **时序图**：参考 6.2 (原 6.2 时序图)。
+  - **账户快照**：`current_quota_tokens` 表示当前仍在有效期内的配额总量；`available_tokens` 表示当前剩余可用量；`earliest_expire_at` 用于展示当前配额中最近一笔的过期时间。
+  - **配额批次**：每笔管理员发放、用户转入、系统补偿都生成一条 `user_quota_grants`，记录 `granted_tokens`、`remaining_tokens`、`expires_at` 和 `source_type`。
+  - **管理员调额**：管理员新增额度时必须显式指定 `expires_at`；若回收额度，则按“最早过期优先”从未过期批次中扣减剩余量，并同步落流水。
+  - **用户转配**：仅允许从转出方的未过期批次中扣减，按“最早过期优先”拆分转出；转入方生成新的 `TRANSFER_IN` 批次，并继承原批次的 `expires_at`，禁止借转配延长有效期。
+  - **当前配额查询**：读取 `user_quota_accounts` 快照，并可附带最近即将过期的有效批次摘要。
+  - **已过期列表查询**：从 `user_quota_grants` 中读取 `status=EXPIRED` 的记录，返回 `granted_tokens`、`expires_at`、`source_type`、`source_user_id` 和备注。
+  - **事务一致性**：管理员调额、用户转配、额度过期都必须在事务内同时更新账户快照、批次状态和流水，保证账实一致。
+  - **并发控制**：用户转配接口在事务内按 `user_id` 与 `grant_id` 的固定顺序锁定相关账户和批次，避免并发超转和死锁。
+  - **审计追踪**：所有发放、回收、转配、消费预占、结算回补、自动过期都必须落 `user_quota_transactions`，支持后续审计与对账。
+- **参数约束**：
+  - `adjust_tokens != 0`
+  - `transfer_tokens > 0`
+  - `expires_at > now()`
+  - 转出方 `available_tokens >= transfer_tokens`
+- **错误码约定（本故事）**：
+  - `4101 USER_QUOTA_NOT_FOUND`：用户未配置额度账户。
+  - `4102 USER_QUOTA_INSUFFICIENT`：剩余额度不足，无法消费或转配。
+  - `4103 USER_QUOTA_TRANSFER_FORBIDDEN`：当前用户不允许发起转配。
+  - `4104 USER_QUOTA_TRANSFER_SELF_DENIED`：不允许给自己转配。
+  - `4105 USER_QUOTA_TARGET_INVALID`：转入目标用户不存在或已禁用。
+  - `4106 USER_QUOTA_CONFLICT`：配额账户并发更新冲突。
+- **时序图**：
+```mermaid
+sequenceDiagram
+    participant A as Actor(Admin/User)
+    participant Q as QuotaService
+    participant D as DB
 
-### 6.6 故事 6：用户额度刷新与统计判断 (US-010)
-- **设计**：用户额度不共享部门总池；每个用户按所属部门策略独立判断额度。
-- **数据模型**：`department_quotas`, `usage_logs`, `usage_stats_daily_user`
+    alt 管理员调额
+        A->>Q: POST /admin/users/{id}/quota/adjustments
+        Q->>D: 新增/回收配额批次
+        Q->>D: 更新账户快照
+        Q->>D: 写入 ADMIN_GRANT / ADMIN_RECLAIM 流水
+        Q-->>A: 返回最新账户快照
+    else 用户转配
+        A->>Q: POST /v1/user/quotas/transfer
+        Q->>D: 锁定转出方/转入方账户与有效批次
+        Q->>Q: 校验剩余额度、目标用户状态和批次有效期
+        Q->>D: 扣减转出批次并生成转入批次
+        Q->>D: 更新双方账户快照和 TRANSFER_OUT / TRANSFER_IN 流水
+        D-->>Q: 事务提交
+        Q-->>A: 返回转配结果
+    end
+```
+
+### 6.6 故事 6：用户额度过期与统计判断 (US-010)
+- **设计**：所有准入判断只看用户自己的有效配额，不再读取部门配额策略。系统按配额批次的 `expires_at` 自动过期，额度结算统一围绕账户快照、配额批次和额度流水执行。
+- **数据模型**：`user_quota_accounts`, `user_quota_grants`, `user_quota_transactions`, `usage_logs`, `usage_stats_daily_user`
 - **关键逻辑**：
-  - **MONTHLY**：按自然月统计用户已用量，每月按策略额度“覆盖刷新”（新月份直接使用策略额度上限）。
-  - **FOREVER**：用户全生命周期累计已用量与策略额度比较，不执行月刷新。
-  - **准入判断**：请求前读取策略额度与用户已用统计，若已用 `>= quota_tokens` 则拒绝（`402` 或业务错误码）。
-  - **统计更新**：请求完成后更新 Redis 用户计数器并异步落 `usage_logs`；聚合任务回写 `usage_stats_daily_user` 做对账。
+  - **自动过期**：定时任务扫描 `user_quota_grants.status=ACTIVE and expires_at <= now()` 的记录，将其置为 `EXPIRED`，回写 `expired_tokens`、账户快照，并写入 `QUOTA_EXPIRE` 流水。
+  - **准入判断**：请求前优先读取 `user_quota_accounts.available_tokens`；若不足本次预占额度，则拒绝请求并返回 `402` 或业务错误码。
+  - **消费扣减顺序**：实际扣减时优先消耗最早过期的有效批次，避免用户持有即将过期的额度却先消耗长期额度。
+  - **预占与结算**：请求进入供应商前写入 `USAGE_RESERVE` 流水并预占可用额度；响应结束后根据实际 `total_tokens` 进行 `USAGE_SETTLE` 或 `USAGE_REFUND`，保证流式与非流式场景额度一致。
+  - **统计更新**：请求完成后写 `usage_logs`，聚合任务回写 `usage_stats_daily_user`；若结算失败则依据额度流水执行补偿，避免账户与明细不一致。
 - **时序图**：参考 6.5 与 6.7。
 
 ### 6.7 故事 7：监控仪表盘与数据导出 (US-005, US-008)
@@ -492,7 +587,7 @@ sequenceDiagram
 ## 8、发布与回滚
 
 ### 8.1 发布策略
-- **灰度发布**：先切流 5% 内部测试账号，观察额度策略（MONTHLY/FOREVER）与统计判断结果是否符合预期。
+- **灰度发布**：先切流 5% 内部测试账号，观察配额到期、自动过期任务和统计判断结果是否符合预期。
 - **配置热加载**：主密钥池配置支持 Apollo/Nacos 热更新，无需重启实例。
 
 ### 8.2 回滚方案

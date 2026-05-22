@@ -1,10 +1,10 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-08T17:25:34.952463+08:00
+ * Generation date: 2026-05-21T18:47:35.931595+08:00
  */
 package com.llm.gateway.dal.mapper
 
-import com.llm.gateway.dal.model.DepartmentQuotasRecord
+import com.llm.gateway.dal.model.UserQuotaAccountsRecord
 import org.apache.ibatis.annotations.DeleteProvider
 import org.apache.ibatis.annotations.Insert
 import org.apache.ibatis.annotations.InsertProvider
@@ -24,7 +24,7 @@ import org.mybatis.dynamic.sql.update.render.UpdateStatementProvider
 import org.mybatis.dynamic.sql.util.SqlProviderAdapter
 
 @Mapper
-interface DepartmentQuotasMapper {
+interface UserQuotaAccountsMapper {
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
     fun count(selectStatement: SelectStatementProvider): Long
 
@@ -33,30 +33,34 @@ interface DepartmentQuotasMapper {
 
     @InsertProvider(type=SqlProviderAdapter::class, method="insert")
     @Options(useGeneratedKeys=true,keyProperty="record.id")
-    fun insert(insertStatement: InsertStatementProvider<DepartmentQuotasRecord>): Int
+    fun insert(insertStatement: InsertStatementProvider<UserQuotaAccountsRecord>): Int
 
     @Insert(
         "\${insertStatement}"
     )
-    @Options(useGeneratedKeys=true,keyProperty="records.id")
-    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("records") records: List<DepartmentQuotasRecord>): Int
+    @Options(useGeneratedKeys=true,keyProperty="list.id")
+    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("list") records: List<UserQuotaAccountsRecord>): Int
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
-    @ResultMap("DepartmentQuotasRecordResult")
-    fun selectOne(selectStatement: SelectStatementProvider): DepartmentQuotasRecord?
+    @ResultMap("UserQuotaAccountsRecordResult")
+    fun selectOne(selectStatement: SelectStatementProvider): UserQuotaAccountsRecord?
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
-    @Results(id="DepartmentQuotasRecordResult", value = [
+    @Results(id="UserQuotaAccountsRecordResult", value = [
         Result(column="id", property="id", jdbcType=JdbcType.BIGINT, id=true),
-        Result(column="dept_id", property="deptId", jdbcType=JdbcType.BIGINT),
-        Result(column="quota_tokens", property="quotaTokens", jdbcType=JdbcType.BIGINT),
-        Result(column="period", property="period", jdbcType=JdbcType.CHAR),
-        Result(column="status", property="status", jdbcType=JdbcType.INTEGER),
-        Result(column="remark", property="remark", jdbcType=JdbcType.VARCHAR),
-        Result(column="created_at", property="createdAt", jdbcType=JdbcType.TIMESTAMP),
-        Result(column="updated_at", property="updatedAt", jdbcType=JdbcType.TIMESTAMP)
+        Result(column="user_id", property="userId", jdbcType=JdbcType.BIGINT),
+        Result(column="current_quota_tokens", property="currentQuotaTokens", jdbcType=JdbcType.BIGINT),
+        Result(column="used_tokens", property="usedTokens", jdbcType=JdbcType.BIGINT),
+        Result(column="expired_tokens", property="expiredTokens", jdbcType=JdbcType.BIGINT),
+        Result(column="transferred_in_tokens", property="transferredInTokens", jdbcType=JdbcType.BIGINT),
+        Result(column="transferred_out_tokens", property="transferredOutTokens", jdbcType=JdbcType.BIGINT),
+        Result(column="available_tokens", property="availableTokens", jdbcType=JdbcType.BIGINT),
+        Result(column="allow_transfer_out", property="allowTransferOut", jdbcType=JdbcType.BIT),
+        Result(column="earliest_expire_at", property="earliestExpireAt", jdbcType=JdbcType.TIMESTAMP),
+        Result(column="updated_time", property="updatedTime", jdbcType=JdbcType.TIMESTAMP),
+        Result(column="created_time", property="createdTime", jdbcType=JdbcType.TIMESTAMP)
     ])
-    fun selectMany(selectStatement: SelectStatementProvider): List<DepartmentQuotasRecord>
+    fun selectMany(selectStatement: SelectStatementProvider): List<UserQuotaAccountsRecord>
 
     @UpdateProvider(type=SqlProviderAdapter::class, method="update")
     fun update(updateStatement: UpdateStatementProvider): Int

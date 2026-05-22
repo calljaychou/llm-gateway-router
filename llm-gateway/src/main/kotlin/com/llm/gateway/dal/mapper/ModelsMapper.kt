@@ -38,8 +38,8 @@ interface ModelsMapper {
     @Insert(
         "\${insertStatement}"
     )
-    @Options(useGeneratedKeys=true,keyProperty="records.id")
-    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("records") records: List<ModelsRecord>): Int
+    @Options(useGeneratedKeys=true,keyProperty="list.id")
+    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("list") records: List<ModelsRecord>): Int
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
     @ResultMap("ModelsRecordResult")

@@ -36,7 +36,7 @@ interface UsageStatsDailyDepartmentMapper {
     @Insert(
         "\${insertStatement}"
     )
-    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("records") records: List<UsageStatsDailyDepartmentRecord>): Int
+    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("list") records: List<UsageStatsDailyDepartmentRecord>): Int
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
     @ResultMap("UsageStatsDailyDepartmentRecordResult")

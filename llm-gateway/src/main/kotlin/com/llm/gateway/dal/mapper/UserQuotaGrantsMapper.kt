@@ -1,10 +1,10 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-08T17:25:34.947429+08:00
+ * Generation date: 2026-05-21T18:47:35.937941+08:00
  */
 package com.llm.gateway.dal.mapper
 
-import com.llm.gateway.dal.model.PositionRecord
+import com.llm.gateway.dal.model.UserQuotaGrantsRecord
 import org.apache.ibatis.annotations.DeleteProvider
 import org.apache.ibatis.annotations.Insert
 import org.apache.ibatis.annotations.InsertProvider
@@ -24,7 +24,7 @@ import org.mybatis.dynamic.sql.update.render.UpdateStatementProvider
 import org.mybatis.dynamic.sql.util.SqlProviderAdapter
 
 @Mapper
-interface PositionMapper {
+interface UserQuotaGrantsMapper {
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
     fun count(selectStatement: SelectStatementProvider): Long
 
@@ -33,31 +33,37 @@ interface PositionMapper {
 
     @InsertProvider(type=SqlProviderAdapter::class, method="insert")
     @Options(useGeneratedKeys=true,keyProperty="record.id")
-    fun insert(insertStatement: InsertStatementProvider<PositionRecord>): Int
+    fun insert(insertStatement: InsertStatementProvider<UserQuotaGrantsRecord>): Int
 
     @Insert(
         "\${insertStatement}"
     )
     @Options(useGeneratedKeys=true,keyProperty="list.id")
-    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("list") records: List<PositionRecord>): Int
+    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("list") records: List<UserQuotaGrantsRecord>): Int
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
-    @ResultMap("PositionRecordResult")
-    fun selectOne(selectStatement: SelectStatementProvider): PositionRecord?
+    @ResultMap("UserQuotaGrantsRecordResult")
+    fun selectOne(selectStatement: SelectStatementProvider): UserQuotaGrantsRecord?
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
-    @Results(id="PositionRecordResult", value = [
+    @Results(id="UserQuotaGrantsRecordResult", value = [
         Result(column="id", property="id", jdbcType=JdbcType.BIGINT, id=true),
-        Result(column="post_code", property="postCode", jdbcType=JdbcType.VARCHAR),
-        Result(column="post_name", property="postName", jdbcType=JdbcType.VARCHAR),
-        Result(column="post_sort", property="postSort", jdbcType=JdbcType.INTEGER),
-        Result(column="status", property="status", jdbcType=JdbcType.INTEGER),
-        Result(column="created_by", property="createdBy", jdbcType=JdbcType.VARCHAR),
-        Result(column="updated_by", property="updatedBy", jdbcType=JdbcType.VARCHAR),
+        Result(column="user_id", property="userId", jdbcType=JdbcType.BIGINT),
+        Result(column="source_type", property="sourceType", jdbcType=JdbcType.VARCHAR),
+        Result(column="source_user_id", property="sourceUserId", jdbcType=JdbcType.BIGINT),
+        Result(column="source_grant_id", property="sourceGrantId", jdbcType=JdbcType.BIGINT),
+        Result(column="granted_tokens", property="grantedTokens", jdbcType=JdbcType.BIGINT),
+        Result(column="remaining_tokens", property="remainingTokens", jdbcType=JdbcType.BIGINT),
+        Result(column="consumed_tokens", property="consumedTokens", jdbcType=JdbcType.BIGINT),
+        Result(column="expired_tokens", property="expiredTokens", jdbcType=JdbcType.BIGINT),
+        Result(column="expires_at", property="expiresAt", jdbcType=JdbcType.TIMESTAMP),
+        Result(column="status", property="status", jdbcType=JdbcType.VARCHAR),
+        Result(column="granted_by", property="grantedBy", jdbcType=JdbcType.BIGINT),
+        Result(column="remark", property="remark", jdbcType=JdbcType.VARCHAR),
         Result(column="created_time", property="createdTime", jdbcType=JdbcType.TIMESTAMP),
         Result(column="updated_time", property="updatedTime", jdbcType=JdbcType.TIMESTAMP)
     ])
-    fun selectMany(selectStatement: SelectStatementProvider): List<PositionRecord>
+    fun selectMany(selectStatement: SelectStatementProvider): List<UserQuotaGrantsRecord>
 
     @UpdateProvider(type=SqlProviderAdapter::class, method="update")
     fun update(updateStatement: UpdateStatementProvider): Int

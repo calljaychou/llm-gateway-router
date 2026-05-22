@@ -1,10 +1,10 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-08T17:25:34.951929+08:00
+ * Generation date: 2026-05-21T18:47:35.939659+08:00
  */
 package com.llm.gateway.dal.mapper
 
-import com.llm.gateway.dal.model.ApiKeysRecord
+import com.llm.gateway.dal.model.UserQuotaTransactionsRecord
 import org.apache.ibatis.annotations.DeleteProvider
 import org.apache.ibatis.annotations.Insert
 import org.apache.ibatis.annotations.InsertProvider
@@ -24,7 +24,7 @@ import org.mybatis.dynamic.sql.update.render.UpdateStatementProvider
 import org.mybatis.dynamic.sql.util.SqlProviderAdapter
 
 @Mapper
-interface ApiKeysMapper {
+interface UserQuotaTransactionsMapper {
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
     fun count(selectStatement: SelectStatementProvider): Long
 
@@ -33,31 +33,37 @@ interface ApiKeysMapper {
 
     @InsertProvider(type=SqlProviderAdapter::class, method="insert")
     @Options(useGeneratedKeys=true,keyProperty="record.id")
-    fun insert(insertStatement: InsertStatementProvider<ApiKeysRecord>): Int
+    fun insert(insertStatement: InsertStatementProvider<UserQuotaTransactionsRecord>): Int
 
     @Insert(
         "\${insertStatement}"
     )
     @Options(useGeneratedKeys=true,keyProperty="list.id")
-    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("list") records: List<ApiKeysRecord>): Int
+    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("list") records: List<UserQuotaTransactionsRecord>): Int
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
-    @ResultMap("ApiKeysRecordResult")
-    fun selectOne(selectStatement: SelectStatementProvider): ApiKeysRecord?
+    @ResultMap("UserQuotaTransactionsRecordResult")
+    fun selectOne(selectStatement: SelectStatementProvider): UserQuotaTransactionsRecord?
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
-    @Results(id="ApiKeysRecordResult", value = [
+    @Results(id="UserQuotaTransactionsRecordResult", value = [
         Result(column="id", property="id", jdbcType=JdbcType.BIGINT, id=true),
+        Result(column="biz_no", property="bizNo", jdbcType=JdbcType.VARCHAR),
         Result(column="user_id", property="userId", jdbcType=JdbcType.BIGINT),
-        Result(column="name", property="name", jdbcType=JdbcType.VARCHAR),
-        Result(column="api_key_hash", property="apiKeyHash", jdbcType=JdbcType.VARCHAR),
-        Result(column="api_key_prefix", property="apiKeyPrefix", jdbcType=JdbcType.VARCHAR),
-        Result(column="status", property="status", jdbcType=JdbcType.INTEGER),
-        Result(column="expires_at", property="expiresAt", jdbcType=JdbcType.TIMESTAMP),
-        Result(column="created_time", property="createdTime", jdbcType=JdbcType.TIMESTAMP),
-        Result(column="updated_time", property="updatedTime", jdbcType=JdbcType.TIMESTAMP)
+        Result(column="grant_id", property="grantId", jdbcType=JdbcType.BIGINT),
+        Result(column="change_type", property="changeType", jdbcType=JdbcType.VARCHAR),
+        Result(column="delta_tokens", property="deltaTokens", jdbcType=JdbcType.BIGINT),
+        Result(column="quota_before", property="quotaBefore", jdbcType=JdbcType.BIGINT),
+        Result(column="quota_after", property="quotaAfter", jdbcType=JdbcType.BIGINT),
+        Result(column="available_before", property="availableBefore", jdbcType=JdbcType.BIGINT),
+        Result(column="available_after", property="availableAfter", jdbcType=JdbcType.BIGINT),
+        Result(column="counterparty_user_id", property="counterpartyUserId", jdbcType=JdbcType.BIGINT),
+        Result(column="request_id", property="requestId", jdbcType=JdbcType.VARCHAR),
+        Result(column="operator_user_id", property="operatorUserId", jdbcType=JdbcType.BIGINT),
+        Result(column="remark", property="remark", jdbcType=JdbcType.VARCHAR),
+        Result(column="created_time", property="createdTime", jdbcType=JdbcType.TIMESTAMP)
     ])
-    fun selectMany(selectStatement: SelectStatementProvider): List<ApiKeysRecord>
+    fun selectMany(selectStatement: SelectStatementProvider): List<UserQuotaTransactionsRecord>
 
     @UpdateProvider(type=SqlProviderAdapter::class, method="update")
     fun update(updateStatement: UpdateStatementProvider): Int

@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-08T17:25:34.952899+08:00
+ * Generation date: 2026-05-21T18:47:35.940409+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -26,7 +26,9 @@ object UsageLogsDynamicSqlSupport {
 
         val endpoint = column<String>("endpoint", JDBCType.VARCHAR)
 
-        val isStream = column<Boolean>("is_stream", JDBCType.BIT)
+        val useStream = column<Boolean>("use_stream", JDBCType.BIT)
+
+        val reservedTokens = column<Int>("reserved_tokens", JDBCType.INTEGER)
 
         val promptTokens = column<Int>("prompt_tokens", JDBCType.INTEGER)
 
@@ -39,6 +41,14 @@ object UsageLogsDynamicSqlSupport {
         val statusCode = column<Int>("status_code", JDBCType.INTEGER)
 
         val errorCode = column<String>("error_code", JDBCType.VARCHAR)
+
+        val accountingStatus = column<String>("accounting_status", JDBCType.VARCHAR)
+
+        val settledAt = column<Date>("settled_at", JDBCType.TIMESTAMP)
+
+        val retryCount = column<Int>("retry_count", JDBCType.INTEGER)
+
+        val calcSource = column<String>("calc_source", JDBCType.VARCHAR)
 
         val createdAt = column<Date>("created_at", JDBCType.TIMESTAMP)
     }

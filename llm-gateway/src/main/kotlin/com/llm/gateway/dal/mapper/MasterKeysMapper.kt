@@ -38,8 +38,8 @@ interface MasterKeysMapper {
     @Insert(
         "\${insertStatement}"
     )
-    @Options(useGeneratedKeys=true,keyProperty="records.id")
-    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("records") records: List<MasterKeysRecord>): Int
+    @Options(useGeneratedKeys=true,keyProperty="list.id")
+    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("list") records: List<MasterKeysRecord>): Int
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
     @ResultMap("MasterKeysRecordResult")

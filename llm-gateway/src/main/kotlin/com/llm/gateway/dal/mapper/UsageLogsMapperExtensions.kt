@@ -1,24 +1,29 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-08T17:25:34.953129+08:00
+ * Generation date: 2026-05-21T18:47:35.940831+08:00
  */
 package com.llm.gateway.dal.mapper
 
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs
+import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.accountingStatus
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.apiKeyId
+import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.calcSource
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.completionTokens
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.createdAt
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.deptId
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.endpoint
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.errorCode
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.id
-import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.isStream
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.latencyMs
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.modelId
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.promptTokens
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.requestId
+import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.reservedTokens
+import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.retryCount
+import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.settledAt
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.statusCode
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.totalTokens
+import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.useStream
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.userId
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.vendorId
 import com.llm.gateway.dal.model.UsageLogsRecord
@@ -50,13 +55,18 @@ fun UsageLogsMapper.insert(record: UsageLogsRecord) =
         map(vendorId).toProperty("vendorId")
         map(modelId).toProperty("modelId")
         map(endpoint).toProperty("endpoint")
-        map(isStream).toProperty("isStream")
+        map(useStream).toProperty("useStream")
+        map(reservedTokens).toProperty("reservedTokens")
         map(promptTokens).toProperty("promptTokens")
         map(completionTokens).toProperty("completionTokens")
         map(totalTokens).toProperty("totalTokens")
         map(latencyMs).toProperty("latencyMs")
         map(statusCode).toProperty("statusCode")
         map(errorCode).toProperty("errorCode")
+        map(accountingStatus).toProperty("accountingStatus")
+        map(settledAt).toProperty("settledAt")
+        map(retryCount).toProperty("retryCount")
+        map(calcSource).toProperty("calcSource")
         map(createdAt).toProperty("createdAt")
     }
 
@@ -69,13 +79,18 @@ fun UsageLogsMapper.insertMultiple(records: Collection<UsageLogsRecord>) =
         map(vendorId).toProperty("vendorId")
         map(modelId).toProperty("modelId")
         map(endpoint).toProperty("endpoint")
-        map(isStream).toProperty("isStream")
+        map(useStream).toProperty("useStream")
+        map(reservedTokens).toProperty("reservedTokens")
         map(promptTokens).toProperty("promptTokens")
         map(completionTokens).toProperty("completionTokens")
         map(totalTokens).toProperty("totalTokens")
         map(latencyMs).toProperty("latencyMs")
         map(statusCode).toProperty("statusCode")
         map(errorCode).toProperty("errorCode")
+        map(accountingStatus).toProperty("accountingStatus")
+        map(settledAt).toProperty("settledAt")
+        map(retryCount).toProperty("retryCount")
+        map(calcSource).toProperty("calcSource")
         map(createdAt).toProperty("createdAt")
     }
 
@@ -91,17 +106,22 @@ fun UsageLogsMapper.insertSelective(record: UsageLogsRecord) =
         map(vendorId).toPropertyWhenPresent("vendorId", record::vendorId)
         map(modelId).toPropertyWhenPresent("modelId", record::modelId)
         map(endpoint).toPropertyWhenPresent("endpoint", record::endpoint)
-        map(isStream).toPropertyWhenPresent("isStream", record::isStream)
+        map(useStream).toPropertyWhenPresent("useStream", record::useStream)
+        map(reservedTokens).toPropertyWhenPresent("reservedTokens", record::reservedTokens)
         map(promptTokens).toPropertyWhenPresent("promptTokens", record::promptTokens)
         map(completionTokens).toPropertyWhenPresent("completionTokens", record::completionTokens)
         map(totalTokens).toPropertyWhenPresent("totalTokens", record::totalTokens)
         map(latencyMs).toPropertyWhenPresent("latencyMs", record::latencyMs)
         map(statusCode).toPropertyWhenPresent("statusCode", record::statusCode)
         map(errorCode).toPropertyWhenPresent("errorCode", record::errorCode)
+        map(accountingStatus).toPropertyWhenPresent("accountingStatus", record::accountingStatus)
+        map(settledAt).toPropertyWhenPresent("settledAt", record::settledAt)
+        map(retryCount).toPropertyWhenPresent("retryCount", record::retryCount)
+        map(calcSource).toPropertyWhenPresent("calcSource", record::calcSource)
         map(createdAt).toPropertyWhenPresent("createdAt", record::createdAt)
     }
 
-private val columnList = listOf(id, requestId, userId, deptId, apiKeyId, vendorId, modelId, endpoint, isStream, promptTokens, completionTokens, totalTokens, latencyMs, statusCode, errorCode, createdAt)
+private val columnList = listOf(id, requestId, userId, deptId, apiKeyId, vendorId, modelId, endpoint, useStream, reservedTokens, promptTokens, completionTokens, totalTokens, latencyMs, statusCode, errorCode, accountingStatus, settledAt, retryCount, calcSource, createdAt)
 
 fun UsageLogsMapper.selectOne(completer: SelectCompleter) =
     selectOne(this::selectOne, columnList, UsageLogs, completer)
@@ -129,13 +149,18 @@ fun KotlinUpdateBuilder.updateAllColumns(record: UsageLogsRecord) =
         set(vendorId).equalTo(record::vendorId)
         set(modelId).equalTo(record::modelId)
         set(endpoint).equalTo(record::endpoint)
-        set(isStream).equalTo(record::isStream)
+        set(useStream).equalTo(record::useStream)
+        set(reservedTokens).equalTo(record::reservedTokens)
         set(promptTokens).equalTo(record::promptTokens)
         set(completionTokens).equalTo(record::completionTokens)
         set(totalTokens).equalTo(record::totalTokens)
         set(latencyMs).equalTo(record::latencyMs)
         set(statusCode).equalTo(record::statusCode)
         set(errorCode).equalTo(record::errorCode)
+        set(accountingStatus).equalTo(record::accountingStatus)
+        set(settledAt).equalTo(record::settledAt)
+        set(retryCount).equalTo(record::retryCount)
+        set(calcSource).equalTo(record::calcSource)
         set(createdAt).equalTo(record::createdAt)
     }
 
@@ -148,13 +173,18 @@ fun KotlinUpdateBuilder.updateSelectiveColumns(record: UsageLogsRecord) =
         set(vendorId).equalToWhenPresent(record::vendorId)
         set(modelId).equalToWhenPresent(record::modelId)
         set(endpoint).equalToWhenPresent(record::endpoint)
-        set(isStream).equalToWhenPresent(record::isStream)
+        set(useStream).equalToWhenPresent(record::useStream)
+        set(reservedTokens).equalToWhenPresent(record::reservedTokens)
         set(promptTokens).equalToWhenPresent(record::promptTokens)
         set(completionTokens).equalToWhenPresent(record::completionTokens)
         set(totalTokens).equalToWhenPresent(record::totalTokens)
         set(latencyMs).equalToWhenPresent(record::latencyMs)
         set(statusCode).equalToWhenPresent(record::statusCode)
         set(errorCode).equalToWhenPresent(record::errorCode)
+        set(accountingStatus).equalToWhenPresent(record::accountingStatus)
+        set(settledAt).equalToWhenPresent(record::settledAt)
+        set(retryCount).equalToWhenPresent(record::retryCount)
+        set(calcSource).equalToWhenPresent(record::calcSource)
         set(createdAt).equalToWhenPresent(record::createdAt)
     }
 
@@ -167,13 +197,18 @@ fun UsageLogsMapper.updateByPrimaryKey(record: UsageLogsRecord) =
         set(vendorId).equalTo(record::vendorId)
         set(modelId).equalTo(record::modelId)
         set(endpoint).equalTo(record::endpoint)
-        set(isStream).equalTo(record::isStream)
+        set(useStream).equalTo(record::useStream)
+        set(reservedTokens).equalTo(record::reservedTokens)
         set(promptTokens).equalTo(record::promptTokens)
         set(completionTokens).equalTo(record::completionTokens)
         set(totalTokens).equalTo(record::totalTokens)
         set(latencyMs).equalTo(record::latencyMs)
         set(statusCode).equalTo(record::statusCode)
         set(errorCode).equalTo(record::errorCode)
+        set(accountingStatus).equalTo(record::accountingStatus)
+        set(settledAt).equalTo(record::settledAt)
+        set(retryCount).equalTo(record::retryCount)
+        set(calcSource).equalTo(record::calcSource)
         set(createdAt).equalTo(record::createdAt)
         where(id, isEqualTo(record::id))
     }
@@ -187,13 +222,18 @@ fun UsageLogsMapper.updateByPrimaryKeySelective(record: UsageLogsRecord) =
         set(vendorId).equalToWhenPresent(record::vendorId)
         set(modelId).equalToWhenPresent(record::modelId)
         set(endpoint).equalToWhenPresent(record::endpoint)
-        set(isStream).equalToWhenPresent(record::isStream)
+        set(useStream).equalToWhenPresent(record::useStream)
+        set(reservedTokens).equalToWhenPresent(record::reservedTokens)
         set(promptTokens).equalToWhenPresent(record::promptTokens)
         set(completionTokens).equalToWhenPresent(record::completionTokens)
         set(totalTokens).equalToWhenPresent(record::totalTokens)
         set(latencyMs).equalToWhenPresent(record::latencyMs)
         set(statusCode).equalToWhenPresent(record::statusCode)
         set(errorCode).equalToWhenPresent(record::errorCode)
+        set(accountingStatus).equalToWhenPresent(record::accountingStatus)
+        set(settledAt).equalToWhenPresent(record::settledAt)
+        set(retryCount).equalToWhenPresent(record::retryCount)
+        set(calcSource).equalToWhenPresent(record::calcSource)
         set(createdAt).equalToWhenPresent(record::createdAt)
         where(id, isEqualTo(record::id))
     }
