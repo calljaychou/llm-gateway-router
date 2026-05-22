@@ -6,7 +6,7 @@ import com.llm.gateway.model.dto.RateLimitDecisionDto
 interface RateLimitService {
 
     /**
-     * 评估
+     * 限流评估
      * @param [ctx] 上下文
      * @return [RateLimitDecision?]
      */

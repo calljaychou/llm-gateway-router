@@ -1,6 +1,7 @@
 package com.llm.gateway.service
 
 import com.alibaba.fastjson2.JSON
+import com.alibaba.fastjson2.JSONObject
 import com.llm.gateway.common.enums.NormalStatus
 import com.llm.gateway.common.exceptions.BizException
 import com.llm.gateway.dal.mapper.MasterKeysDynamicSqlSupport
@@ -47,7 +48,8 @@ class OpenAiForwardService(
             throw BizException(BizException.BUSINESS_FAILED, "model 不能为空")
         }
 
-        adminUserPermissionService.assertUserCanAccessModel(userId, modelAlias)
+        // check用户可以访问模型
+        adminUserPermissionService.checkUserCanAccessModel(userId, modelAlias)
 
         val modelRecord = modelsMapper.selectOne {
             where { ModelsDynamicSqlSupport.Models.modelAlias isEqualTo modelAlias }
@@ -196,7 +198,7 @@ class OpenAiForwardService(
 
     /** 尝试将上游响应体解析为 JSON，失败时回退为原始字符串。 */
     private fun parseBody(body: String): Any {
-        if (body.isBlank()) return emptyMap<String, Any>()
+        if (body.isBlank()) return JSONObject()
         return try {
             JSON.parse(body)
         } catch (_: Exception) {

@@ -1,5 +1,7 @@
 package com.llm.gateway.ratelimit
 
+import com.alibaba.fastjson2.toJSONString
+import com.llm.gateway.common.logger
 import com.llm.gateway.model.dto.RateLimitContextDto
 import com.llm.gateway.model.dto.RateLimitDecisionDto
 import java.time.Instant
@@ -37,7 +39,9 @@ class DefaultRateLimitService(
      */
     private fun checkRule(scope: String, targetId: String, permitsPerSecond: Long): RateLimitDecisionDto? {
         if (permitsPerSecond <= 0) return null
+        logger().info("限流检查,scope:$scope, targetId:$targetId, 每秒许可:$permitsPerSecond")
         val result = rateLimiterProvider.tryAcquire(scope, targetId, permitsPerSecond)
+        logger().info("限流检查,scope:$scope, targetId:$targetId, 每秒许可:$permitsPerSecond \nresult:${result.toJSONString()}")
         if (result.allowed) return null
         val resetAt = Instant.now().epochSecond + result.retryAfterSeconds
         return RateLimitDecisionDto(

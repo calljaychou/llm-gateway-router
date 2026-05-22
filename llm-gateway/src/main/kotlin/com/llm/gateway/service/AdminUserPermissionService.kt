@@ -231,10 +231,10 @@ class AdminUserPermissionService(
         )
     }
 
-    fun assertUserCanAccessModel(userId: Long, modelAlias: String) {
+    fun checkUserCanAccessModel(userId: Long, modelAlias: String) {
         val allowed = getUserEffectivePermissions(userId).allowedModels.toSet()
         if (!allowed.contains(modelAlias.trim())) {
-            throw BizException(403, "RBAC_MODEL_FORBIDDEN")
+            throw BizException(BizException.BUSINESS_FAILED, "RBAC_MODEL_FORBIDDEN")
         }
     }
 

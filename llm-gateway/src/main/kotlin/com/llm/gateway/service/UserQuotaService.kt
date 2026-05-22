@@ -353,13 +353,19 @@ class UserQuotaService(
         val grants = userQuotaGrantsMapper.select {
             where { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.userId isEqualTo userId }
         }
+        val now = Date()
+        val notExpiredGrants = grants.filter {
+            it.expiresAt?.after(now) == true &&
+                it.status in setOf(UserQuotaGrantStatus.ACTIVE.value, UserQuotaGrantStatus.DEPLETED.value)
+        }
         val activeGrants = grants.filter {
             it.status == UserQuotaGrantStatus.ACTIVE.value &&
                 (it.remainingTokens ?: 0L) > 0 &&
-                it.expiresAt?.after(Date()) == true
+                it.expiresAt?.after(now) == true
         }
-        val currentQuotaTokens = activeGrants.sumOf { (it.remainingTokens ?: 0L) + (it.consumedTokens ?: 0L) }
+        val currentQuotaTokens = notExpiredGrants.sumOf { (it.remainingTokens ?: 0L) + (it.consumedTokens ?: 0L) }
         val availableTokens = activeGrants.sumOf { it.remainingTokens ?: 0L }
+        val usedTokens = notExpiredGrants.sumOf { it.consumedTokens ?: 0L }
         val expiredTokens = grants
             .filter { it.status == UserQuotaGrantStatus.EXPIRED.value || it.expiresAt?.after(Date()) == false }
             .sumOf { (it.expiredTokens ?: 0L).takeIf { value -> value > 0 } ?: (it.remainingTokens ?: 0L) }
@@ -370,6 +376,7 @@ class UserQuotaService(
         val earliestExpireAt = activeGrants.mapNotNull { it.expiresAt }.minOrNull()
 
         account.currentQuotaTokens = currentQuotaTokens
+        account.usedTokens = usedTokens
         account.availableTokens = availableTokens
         account.expiredTokens = expiredTokens
         account.transferredInTokens = transferredInTokens
