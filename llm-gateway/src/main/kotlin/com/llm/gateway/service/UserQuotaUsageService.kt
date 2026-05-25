@@ -3,6 +3,7 @@ package com.llm.gateway.service
 import com.llm.gateway.common.enums.UserQuotaGrantStatus
 import com.llm.gateway.common.enums.UserQuotaTransactionChangeType
 import com.llm.gateway.common.exceptions.BizException
+import com.llm.gateway.common.logger
 import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport
 import com.llm.gateway.dal.mapper.UserQuotaAccountsMapper
 import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport
@@ -68,6 +69,7 @@ class UserQuotaUsageService(
     fun settle(reservation: UserQuotaReservationDto, actualTokens: Long): UserQuotaUsageSettleDto {
         val normalizedActualTokens = actualTokens.coerceAtLeast(0L)
         return when {
+            // 多退
             normalizedActualTokens < reservation.reservedTokens -> {
                 val refundTokens = reservation.reservedTokens - normalizedActualTokens
                 refund(reservation, refundTokens)
@@ -79,10 +81,11 @@ class UserQuotaUsageService(
                     extraDeductedTokens = 0,
                 )
             }
-
+            // 少补
             normalizedActualTokens > reservation.reservedTokens -> {
                 val extraTokens = normalizedActualTokens - reservation.reservedTokens
                 val before = requireAccount(reservation.userId)
+                // 不够扣减了
                 if ((before.availableTokens ?: 0L) < extraTokens) {
                     insertTransaction(
                         userId = reservation.userId,
@@ -208,15 +211,25 @@ class UserQuotaUsageService(
         }
         var remaining = tokens
         val splits = mutableListOf<UserQuotaReserveSplitDto>()
+        // 按过期时间排序依次扣减
         grants.forEach { grant ->
             if (remaining <= 0) return@forEach
             val grantId = grant.id ?: throw BizException(BizException.BUSINESS_FAILED, "配额批次数据异常")
             val deduct = minOf(grant.remainingTokens ?: 0L, remaining)
             if (deduct <= 0) return@forEach
+            logger().info(
+                "用户配额扣减,before,remainingTokens:{},consumedTokens:{},status:{}",
+                grant.remainingTokens, grant.consumedTokens, grant.status
+            )
             grant.remainingTokens = (grant.remainingTokens ?: 0L) - deduct
             grant.consumedTokens = (grant.consumedTokens ?: 0L) + deduct
-            grant.status = if (grant.remainingTokens == 0L) UserQuotaGrantStatus.DEPLETED.value else UserQuotaGrantStatus.ACTIVE.value
+            grant.status =
+                if (grant.remainingTokens == 0L) UserQuotaGrantStatus.DEPLETED.value else UserQuotaGrantStatus.ACTIVE.value
             grant.updatedTime = Date()
+            logger().info(
+                "用户配额扣减,after,remainingTokens:{},consumedTokens:{},status:{}",
+                grant.remainingTokens, grant.consumedTokens, grant.status
+            )
             userQuotaGrantsMapper.updateByPrimaryKeySelective(grant)
             splits += UserQuotaReserveSplitDto(grantId = grantId, tokens = deduct)
             remaining -= deduct
@@ -234,13 +247,14 @@ class UserQuotaUsageService(
         }
         val now = Date()
         val notExpiredGrants = grants.filter {
-            it.expiresAt?.after(now) == true &&
-                it.status in setOf(UserQuotaGrantStatus.ACTIVE.value, UserQuotaGrantStatus.DEPLETED.value)
+            it.expiresAt?.after(now) == true && it.status in setOf(
+                UserQuotaGrantStatus.ACTIVE.value,
+                UserQuotaGrantStatus.DEPLETED.value
+            )
         }
         val activeGrants = grants.filter {
-            it.status == UserQuotaGrantStatus.ACTIVE.value &&
-                (it.remainingTokens ?: 0L) > 0 &&
-                it.expiresAt?.after(now) == true
+            it.status == UserQuotaGrantStatus.ACTIVE.value && (it.remainingTokens
+                ?: 0L) > 0 && it.expiresAt?.after(now) == true
         }
         account.availableTokens = activeGrants.sumOf { it.remainingTokens ?: 0L }
         account.currentQuotaTokens = notExpiredGrants.sumOf { (it.remainingTokens ?: 0L) + (it.consumedTokens ?: 0L) }

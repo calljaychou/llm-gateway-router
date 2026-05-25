@@ -182,7 +182,9 @@ class OpenAiForwardFacade(
             completionTokens = 0,
             totalTokens = reservation.reservedTokens.toInt(),
         )
+        // 结算
         val settleResult = userQuotaUsageService.settle(reservation, usage.totalTokens.toLong())
+        // 记录使用日志
         usageLogService.record(
             UsageLogRecordCommand(
                 requestId = requestId,
@@ -264,8 +266,13 @@ class OpenAiForwardFacade(
         return maxTokens?.coerceAtLeast(1L) ?: 1024L
     }
 
-    @Suppress("UNCHECKED_CAST")
+    /**
+     * 提取令牌使用情况
+     * @param [body] 内容
+     * @return [TokenUsageDto?]
+     */
     private fun extractTokenUsage(body: Any?): TokenUsageDto? {
+        // as JSONObject 是因为在 response使用 JSONObject进行处理过
         val root = body as? JSONObject ?: return null
         val usage = root.getJSONObject("usage") ?: return null
 
