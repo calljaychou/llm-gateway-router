@@ -45,7 +45,13 @@ class SecurityConfig(
             .and()
             .authorizeRequests()
             .antMatchers("/api/auth/**").permitAll()
-            .antMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
+            .antMatchers(
+                "/swagger-ui.html",
+                "/swagger-ui/**",
+                "/v2/api-docs/**",
+                "/swagger-resources/**",
+                "/webjars/**"
+            ).permitAll()
             .anyRequest().authenticated()
 
         http.addFilterBefore(virtualApiKeyAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)

@@ -1,3 +1,5 @@
+swagger:
+  enable: true
 spring:
   #Redis
   redis:

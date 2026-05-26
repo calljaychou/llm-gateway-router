@@ -4,11 +4,13 @@ import com.llm.gateway.common.enums.BillingType
 import com.llm.gateway.common.enums.NormalStatus
 import com.llm.gateway.common.exceptions.BizException
 import com.llm.gateway.dal.mapper.MasterKeysMapper
+import com.llm.gateway.dal.mapper.MasterKeysDynamicSqlSupport
 import com.llm.gateway.dal.mapper.ModelsDynamicSqlSupport
 import com.llm.gateway.dal.mapper.ModelsMapper
 import com.llm.gateway.dal.mapper.VendorsDynamicSqlSupport
 import com.llm.gateway.dal.mapper.VendorsMapper
 import com.llm.gateway.dal.mapper.insert
+import com.llm.gateway.dal.mapper.select
 import com.llm.gateway.dal.mapper.selectOne
 import com.llm.gateway.dal.model.MasterKeysRecord
 import com.llm.gateway.dal.model.ModelsRecord
@@ -17,6 +19,8 @@ import com.llm.gateway.model.params.MasterKeyCreateParams
 import com.llm.gateway.model.params.ModelCreateParams
 import com.llm.gateway.model.params.VendorCreateParams
 import com.llm.gateway.model.results.MasterKeyCreateResult
+import com.llm.gateway.model.results.MasterKeyListItemResult
+import com.llm.gateway.model.results.MasterKeyListResult
 import com.llm.gateway.model.results.ModelCreateResult
 import com.llm.gateway.model.results.VendorCreateResult
 import java.net.URI
@@ -123,6 +127,27 @@ class AdminModelManageService(
         )
     }
 
+    fun listMasterKeys(vendorId: Long?): MasterKeyListResult {
+        if (vendorId != null) {
+            ensureVendorExists(vendorId)
+        }
+
+        val records = masterKeysMapper.select {
+            if (vendorId != null) {
+                where { MasterKeysDynamicSqlSupport.MasterKeys.vendorId isEqualTo vendorId }
+            }
+            orderBy(
+                MasterKeysDynamicSqlSupport.MasterKeys.vendorId,
+                MasterKeysDynamicSqlSupport.MasterKeys.id.descending()
+            )
+        }
+
+        return MasterKeyListResult(
+            vendorId = vendorId,
+            keys = records.map { mapMasterKeyListItem(it) },
+        )
+    }
+
     @Transactional(rollbackFor = [Exception::class])
     fun createModel(params: ModelCreateParams): ModelCreateResult {
         val vendorId = params.vendorId ?: throw BizException(BizException.BUSINESS_FAILED, "供应商ID不能为空")
@@ -169,6 +194,45 @@ class AdminModelManageService(
             billingType = record.billingType!!,
             active = record.active ?: true,
         )
+    }
+
+    /**
+     * 校验供应商存在。
+     */
+    private fun ensureVendorExists(vendorId: Long): VendorsRecord {
+        return vendorsMapper.selectOne {
+            where { VendorsDynamicSqlSupport.Vendors.id isEqualTo vendorId }
+        } ?: throw BizException(BizException.BUSINESS_FAILED, "供应商不存在")
+    }
+
+    /**
+     * 转换主密钥列表项，不返回密钥明文或可逆密文。
+     */
+    private fun mapMasterKeyListItem(record: MasterKeysRecord): MasterKeyListItemResult {
+        val masterKeyId = record.id ?: throw BizException(BizException.SYSTEM_FAILED, "主密钥ID异常")
+        val vendorId = record.vendorId ?: throw BizException(BizException.SYSTEM_FAILED, "供应商ID异常")
+        return MasterKeyListItemResult(
+            masterKeyId = masterKeyId,
+            vendorId = vendorId,
+            keyFingerprint = buildEncryptedKeyFingerprint(record.apiKeyEncrypted),
+            weight = record.weight ?: 0,
+            status = record.status ?: 0,
+            errorCount = record.errorCount ?: 0,
+            lastCheckedAt = record.lastCheckedAt,
+            createdTime = record.createdTime,
+            updatedTime = record.updatedTime,
+        )
+    }
+
+    /**
+     * 基于加密后的主密钥生成不可逆短指纹，仅用于列表区分。
+     */
+    private fun buildEncryptedKeyFingerprint(apiKeyEncrypted: String?): String {
+        if (apiKeyEncrypted.isNullOrBlank()) return "key-unknown"
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(apiKeyEncrypted.toByteArray(StandardCharsets.UTF_8))
+        val fingerprint = Base64.getUrlEncoder().withoutPadding().encodeToString(digest).take(12)
+        return "key-$fingerprint"
     }
 
     private fun encryptApiKey(apiKey: String): String {

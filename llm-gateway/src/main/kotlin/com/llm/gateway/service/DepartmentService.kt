@@ -2,27 +2,42 @@ package com.llm.gateway.service
 
 import com.llm.gateway.common.enums.NormalStatus
 import com.llm.gateway.common.exceptions.BizException
+import com.llm.gateway.common.logger
 import com.llm.gateway.dal.mapper.DepartmentDynamicSqlSupport
 import com.llm.gateway.dal.mapper.DepartmentMapper
+import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport
+import com.llm.gateway.dal.mapper.UsersMapper
+import com.llm.gateway.dal.mapper.count
 import com.llm.gateway.dal.mapper.insert
 import com.llm.gateway.dal.mapper.select
 import com.llm.gateway.dal.mapper.selectOne
+import com.llm.gateway.dal.mapper.update
 import com.llm.gateway.dal.mapper.updateByPrimaryKeySelective
 import com.llm.gateway.dal.model.DepartmentRecord
+import com.llm.gateway.model.params.DepartmentCreateParams
+import com.llm.gateway.model.results.DepartmentCreateResult
+import com.llm.gateway.model.results.DepartmentDeleteResult
+import com.llm.gateway.model.results.DepartmentTreeResult
+import java.util.Date
 import java.util.concurrent.TimeUnit
 import org.redisson.api.RedissonClient
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
 class DepartmentService(
     private val departmentMapper: DepartmentMapper,
+    private val usersMapper: UsersMapper,
     private val redissonClient: RedissonClient,
 ) {
+
+    private val log = logger()
 
     companion object {
         private const val DEPT_PATH_CACHE_PREFIX = "gateway:dept:path:"
         private const val ANCESTOR_PATH_CACHE_TTL_MINUTES = 30L
+        private const val ROOT_PARENT_ID = 0L
     }
 
     /**
@@ -70,6 +85,63 @@ class DepartmentService(
     }
 
     /**
+     * 新建一级部门，一级部门 parentId 固定为0。
+     */
+    @Transactional(rollbackFor = [Exception::class])
+    fun createRootDepartment(params: DepartmentCreateParams): DepartmentCreateResult {
+        return createDepartmentCore(ROOT_PARENT_ID, params)
+    }
+
+    /**
+     * 在指定父部门下新增子部门。
+     */
+    @Transactional(rollbackFor = [Exception::class])
+    fun createChildDepartment(parentDeptId: Long, params: DepartmentCreateParams): DepartmentCreateResult {
+        val parentDepartment = ensureDeptExists(parentDeptId)
+        if (parentDepartment.status != NormalStatus) {
+            throw BizException(BizException.BUSINESS_FAILED, "父部门状态异常，无法新增子部门")
+        }
+        return createDepartmentCore(parentDeptId, params)
+    }
+
+    /**
+     * 查询部门树，仅返回未删除且状态正常的部门。
+     */
+    fun getDepartmentTree(): List<DepartmentTreeResult> {
+        val departments = getAllActiveDepartments()
+            .sortedWith(compareBy<DepartmentRecord> { it.orderNum ?: 0 }.thenBy { it.id ?: Long.MAX_VALUE })
+        val childrenMap = departments.groupBy { it.parentId ?: ROOT_PARENT_ID }
+
+        return buildDepartmentTree(ROOT_PARENT_ID, childrenMap, mutableSetOf())
+    }
+
+    /**
+     * 删除部门；存在子部门时禁止删除，存在用户时先解除用户部门归属。
+     */
+    @Transactional(rollbackFor = [Exception::class])
+    fun deleteDepartment(deptId: Long): DepartmentDeleteResult {
+        ensureDeptExists(deptId)
+        checkDepartmentHasNoChildren(deptId)
+
+        val now = Date()
+        val unboundUserCount = unbindUsersFromDepartment(deptId, now)
+        departmentMapper.update {
+            set(DepartmentDynamicSqlSupport.Department.delFlag).equalTo(true)
+            set(DepartmentDynamicSqlSupport.Department.updatedTime).equalTo(now)
+            where { DepartmentDynamicSqlSupport.Department.id isEqualTo deptId }
+            and { DepartmentDynamicSqlSupport.Department.delFlag isEqualTo false }
+        }
+        evictAncestorPathCache(deptId)
+        log.info("删除部门成功 deptId={}, unboundUserCount={}", deptId, unboundUserCount)
+
+        return DepartmentDeleteResult(
+            deptId = deptId,
+            deleted = true,
+            unboundUserCount = unboundUserCount,
+        )
+    }
+
+    /**
      * 更新部门并按子树范围失效祖先路径缓存。
      */
     @Transactional(rollbackFor = [Exception::class])
@@ -86,6 +158,120 @@ class DepartmentService(
     fun evictAncestorPathCacheForSubtree(deptId: Long) {
         val descendantIds = findDescendantDeptIds(deptId) + deptId
         descendantIds.distinct().forEach { evictAncestorPathCache(it) }
+    }
+
+    /**
+     * 校验部门下不存在未删除子部门。
+     */
+    private fun checkDepartmentHasNoChildren(deptId: Long) {
+        val childCount = departmentMapper.count {
+            where { DepartmentDynamicSqlSupport.Department.parentId isEqualTo deptId }
+            and { DepartmentDynamicSqlSupport.Department.delFlag isEqualTo false }
+        }
+        if (childCount > 0L) {
+            throw BizException(BizException.BUSINESS_FAILED, "部门下存在子部门，无法删除")
+        }
+    }
+
+    /**
+     * 解除用户与部门的归属关系，返回受影响用户数量。
+     */
+    private fun unbindUsersFromDepartment(deptId: Long, updatedTime: Date): Long {
+        val userCount = usersMapper.count {
+            where { UsersDynamicSqlSupport.Users.deptId isEqualTo deptId }
+        }
+        if (userCount == 0L) return 0L
+
+        usersMapper.update {
+            set(UsersDynamicSqlSupport.Users.deptId).equalToNull()
+            set(UsersDynamicSqlSupport.Users.updatedTime).equalTo(updatedTime)
+            where { UsersDynamicSqlSupport.Users.deptId isEqualTo deptId }
+        }
+        return userCount
+    }
+
+    /**
+     * 创建部门核心逻辑，统一处理同级重名校验、默认字段与异常转换。
+     */
+    private fun createDepartmentCore(parentId: Long, params: DepartmentCreateParams): DepartmentCreateResult {
+        val deptName = params.deptName.trim()
+        checkSiblingDeptNameUnique(parentId, deptName)
+
+        val now = Date()
+        val record = DepartmentRecord(
+            parentId = parentId,
+            deptName = deptName,
+            orderNum = params.orderNum ?: 0,
+            leaderUserId = params.leaderUserId,
+            tel = params.tel?.trim()?.takeIf { it.isNotBlank() },
+            status = NormalStatus,
+            delFlag = false,
+            createdTime = now,
+            updatedTime = now,
+        )
+
+        try {
+            createDepartment(record)
+        } catch (e: DataIntegrityViolationException) {
+            log.warn("创建部门数据冲突 parentId={}, deptName={}", parentId, deptName, e)
+            throw BizException(BizException.BUSINESS_FAILED, "同级部门名称已存在")
+        }
+
+        val deptId = record.id ?: throw BizException(BizException.SYSTEM_FAILED, "创建部门失败")
+        log.info("创建部门成功 deptId={}, parentId={}, deptName={}", deptId, parentId, deptName)
+        return DepartmentCreateResult(
+            deptId = deptId,
+            parentId = parentId,
+            deptName = deptName,
+        )
+    }
+
+    /**
+     * 校验同一父部门下是否存在同名未删除部门。
+     */
+    private fun checkSiblingDeptNameUnique(parentId: Long, deptName: String) {
+        val existed = if (parentId == ROOT_PARENT_ID) {
+            getAllRootDepartmentCandidates().firstOrNull { it.deptName == deptName }
+        } else {
+            departmentMapper.selectOne {
+                where { DepartmentDynamicSqlSupport.Department.parentId isEqualTo parentId }
+                and { DepartmentDynamicSqlSupport.Department.deptName isEqualTo deptName }
+                and { DepartmentDynamicSqlSupport.Department.delFlag isEqualTo false }
+            }
+        }
+        if (existed != null) {
+            throw BizException(BizException.BUSINESS_FAILED, "同级部门名称已存在")
+        }
+    }
+
+    /**
+     * 基于 parentId 分组递归构建部门树，并防御脏数据导致的循环引用。
+     */
+    private fun buildDepartmentTree(
+        parentId: Long,
+        childrenMap: Map<Long, List<DepartmentRecord>>,
+        visitedDeptIds: MutableSet<Long>,
+    ): List<DepartmentTreeResult> {
+        return childrenMap[parentId].orEmpty().mapNotNull { department ->
+            val deptId = department.id ?: return@mapNotNull null
+            if (!visitedDeptIds.add(deptId)) {
+                log.warn("部门树存在循环引用 deptId={}, parentId={}", deptId, parentId)
+                return@mapNotNull null
+            }
+
+            DepartmentTreeResult(
+                id = deptId,
+                name = department.deptName.orEmpty(),
+                parentId = department.parentId ?: ROOT_PARENT_ID,
+                orderNum = department.orderNum ?: 0,
+                leaderUserId = department.leaderUserId,
+                tel = department.tel,
+                status = department.status ?: NormalStatus,
+                children = buildDepartmentTree(deptId, childrenMap, visitedDeptIds),
+            ).also {
+                visitedDeptIds.remove(deptId)
+            }
+        }
     }
 
     /**
@@ -136,10 +322,16 @@ class DepartmentService(
         return descendants
     }
 
+    /**
+     * 删除指定部门的祖先路径缓存。
+     */
     private fun evictAncestorPathCache(deptId: Long) {
         redissonClient.getBucket<String>("$DEPT_PATH_CACHE_PREFIX$deptId").delete()
     }
 
+    /**
+     * 查询所有未删除且状态正常的部门。
+     */
     private fun getAllActiveDepartments(): List<DepartmentRecord> {
         return departmentMapper.select {
             where { DepartmentDynamicSqlSupport.Department.delFlag isEqualTo false }
@@ -147,6 +339,18 @@ class DepartmentService(
         }
     }
 
+    /**
+     * 查询一级部门候选数据，兼容历史 parentId 为空或为0的根部门记录。
+     */
+    private fun getAllRootDepartmentCandidates(): List<DepartmentRecord> {
+        return departmentMapper.select {
+            where { DepartmentDynamicSqlSupport.Department.delFlag isEqualTo false }
+        }.filter { (it.parentId ?: ROOT_PARENT_ID) == ROOT_PARENT_ID }
+    }
+
+    /**
+     * 解析缓存中的部门路径字符串。
+     */
     private fun parsePathValue(pathValue: String?): List<Long> {
         if (pathValue.isNullOrBlank()) return emptyList()
         return pathValue.split("/").mapNotNull { it.toLongOrNull() }
