@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Form, Input, Modal, Tag, Space, App, Card, Typography } from 'antd';
-import { KeyOutlined, PlusOutlined, DeleteOutlined, CopyOutlined } from '@ant-design/icons';
+import { KeyOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { virtualKeyApi, VirtualKeyListItem } from '../api/llmGatewayApi';
 
 const { Text } = Typography;

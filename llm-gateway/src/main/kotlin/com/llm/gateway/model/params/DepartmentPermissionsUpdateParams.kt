@@ -4,12 +4,10 @@ import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
 import javax.validation.Valid
 import javax.validation.constraints.NotBlank
-import javax.validation.constraints.NotEmpty
 
 @ApiModel("管理端-部门模型权限更新参数")
 data class DepartmentPermissionsUpdateParams(
-    @ApiModelProperty(value = "授权项", required = true)
-    @field:NotEmpty(message = "授权项不能为空")
+    @ApiModelProperty(value = "授权项，传空数组表示清空该部门直接权限", required = true)
     @field:Valid
     val items: List<DepartmentPermissionItemParams>,
 )

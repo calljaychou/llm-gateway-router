@@ -119,6 +119,13 @@ class AdminUserPermissionService(
     ): DepartmentPermissionsUpdateResult {
         departmentService.ensureDeptExists(deptId)
 
+        val existing = departmentModelPermissionsMapper.select {
+            where { DepartmentModelPermissionsDynamicSqlSupport.DepartmentModelPermissions.deptId isEqualTo deptId }
+        }
+        if (params.items.isEmpty()) {
+            return clearDepartmentPermissions(deptId, existing, operator)
+        }
+
         val normalizedItems = params.items.map { item ->
             val scopeEnum = DepartmentPermissionScope.parse(item.scope)
                 ?: throw BizException(BizException.BUSINESS_FAILED, "作用域仅支持 SELF 或 SUBTREE")
@@ -138,10 +145,6 @@ class AdminUserPermissionService(
             val modelId = modelByAlias[pair.first]?.id ?: throw BizException(BizException.BUSINESS_FAILED, "模型不存在")
             PermissionPairDto(modelId, pair.second)
         }.toSet()
-
-        val existing = departmentModelPermissionsMapper.select {
-            where { DepartmentModelPermissionsDynamicSqlSupport.DepartmentModelPermissions.deptId isEqualTo deptId }
-        }
 
         val now = Date()
         var added = 0
@@ -194,6 +197,34 @@ class AdminUserPermissionService(
             added = added,
             removed = removed,
             updated = updated,
+        )
+    }
+
+    /**
+     * 清空部门直接配置的全部模型权限。
+     */
+    private fun clearDepartmentPermissions(
+        deptId: Long,
+        existing: List<DepartmentModelPermissionsRecord>,
+        operator: String?,
+    ): DepartmentPermissionsUpdateResult {
+        val now = Date()
+        var removed = 0
+        existing.forEach { record ->
+            if (record.status == NormalStatus) {
+                record.status = 0
+                record.updatedBy = operator
+                record.updatedTime = now
+                departmentModelPermissionsMapper.updateByPrimaryKeySelective(record)
+                removed++
+            }
+        }
+
+        return DepartmentPermissionsUpdateResult(
+            deptId = deptId,
+            added = 0,
+            removed = removed,
+            updated = 0,
         )
     }
 

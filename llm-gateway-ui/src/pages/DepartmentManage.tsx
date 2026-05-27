@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Table, Button, Space, Modal, Form, Input, InputNumber, Drawer, Select, Tag, App, Typography } from 'antd';
 import { ApartmentOutlined, PlusOutlined, SafetyCertificateOutlined, DeleteOutlined } from '@ant-design/icons';
-import { adminDeptApi, DepartmentTreeItem } from '../api/llmGatewayApi';
+import { adminDeptApi, adminGatewayApi, DepartmentPermissionItem, DepartmentTreeItem, ModelVendorListItem } from '../api/llmGatewayApi';
 const { Option } = Select;
 const { Text } = Typography;
 
 export const DepartmentManage: React.FC = () => {
     const { message, modal } = App.useApp();
     const [treeData, setTreeData] = useState<DepartmentTreeItem[]>([]);
+    const [models, setModels] = useState<ModelVendorListItem[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
 
     // 部门表单状态
@@ -37,8 +38,22 @@ export const DepartmentManage: React.FC = () => {
         }
     };
 
+    const fetchModelVendors = async () => {
+        try {
+            const res = await adminGatewayApi.listModelVendors();
+            if (res.success && res.data) {
+                setModels(res.data);
+            } else {
+                message.error(res.message || '无法加载模型路由列表');
+            }
+        } catch {
+            message.error('无法加载模型路由列表');
+        }
+    };
+
     useEffect(() => {
         fetchDeptTree();
+        fetchModelVendors();
     }, []);
 
     // --- 处理部门创建 ---
@@ -117,17 +132,41 @@ export const DepartmentManage: React.FC = () => {
         }
     };
 
-    const handlePermissionSubmit = async (values: { items: any[] }) => {
+    const handlePermissionSubmit = async (values: { items?: DepartmentPermissionItem[] }) => {
         if (!activeDept) return;
         try {
-            // 如果没有配置项，则传递空数组进行清空
-            const payloadItems = values.items || [];
-            await adminDeptApi.replaceDeptPermissions(activeDept.id, { items: payloadItems });
+            const payloadItems = (values.items || [])
+                .map((item) => ({
+                    modelAlias: item.modelAlias?.trim(),
+                    scope: item.scope,
+                }))
+                .filter((item): item is DepartmentPermissionItem => Boolean(item.modelAlias && item.scope));
+
+            const res = await adminDeptApi.replaceDeptPermissions(activeDept.id, { items: payloadItems });
+            if (!res.success) {
+                throw new Error(res.message || '授权策略下发失败');
+            }
+
+            await refreshPermissionForm(activeDept.id);
             message.success(`部门 [${activeDept.name}] 的模型权限已更新`);
             setIsPermissionDrawerOpen(false);
-        } catch {
-            message.error('授权策略下发失败');
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : '授权策略下发失败';
+            message.error(errorMessage);
         }
+    };
+
+    const refreshPermissionForm = async (deptId: number) => {
+        const res = await adminDeptApi.getDeptPermissions(deptId, 'direct');
+        if (!res.success) {
+            throw new Error(res.message || '读取当前权限策略失败');
+        }
+
+        const items = (res.data?.models || []).map((model) => ({
+            modelAlias: model.modelAlias,
+            scope: model.scope,
+        }));
+        permissionForm.setFieldsValue({ items });
     };
 
     // --- 表格列定义 ---
@@ -288,7 +327,26 @@ export const DepartmentManage: React.FC = () => {
                                                     rules={[{ required: true, message: '请指定模型路由' }]}
                                                     style={{ width: 220 }}
                                                 >
-                                                    <Input placeholder="输入网关路由别名 (如 gpt-4o)" />
+                                                    <Select
+                                                        showSearch
+                                                        placeholder="选择模型路由"
+                                                        optionFilterProp="data-search"
+                                                    >
+                                                        {models.map((model) => (
+                                                            <Option
+                                                                key={model.id}
+                                                                value={model.modelAlias}
+                                                                data-search={`${model.vendorName} ${model.modelAlias}`}
+                                                            >
+                                                                <Space size={6}>
+                                                                    <Tag color="blue" style={{ border: 'none', marginInlineEnd: 0 }}>
+                                                                        {model.vendorName}
+                                                                    </Tag>
+                                                                    <Text code>{model.modelAlias}</Text>
+                                                                </Space>
+                                                            </Option>
+                                                        ))}
+                                                    </Select>
                                                 </Form.Item>
 
                                                 <Form.Item

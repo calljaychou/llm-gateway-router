@@ -232,6 +232,28 @@ export interface ReplaceDepartmentPermissionsParams {
     items: DepartmentPermissionItem[];
 }
 
+export interface DepartmentPermissionViewItem {
+    active: boolean;
+    billingType: string;
+    modelAlias: string;
+    realModelName: string;
+    scope: 'SELF' | 'SUBTREE';
+    sourceDeptId: number;
+    vendorId: number;
+}
+
+export interface DepartmentPermissionsViewResult {
+    deptId: number;
+    models: DepartmentPermissionViewItem[];
+}
+
+export interface DepartmentPermissionsUpdateResult {
+    deptId: number;
+    added: number;
+    removed: number;
+    updated: number;
+}
+
 export const adminDeptApi = {
     // 获取整个组织的部门层级树
     getDeptTree: async () => {
@@ -250,12 +272,12 @@ export const adminDeptApi = {
     },
     // 获取部门的直接/有效模型使用权限
     getDeptPermissions: async (deptId: number, view: 'direct' | 'effective' = 'direct') => {
-        const res = await api.get<ApiResult<any>>(`/admin/departments/${deptId}/permissions`, { params: { view } });
+        const res = await api.get<ApiResult<DepartmentPermissionsViewResult>>(`/admin/departments/${deptId}/permissions`, { params: { view } });
         return res.data;
     },
     // 覆盖更新该部门的模型权限策略
     replaceDeptPermissions: async (deptId: number, params: ReplaceDepartmentPermissionsParams) => {
-        const res = await api.put<ApiResult<any>>(`/admin/departments/${deptId}/permissions`, params);
+        const res = await api.put<ApiResult<DepartmentPermissionsUpdateResult>>(`/admin/departments/${deptId}/permissions`, params);
         return res.data;
     },
     // 删除部门
