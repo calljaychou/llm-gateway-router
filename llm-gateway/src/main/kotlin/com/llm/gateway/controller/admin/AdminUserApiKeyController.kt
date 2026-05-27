@@ -11,6 +11,7 @@ import com.llm.gateway.service.VirtualApiKeyService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import javax.validation.Valid
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping

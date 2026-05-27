@@ -1,5 +1,6 @@
 package com.llm.gateway.model.results
 
+import com.fasterxml.jackson.annotation.JsonFormat
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
 import java.util.Date
@@ -21,5 +22,6 @@ data class ApiKeyListItemResult(
     @ApiModelProperty(value = "状态，1-生效，0-吊销", required = true)
     val status: Int,
     @ApiModelProperty(value = "过期时间")
-    val expiresAt: Date?,
+    @field:JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
+    val expiresTime: Date?,
 )

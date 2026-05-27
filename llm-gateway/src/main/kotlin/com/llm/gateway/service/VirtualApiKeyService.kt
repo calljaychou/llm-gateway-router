@@ -98,7 +98,7 @@ class VirtualApiKeyService(
                 name = record.name ?: "",
                 keyPrefix = record.apiKeyPrefix ?: "",
                 status = record.status ?: REVOKED_STATUS,
-                expiresAt = record.expiresAt,
+                expiresTime = record.expiresAt,
             )
         }
         return ApiKeyListResult(keys = items)

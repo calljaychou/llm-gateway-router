@@ -3,26 +3,37 @@ package com.llm.gateway.service
 import com.llm.gateway.common.enums.BillingType
 import com.llm.gateway.common.enums.NormalStatus
 import com.llm.gateway.common.exceptions.BizException
+import com.llm.gateway.common.logger
+import com.llm.gateway.dal.mapper.DepartmentModelPermissionsDynamicSqlSupport
+import com.llm.gateway.dal.mapper.DepartmentModelPermissionsMapper
 import com.llm.gateway.dal.mapper.MasterKeysMapper
 import com.llm.gateway.dal.mapper.MasterKeysDynamicSqlSupport
 import com.llm.gateway.dal.mapper.ModelsDynamicSqlSupport
 import com.llm.gateway.dal.mapper.ModelsMapper
 import com.llm.gateway.dal.mapper.VendorsDynamicSqlSupport
 import com.llm.gateway.dal.mapper.VendorsMapper
+import com.llm.gateway.dal.mapper.count
+import com.llm.gateway.dal.mapper.deleteByPrimaryKey
 import com.llm.gateway.dal.mapper.insert
 import com.llm.gateway.dal.mapper.select
 import com.llm.gateway.dal.mapper.selectOne
+import com.llm.gateway.dal.mapper.updateByPrimaryKeySelective
 import com.llm.gateway.dal.model.MasterKeysRecord
 import com.llm.gateway.dal.model.ModelsRecord
 import com.llm.gateway.dal.model.VendorsRecord
 import com.llm.gateway.model.params.MasterKeyCreateParams
 import com.llm.gateway.model.params.ModelCreateParams
+import com.llm.gateway.model.params.ModelUpdateParams
 import com.llm.gateway.model.params.VendorCreateParams
 import com.llm.gateway.model.results.MasterKeyCreateResult
 import com.llm.gateway.model.results.MasterKeyListItemResult
 import com.llm.gateway.model.results.MasterKeyListResult
 import com.llm.gateway.model.results.ModelCreateResult
+import com.llm.gateway.model.results.ModelDeleteResult
+import com.llm.gateway.model.results.ModelUpdateResult
+import com.llm.gateway.model.results.ModelVendorListItemResult
 import com.llm.gateway.model.results.VendorCreateResult
+import com.llm.gateway.model.results.VendorListItemResult
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -43,8 +54,10 @@ class AdminModelManageService(
     private val vendorsMapper: VendorsMapper,
     private val masterKeysMapper: MasterKeysMapper,
     private val modelsMapper: ModelsMapper,
+    private val departmentModelPermissionsMapper: DepartmentModelPermissionsMapper,
     @Value("\${gateway.aes-secret}") private val aesSecret: String,
 ) {
+    private val log = logger()
 
     @PostConstruct
     fun validateAesSecret() {
@@ -148,6 +161,29 @@ class AdminModelManageService(
         )
     }
 
+    fun listVendors(): List<VendorListItemResult> {
+        val records = vendorsMapper.select {
+            orderBy(VendorsDynamicSqlSupport.Vendors.id.descending())
+        }
+
+        return records.map { mapVendorListItem(it) }
+    }
+
+    fun listModelVendors(): List<ModelVendorListItemResult> {
+        val models = modelsMapper.select {
+            orderBy(ModelsDynamicSqlSupport.Models.id.descending())
+        }
+        if (models.isEmpty()) return emptyList()
+
+        val vendors = vendorsMapper.select {
+            orderBy(VendorsDynamicSqlSupport.Vendors.id.descending())
+        }.mapNotNull { vendor ->
+            vendor.id?.let { vendorId -> vendorId to vendor }
+        }.toMap()
+
+        return models.map { mapModelVendorListItem(it, vendors) }
+    }
+
     @Transactional(rollbackFor = [Exception::class])
     fun createModel(params: ModelCreateParams): ModelCreateResult {
         val vendorId = params.vendorId ?: throw BizException(BizException.BUSINESS_FAILED, "供应商ID不能为空")
@@ -196,6 +232,110 @@ class AdminModelManageService(
         )
     }
 
+    @Transactional(rollbackFor = [Exception::class])
+    fun updateModel(modelId: Long, params: ModelUpdateParams): ModelUpdateResult {
+        val existedModel = ensureModelExists(modelId)
+        val targetVendorId = params.vendorId ?: existedModel.vendorId
+        if (targetVendorId == null) {
+            throw BizException(BizException.SYSTEM_FAILED, "模型供应商ID异常")
+        }
+        if (params.vendorId != null) {
+            ensureActiveVendor(params.vendorId)
+        }
+
+        val targetAlias = params.modelAlias?.trim() ?: existedModel.modelAlias.orEmpty()
+        if (targetAlias.isBlank()) {
+            throw BizException(BizException.BUSINESS_FAILED, "模型别名不能为空")
+        }
+        checkModelAliasUnique(modelId, targetAlias)
+
+        val targetRealModelName = params.realModelName?.trim() ?: existedModel.realModelName.orEmpty()
+        if (targetRealModelName.isBlank()) {
+            throw BizException(BizException.BUSINESS_FAILED, "真实模型名不能为空")
+        }
+
+        val record = ModelsRecord(
+            id = modelId,
+            modelAlias = targetAlias,
+            realModelName = targetRealModelName,
+            vendorId = targetVendorId,
+            billingType = params.billingType?.value ?: existedModel.billingType,
+            active = params.active ?: existedModel.active,
+            updatedTime = Date(),
+        )
+        try {
+            modelsMapper.updateByPrimaryKeySelective(record)
+        } catch (e: DataIntegrityViolationException) {
+            throw mapDataIntegrityException(e, "模型别名重复")
+        }
+
+        val updatedModel = ensureModelExists(modelId)
+        log.info("编辑模型成功 modelId={}, modelAlias={}, vendorId={}", modelId, updatedModel.modelAlias, updatedModel.vendorId)
+        return ModelUpdateResult(
+            modelId = modelId,
+            modelAlias = updatedModel.modelAlias.orEmpty(),
+            realModelName = updatedModel.realModelName.orEmpty(),
+            vendorId = updatedModel.vendorId ?: throw BizException(BizException.SYSTEM_FAILED, "模型供应商ID异常"),
+            billingType = updatedModel.billingType.orEmpty(),
+            active = updatedModel.active ?: false,
+        )
+    }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun deleteModel(modelId: Long): ModelDeleteResult {
+        ensureModelExists(modelId)
+        checkModelHasNoActivePermission(modelId)
+
+        val deletedCount = try {
+            modelsMapper.deleteByPrimaryKey(modelId)
+        } catch (_: DataIntegrityViolationException) {
+            throw BizException(BizException.BUSINESS_FAILED, "模型已被业务数据引用，无法删除")
+        }
+        if (deletedCount <= 0) {
+            throw BizException(BizException.SYSTEM_FAILED, "删除模型失败")
+        }
+        log.info("删除模型成功 modelId={}", modelId)
+
+        return ModelDeleteResult(
+            modelId = modelId,
+            deleted = true,
+        )
+    }
+
+    /**
+     * 转换供应商列表项。
+     */
+    private fun mapVendorListItem(record: VendorsRecord): VendorListItemResult {
+        return VendorListItemResult(
+            id = record.id ?: throw BizException(BizException.SYSTEM_FAILED, "供应商ID异常"),
+            name = record.name.orEmpty(),
+            baseUrl = record.baseUrl.orEmpty(),
+            status = record.status ?: 0,
+            createdTime = record.createdTime,
+        )
+    }
+
+    /**
+     * 转换模型供应商列表项，补充模型所属供应商名称。
+     */
+    private fun mapModelVendorListItem(
+        record: ModelsRecord,
+        vendors: Map<Long, VendorsRecord>,
+    ): ModelVendorListItemResult {
+        val vendorId = record.vendorId ?: throw BizException(BizException.SYSTEM_FAILED, "模型供应商ID异常")
+        val vendorName = vendors[vendorId]?.name ?: "未知供应商"
+        return ModelVendorListItemResult(
+            id = record.id ?: throw BizException(BizException.SYSTEM_FAILED, "模型ID异常"),
+            modelAlias = record.modelAlias.orEmpty(),
+            realModelName = record.realModelName.orEmpty(),
+            vendorId = vendorId,
+            vendorName = vendorName,
+            billingType = record.billingType.orEmpty(),
+            active = record.active ?: false,
+            createdTime = record.createdTime,
+        )
+    }
+
     /**
      * 校验供应商存在。
      */
@@ -203,6 +343,51 @@ class AdminModelManageService(
         return vendorsMapper.selectOne {
             where { VendorsDynamicSqlSupport.Vendors.id isEqualTo vendorId }
         } ?: throw BizException(BizException.BUSINESS_FAILED, "供应商不存在")
+    }
+
+    /**
+     * 校验供应商存在且状态正常。
+     */
+    private fun ensureActiveVendor(vendorId: Long): VendorsRecord {
+        val vendor = ensureVendorExists(vendorId)
+        if (vendor.status != NormalStatus) {
+            throw BizException(BizException.BUSINESS_FAILED, "供应商状态异常，无法关联模型")
+        }
+        return vendor
+    }
+
+    /**
+     * 校验模型存在。
+     */
+    private fun ensureModelExists(modelId: Long): ModelsRecord {
+        return modelsMapper.selectOne {
+            where { ModelsDynamicSqlSupport.Models.id isEqualTo modelId }
+        } ?: throw BizException(BizException.BUSINESS_FAILED, "模型不存在")
+    }
+
+    /**
+     * 校验模型别名唯一，编辑当前模型时排除自身。
+     */
+    private fun checkModelAliasUnique(modelId: Long, modelAlias: String) {
+        val existed = modelsMapper.selectOne {
+            where { ModelsDynamicSqlSupport.Models.modelAlias isEqualTo modelAlias }
+        }
+        if (existed != null && existed.id != modelId) {
+            throw BizException(BizException.BUSINESS_FAILED, "模型别名已存在")
+        }
+    }
+
+    /**
+     * 删除模型前校验不存在启用中的部门模型权限。
+     */
+    private fun checkModelHasNoActivePermission(modelId: Long) {
+        val permissionCount = departmentModelPermissionsMapper.count {
+            where { DepartmentModelPermissionsDynamicSqlSupport.DepartmentModelPermissions.modelId isEqualTo modelId }
+            and { DepartmentModelPermissionsDynamicSqlSupport.DepartmentModelPermissions.status isEqualTo NormalStatus }
+        }
+        if (permissionCount > 0L) {
+            throw BizException(BizException.BUSINESS_FAILED, "模型已被部门权限引用，无法删除")
+        }
     }
 
     /**

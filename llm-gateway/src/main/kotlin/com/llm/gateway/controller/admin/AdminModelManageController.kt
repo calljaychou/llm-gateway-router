@@ -3,11 +3,16 @@ package com.llm.gateway.controller.admin
 import com.llm.gateway.model.ApiResult
 import com.llm.gateway.model.params.MasterKeyCreateParams
 import com.llm.gateway.model.params.ModelCreateParams
+import com.llm.gateway.model.params.ModelUpdateParams
 import com.llm.gateway.model.params.VendorCreateParams
 import com.llm.gateway.model.results.MasterKeyCreateResult
 import com.llm.gateway.model.results.MasterKeyListResult
 import com.llm.gateway.model.results.ModelCreateResult
+import com.llm.gateway.model.results.ModelDeleteResult
+import com.llm.gateway.model.results.ModelUpdateResult
+import com.llm.gateway.model.results.ModelVendorListItemResult
 import com.llm.gateway.model.results.VendorCreateResult
+import com.llm.gateway.model.results.VendorListItemResult
 import com.llm.gateway.service.AdminModelManageService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -15,9 +20,11 @@ import io.swagger.annotations.ApiParam
 import io.swagger.annotations.ApiResponse
 import io.swagger.annotations.ApiResponses
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -43,6 +50,19 @@ class AdminModelManageController(
     @PostMapping("/vendors")
     fun createVendor(@RequestBody @Valid params: VendorCreateParams): ApiResult<VendorCreateResult> {
         return ApiResult.success(adminModelManageService.createVendor(params))
+    }
+
+    @ApiOperation(value = "查询供应商列表")
+    @ApiResponses(
+        ApiResponse(code = 200, message = "成功"),
+        ApiResponse(code = 400, message = "参数错误"),
+        ApiResponse(code = 401, message = "未认证"),
+        ApiResponse(code = 403, message = "无权限"),
+        ApiResponse(code = 500, message = "系统异常"),
+    )
+    @GetMapping(value = ["/vendors", "/vendors/list"])
+    fun listVendors(): ApiResult<List<VendorListItemResult>> {
+        return ApiResult.success(adminModelManageService.listVendors())
     }
 
     @ApiOperation(value = "新增主密钥")
@@ -99,5 +119,49 @@ class AdminModelManageController(
     @PostMapping("/models")
     fun createModel(@RequestBody @Valid params: ModelCreateParams): ApiResult<ModelCreateResult> {
         return ApiResult.success(adminModelManageService.createModel(params))
+    }
+
+    @ApiOperation(value = "编辑模型映射")
+    @ApiResponses(
+        ApiResponse(code = 200, message = "成功"),
+        ApiResponse(code = 400, message = "参数错误"),
+        ApiResponse(code = 401, message = "未认证"),
+        ApiResponse(code = 403, message = "无权限"),
+        ApiResponse(code = 500, message = "系统异常"),
+    )
+    @PutMapping("/models/{modelId}")
+    fun updateModel(
+        @ApiParam(value = "模型ID", required = true) @PathVariable("modelId") modelId: Long,
+        @RequestBody @Valid params: ModelUpdateParams,
+    ): ApiResult<ModelUpdateResult> {
+        return ApiResult.success(adminModelManageService.updateModel(modelId, params))
+    }
+
+    @ApiOperation(value = "删除模型映射")
+    @ApiResponses(
+        ApiResponse(code = 200, message = "成功"),
+        ApiResponse(code = 400, message = "参数错误"),
+        ApiResponse(code = 401, message = "未认证"),
+        ApiResponse(code = 403, message = "无权限"),
+        ApiResponse(code = 500, message = "系统异常"),
+    )
+    @DeleteMapping("/models/{modelId}")
+    fun deleteModel(
+        @ApiParam(value = "模型ID", required = true) @PathVariable("modelId") modelId: Long,
+    ): ApiResult<ModelDeleteResult> {
+        return ApiResult.success(adminModelManageService.deleteModel(modelId))
+    }
+
+    @ApiOperation(value = "查询模型供应商列表")
+    @ApiResponses(
+        ApiResponse(code = 200, message = "成功"),
+        ApiResponse(code = 400, message = "参数错误"),
+        ApiResponse(code = 401, message = "未认证"),
+        ApiResponse(code = 403, message = "无权限"),
+        ApiResponse(code = 500, message = "系统异常"),
+    )
+    @GetMapping("/models")
+    fun listModelVendors(): ApiResult<List<ModelVendorListItemResult>> {
+        return ApiResult.success(adminModelManageService.listModelVendors())
     }
 }
