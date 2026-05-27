@@ -2,9 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Card, Table, Button, Space, Modal, Form, Input, InputNumber, Drawer, Select, Tag, App, Typography } from 'antd';
 import { ApartmentOutlined, PlusOutlined, SafetyCertificateOutlined, DeleteOutlined } from '@ant-design/icons';
 import { adminDeptApi, DepartmentTreeItem } from '../api/llmGatewayApi';
-import {Simulate} from "react-dom/test-utils";
-import error = Simulate.error;
-
 const { Option } = Select;
 const { Text } = Typography;
 
@@ -72,7 +69,7 @@ export const DepartmentManage: React.FC = () => {
             }
             setIsDeptModalOpen(false);
             fetchDeptTree();
-        } catch (error) {
+        } catch (error: any) {
             message.error(error.message);
         }
     };

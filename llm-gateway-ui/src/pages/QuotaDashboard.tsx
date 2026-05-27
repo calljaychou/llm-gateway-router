@@ -1,7 +1,6 @@
 import React from 'react';
 import { Row, Col, Typography, Space, Tag, Card, Badge } from 'antd';
 import {
-    CheckCircleOutlined,
     UserOutlined,
     MessageOutlined,
     ClockCircleOutlined,

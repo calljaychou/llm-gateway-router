@@ -1,17 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import {Layout, Menu, Typography, ConfigProvider, Button, Space, App as AntdApp, theme} from 'antd';
-import { KeyOutlined, DashboardOutlined, TransactionOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons';
-import { Login } from './pages/Login';
-import { VirtualKeyManage } from './pages/VirtualKeyManage';
-import { QuotaDashboard } from './pages/QuotaDashboard';
-import { QuotaTransactions } from './pages/QuotaTransactions';
-import { DepartmentManage } from './pages/DepartmentManage';
-import { UserManage } from './pages/UserManage';
-import { ModelManage } from './pages/ModelManage';
-import { MasterKeyManage } from './pages/MasterKeyManage';
-import { ApartmentOutlined, TeamOutlined, AppstoreAddOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
-import { VendorManage } from './pages/VendorManage';
-import { CloudServerOutlined } from '@ant-design/icons';
+import React, {useEffect, useState} from 'react';
+import type {MenuProps} from 'antd';
+import {App as AntdApp, Button, ConfigProvider, Layout, Menu, Space, Typography} from 'antd';
+import {
+    ApartmentOutlined,
+    AppstoreAddOutlined,
+    CloudServerOutlined,
+    DashboardOutlined,
+    KeyOutlined,
+    LogoutOutlined,
+    SafetyCertificateOutlined,
+    TeamOutlined,
+    TransactionOutlined,
+    UserOutlined
+} from '@ant-design/icons';
+import {Login} from './pages/Login';
+import {VirtualKeyManage} from './pages/VirtualKeyManage';
+import {QuotaDashboard} from './pages/QuotaDashboard';
+import {QuotaTransactions} from './pages/QuotaTransactions';
+import {DepartmentManage} from './pages/DepartmentManage';
+import {UserManage} from './pages/UserManage';
+import {ModelManage} from './pages/ModelManage';
+import {MasterKeyManage} from './pages/MasterKeyManage';
+import {VendorManage} from './pages/VendorManage';
+
 
 const { Header, Content, Sider } = Layout;
 const { Title, Text } = Typography;
@@ -50,20 +61,37 @@ export const App: React.FC = () => {
         setUsername(null);
     };
 
-    const menuItems = [
-        { type: 'group', label: '运维大盘' },
-        { key: 'dashboard', icon: <DashboardOutlined />, label: '配额度量仪表盘' },
-
-        { type: 'group', label: '网关管控层 (Admin)' },
-        { key: 'departments', icon: <ApartmentOutlined />, label: '组织架构管理' },
-        { key: 'users', icon: <TeamOutlined />, label: '用户管理' },
-        { key: 'vendors', icon: <CloudServerOutlined />, label: '供应商管理' },
-        { key: 'models', icon: <AppstoreAddOutlined />, label: '大模型路由配置' },
-        { key: 'master-keys', icon: <SafetyCertificateOutlined />, label: '主密钥(池)' },
-
-        { type: 'group', label: '用户自助层' },
-        { key: 'keys', icon: <KeyOutlined />, label: '应用虚拟密钥' },
-        { key: 'transactions', icon: <TransactionOutlined />, label: '配额流水与转配' },
+    const menuItems: MenuProps['items'] = [
+        // 分组必须带 key + type: 'group'
+        {
+            key: 'group-ops',
+            type: 'group',
+            label: '运维大盘',
+            children: [
+                { key: 'dashboard', icon: <DashboardOutlined />, label: '配额度量仪表盘' },
+            ],
+        },
+        {
+            key: 'group-admin',
+            type: 'group',
+            label: '网关管控层 (Admin)',
+            children: [
+                { key: 'departments', icon: <ApartmentOutlined />, label: '组织架构管理' },
+                { key: 'users', icon: <TeamOutlined />, label: '用户管理' },
+                { key: 'vendors', icon: <CloudServerOutlined />, label: '供应商管理' },
+                { key: 'models', icon: <AppstoreAddOutlined />, label: '大模型路由配置' },
+                { key: 'master-keys', icon: <SafetyCertificateOutlined />, label: '主密钥(池)' },
+            ],
+        },
+        {
+            key: 'group-user',
+            type: 'group',
+            label: '用户自助层',
+            children: [
+                { key: 'keys', icon: <KeyOutlined />, label: '应用虚拟密钥' },
+                { key: 'transactions', icon: <TransactionOutlined />, label: '配额流水与转配' },
+            ],
+        },
     ];
 
     const renderContent = () => {

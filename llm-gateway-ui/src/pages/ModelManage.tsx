@@ -185,7 +185,7 @@ export const ModelManage: React.FC = () => {
                     </div>
                     <Form form={form} layout="vertical" onFinish={handleCreateOrUpdateModel}>
                         <Form.Item name="vendorId" label="关联的供应商" rules={[{ required: true, message: '必须选择依赖的基础设施' }]}>
-                            <Select placeholder="请选择该模型隶属的云服务商" valuePropType="number">
+                            <Select placeholder="请选择该模型隶属的云服务商">
                                 {vendors.map(v => <Option key={v.id} value={v.id}>{v.name}</Option>)}
                             </Select>
                         </Form.Item>
