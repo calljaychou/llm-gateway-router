@@ -1,5 +1,7 @@
 package com.llm.gateway.service
 
+import com.github.pagehelper.PageInfo
+import com.github.pagehelper.page.PageMethod
 import com.llm.gateway.common.enums.BillingType
 import com.llm.gateway.common.enums.NormalStatus
 import com.llm.gateway.common.exceptions.BizException
@@ -21,13 +23,16 @@ import com.llm.gateway.dal.mapper.updateByPrimaryKeySelective
 import com.llm.gateway.dal.model.MasterKeysRecord
 import com.llm.gateway.dal.model.ModelsRecord
 import com.llm.gateway.dal.model.VendorsRecord
+import com.llm.gateway.model.PageResult
 import com.llm.gateway.model.params.MasterKeyCreateParams
+import com.llm.gateway.model.params.MasterKeyPageParams
 import com.llm.gateway.model.params.ModelCreateParams
 import com.llm.gateway.model.params.ModelUpdateParams
 import com.llm.gateway.model.params.VendorCreateParams
 import com.llm.gateway.model.results.MasterKeyCreateResult
 import com.llm.gateway.model.results.MasterKeyListItemResult
 import com.llm.gateway.model.results.MasterKeyListResult
+import com.llm.gateway.model.results.MasterKeyPageItemResult
 import com.llm.gateway.model.results.ModelCreateResult
 import com.llm.gateway.model.results.ModelDeleteResult
 import com.llm.gateway.model.results.ModelUpdateResult
@@ -140,24 +145,40 @@ class AdminModelManageService(
         )
     }
 
-    fun listMasterKeys(vendorId: Long?): MasterKeyListResult {
-        if (vendorId != null) {
-            ensureVendorExists(vendorId)
-        }
-
+    fun listMasterKeys(params: MasterKeyPageParams): PageResult<MasterKeyPageItemResult> {
+        PageMethod.startPage<MasterKeysRecord>(params.pageNum, params.pageSize)
         val records = masterKeysMapper.select {
-            if (vendorId != null) {
-                where { MasterKeysDynamicSqlSupport.MasterKeys.vendorId isEqualTo vendorId }
-            }
+            where { MasterKeysDynamicSqlSupport.MasterKeys.vendorId isEqualToWhenPresent params.vendorId }
+            and { MasterKeysDynamicSqlSupport.MasterKeys.status isEqualToWhenPresent params.status }
             orderBy(
                 MasterKeysDynamicSqlSupport.MasterKeys.vendorId,
                 MasterKeysDynamicSqlSupport.MasterKeys.id.descending()
             )
         }
+        val pageInfo = PageInfo.of(records)
+        val vendorNames = listVendorNames(records)
+
+        return PageResult(
+            pageNum = pageInfo.pageNum,
+            pageSize = pageInfo.pageSize,
+            total = pageInfo.total,
+            list = records.map { mapMasterKeyPageItem(it, vendorNames) },
+        )
+    }
+
+    fun listMasterKeys(vendorId: Long?): MasterKeyListResult {
+        val records = masterKeysMapper.select {
+            where { MasterKeysDynamicSqlSupport.MasterKeys.vendorId isEqualToWhenPresent vendorId }
+            orderBy(
+                MasterKeysDynamicSqlSupport.MasterKeys.vendorId,
+                MasterKeysDynamicSqlSupport.MasterKeys.id.descending()
+            )
+        }
+        val vendorNames = listVendorNames(records)
 
         return MasterKeyListResult(
             vendorId = vendorId,
-            keys = records.map { mapMasterKeyListItem(it) },
+            keys = records.map { mapMasterKeyListItem(it, vendorNames) },
         )
     }
 
@@ -165,7 +186,6 @@ class AdminModelManageService(
         val records = vendorsMapper.select {
             orderBy(VendorsDynamicSqlSupport.Vendors.id.descending())
         }
-
         return records.map { mapVendorListItem(it) }
     }
 
@@ -393,12 +413,16 @@ class AdminModelManageService(
     /**
      * 转换主密钥列表项，不返回密钥明文或可逆密文。
      */
-    private fun mapMasterKeyListItem(record: MasterKeysRecord): MasterKeyListItemResult {
+    private fun mapMasterKeyListItem(
+        record: MasterKeysRecord,
+        vendorNames: Map<Long, String>,
+    ): MasterKeyListItemResult {
         val masterKeyId = record.id ?: throw BizException(BizException.SYSTEM_FAILED, "主密钥ID异常")
         val vendorId = record.vendorId ?: throw BizException(BizException.SYSTEM_FAILED, "供应商ID异常")
         return MasterKeyListItemResult(
             masterKeyId = masterKeyId,
             vendorId = vendorId,
+            vendorName = vendorNames[vendorId] ?: "",
             keyFingerprint = buildEncryptedKeyFingerprint(record.apiKeyEncrypted),
             weight = record.weight ?: 0,
             status = record.status ?: 0,
@@ -407,6 +431,37 @@ class AdminModelManageService(
             createdTime = record.createdTime,
             updatedTime = record.updatedTime,
         )
+    }
+
+    /**
+     * 转换主密钥分页列表项，不返回密钥明文或可逆密文。
+     */
+    private fun mapMasterKeyPageItem(
+        record: MasterKeysRecord,
+        vendorNames: Map<Long, String>,
+    ): MasterKeyPageItemResult {
+        val vendorId = record.vendorId ?: throw BizException(BizException.SYSTEM_FAILED, "供应商ID异常")
+        return MasterKeyPageItemResult(
+            vendorId = vendorId,
+            vendorName = vendorNames[vendorId] ?: "",
+            keyInfo = buildEncryptedKeyFingerprint(record.apiKeyEncrypted),
+            weight = record.weight ?: 0,
+            status = record.status ?: 0,
+            lastCheckedAt = record.lastCheckedAt,
+            createdTime = record.createdTime,
+        )
+    }
+
+    /**
+     * 批量查询主密钥关联的供应商名称，避免列表映射时逐条访问数据库。
+     */
+    private fun listVendorNames(records: List<MasterKeysRecord>): Map<Long, String> {
+        val vendorIds = records.mapNotNull { it.vendorId }.distinct()
+        if (vendorIds.isEmpty()) return emptyMap()
+
+        return vendorsMapper.select {
+            where { VendorsDynamicSqlSupport.Vendors.id isIn vendorIds }
+        }.associate { it.id!! to it.name!! }
     }
 
     /**

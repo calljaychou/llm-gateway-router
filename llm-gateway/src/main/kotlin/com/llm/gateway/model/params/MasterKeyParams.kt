@@ -1,5 +1,6 @@
 package com.llm.gateway.model.params
 
+import com.llm.gateway.model.PageParams
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
 import javax.validation.constraints.Max
@@ -23,3 +24,14 @@ data class MasterKeyCreateParams(
     @field:Max(value = 2, message = "状态值最大为2")
     val status: Int? = null,
 )
+
+@ApiModel("主密钥分页查询参数")
+class MasterKeyPageParams : PageParams() {
+    @ApiModelProperty(value = "供应商ID，不传则查询全部", required = false, example = "1")
+    var vendorId: Long? = null
+
+    @ApiModelProperty(value = "状态(1-正常,2-异常)，不传则查询全部", required = false, example = "1")
+    @field:Min(value = 1, message = "状态值最小为1")
+    @field:Max(value = 2, message = "状态值最大为2")
+    var status: Int? = null
+}

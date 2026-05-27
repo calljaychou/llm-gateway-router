@@ -1,12 +1,15 @@
 package com.llm.gateway.controller.admin
 
 import com.llm.gateway.model.ApiResult
+import com.llm.gateway.model.PageResult
 import com.llm.gateway.model.params.MasterKeyCreateParams
+import com.llm.gateway.model.params.MasterKeyPageParams
 import com.llm.gateway.model.params.ModelCreateParams
 import com.llm.gateway.model.params.ModelUpdateParams
 import com.llm.gateway.model.params.VendorCreateParams
 import com.llm.gateway.model.results.MasterKeyCreateResult
 import com.llm.gateway.model.results.MasterKeyListResult
+import com.llm.gateway.model.results.MasterKeyPageItemResult
 import com.llm.gateway.model.results.ModelCreateResult
 import com.llm.gateway.model.results.ModelDeleteResult
 import com.llm.gateway.model.results.ModelUpdateResult
@@ -27,7 +30,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import javax.validation.Valid
 
@@ -87,10 +89,8 @@ class AdminModelManageController(
         ApiResponse(code = 500, message = "系统异常"),
     )
     @GetMapping("/master-keys")
-    fun listMasterKeys(
-        @ApiParam(value = "供应商ID，不传则查询全部") @RequestParam("vendorId", required = false) vendorId: Long?,
-    ): ApiResult<MasterKeyListResult> {
-        return ApiResult.success(adminModelManageService.listMasterKeys(vendorId))
+    fun listMasterKeys(@Valid params: MasterKeyPageParams): ApiResult<PageResult<MasterKeyPageItemResult>> {
+        return ApiResult.success(adminModelManageService.listMasterKeys(params))
     }
 
     @ApiOperation(value = "查询供应商主密钥列表")

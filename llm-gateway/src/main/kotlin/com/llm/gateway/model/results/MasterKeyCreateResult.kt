@@ -1,5 +1,6 @@
 package com.llm.gateway.model.results
 
+import com.fasterxml.jackson.annotation.JsonFormat
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
 import java.util.Date
@@ -24,6 +25,8 @@ data class MasterKeyListItemResult(
     val masterKeyId: Long,
     @ApiModelProperty(value = "供应商ID", required = true)
     val vendorId: Long,
+    @ApiModelProperty(value = "供应商名称", required = true)
+    val vendorName: String,
     @ApiModelProperty(value = "密钥安全指纹", required = true)
     val keyFingerprint: String,
     @ApiModelProperty(value = "权重", required = true)
@@ -38,6 +41,26 @@ data class MasterKeyListItemResult(
     val createdTime: Date?,
     @ApiModelProperty(value = "更新时间")
     val updatedTime: Date?,
+)
+
+@ApiModel("主密钥分页列表项")
+data class MasterKeyPageItemResult(
+    @ApiModelProperty(value = "供应商ID", required = true)
+    val vendorId: Long,
+    @ApiModelProperty(value = "供应商名称", required = true)
+    val vendorName: String,
+    @ApiModelProperty(value = "密钥信息，使用不可逆安全指纹展示", required = true)
+    val keyInfo: String,
+    @ApiModelProperty(value = "权重", required = true)
+    val weight: Int,
+    @ApiModelProperty(value = "状态", required = true)
+    val status: Int,
+    @ApiModelProperty(value = "最近检测时间")
+    @field:JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
+    val lastCheckedAt: Date?,
+    @ApiModelProperty(value = "创建时间")
+    @field:JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
+    val createdTime: Date?,
 )
 
 @ApiModel("供应商主密钥列表结果")
