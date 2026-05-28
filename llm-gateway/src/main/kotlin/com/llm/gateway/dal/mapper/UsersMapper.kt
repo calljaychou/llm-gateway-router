@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-08T17:25:34.946709+08:00
+ * Generation date: 2026-05-27T18:07:45.507215+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -38,8 +38,8 @@ interface UsersMapper {
     @Insert(
         "\${insertStatement}"
     )
-    @Options(useGeneratedKeys=true,keyProperty="list.id")
-    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("list") records: List<UsersRecord>): Int
+    @Options(useGeneratedKeys=true,keyProperty="records.id")
+    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("records") records: List<UsersRecord>): Int
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
     @ResultMap("UsersRecordResult")
@@ -48,6 +48,7 @@ interface UsersMapper {
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
     @Results(id="UsersRecordResult", value = [
         Result(column="id", property="id", jdbcType=JdbcType.BIGINT, id=true),
+        Result(column="name", property="name", jdbcType=JdbcType.VARCHAR),
         Result(column="dept_id", property="deptId", jdbcType=JdbcType.BIGINT),
         Result(column="username", property="username", jdbcType=JdbcType.VARCHAR),
         Result(column="email", property="email", jdbcType=JdbcType.VARCHAR),

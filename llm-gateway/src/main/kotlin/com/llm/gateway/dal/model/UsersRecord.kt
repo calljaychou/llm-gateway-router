@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-08T17:25:34.946386+08:00
+ * Generation date: 2026-05-27T18:07:45.504899+08:00
  */
 package com.llm.gateway.dal.model
 
@@ -8,6 +8,7 @@ import java.util.Date
 
 data class UsersRecord(
     var id: Long? = null,
+    var name: String? = null,
     var deptId: Long? = null,
     var username: String? = null,
     var email: String? = null,

@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-08T17:25:34.946512+08:00
+ * Generation date: 2026-05-27T18:07:45.506442+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -11,6 +11,8 @@ import org.mybatis.dynamic.sql.SqlTable
 object UsersDynamicSqlSupport {
     object Users : SqlTable("users") {
         val id = column<Long>("id", JDBCType.BIGINT)
+
+        val name = column<String>("name", JDBCType.VARCHAR)
 
         val deptId = column<Long>("dept_id", JDBCType.BIGINT)
 

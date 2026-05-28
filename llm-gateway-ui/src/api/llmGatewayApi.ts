@@ -254,6 +254,54 @@ export interface DepartmentPermissionsUpdateResult {
     updated: number;
 }
 
+export interface CreateAdminUserParams {
+    name: string;
+    username: string;
+    email: string;
+    mobile?: string;
+    deptId: number;
+    roleKeys: string[];
+    password: string;
+    forcePasswordChange?: boolean;
+}
+
+export interface AdminUserCreateResult {
+    userId: number;
+    passwordChanged: boolean;
+}
+
+export interface AdminUserPageParams {
+    deptId?: number;
+    mobile?: string;
+    email?: string;
+    pageNum: number;
+    pageSize: number;
+}
+
+export interface AdminUserListItem {
+    userId: number;
+    name?: string;
+    username: string;
+    mobile?: string;
+    deptId?: number;
+    deptName?: string;
+    email?: string;
+    gender: number;
+    status: number;
+    createdTime?: string;
+}
+
+export const adminUserApi = {
+    listUsers: async (params: AdminUserPageParams) => {
+        const res = await api.get<ApiResult<PageResult<AdminUserListItem>>>('/admin/users', { params });
+        return res.data;
+    },
+    createUser: async (params: CreateAdminUserParams) => {
+        const res = await api.post<ApiResult<AdminUserCreateResult>>('/admin/users', params);
+        return res.data;
+    }
+};
+
 export const adminDeptApi = {
     // 获取整个组织的部门层级树
     getDeptTree: async () => {

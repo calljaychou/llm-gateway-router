@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-08T17:25:34.946873+08:00
+ * Generation date: 2026-05-27T18:07:45.509188+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -13,6 +13,7 @@ import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport.Users.email
 import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport.Users.gender
 import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport.Users.id
 import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport.Users.mobile
+import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport.Users.name
 import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport.Users.password
 import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport.Users.passwordChanged
 import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport.Users.remark
@@ -41,6 +42,7 @@ fun UsersMapper.insertMultipleHelper(multipleInsertStatement: MultiRowInsertStat
 
 fun UsersMapper.insert(record: UsersRecord) =
     insert(this::insert, record, Users) {
+        map(name).toProperty("name")
         map(deptId).toProperty("deptId")
         map(username).toProperty("username")
         map(email).toProperty("email")
@@ -58,6 +60,7 @@ fun UsersMapper.insert(record: UsersRecord) =
 
 fun UsersMapper.insertMultiple(records: Collection<UsersRecord>) =
     insertMultiple(this::insertMultipleHelper, records, Users) {
+        map(name).toProperty("name")
         map(deptId).toProperty("deptId")
         map(username).toProperty("username")
         map(email).toProperty("email")
@@ -78,6 +81,7 @@ fun UsersMapper.insertMultiple(vararg records: UsersRecord) =
 
 fun UsersMapper.insertSelective(record: UsersRecord) =
     insert(this::insert, record, Users) {
+        map(name).toPropertyWhenPresent("name", record::name)
         map(deptId).toPropertyWhenPresent("deptId", record::deptId)
         map(username).toPropertyWhenPresent("username", record::username)
         map(email).toPropertyWhenPresent("email", record::email)
@@ -93,7 +97,7 @@ fun UsersMapper.insertSelective(record: UsersRecord) =
         map(updatedTime).toPropertyWhenPresent("updatedTime", record::updatedTime)
     }
 
-private val columnList = listOf(id, deptId, username, email, mobile, gender, avatarUrl, password, passwordChanged, remark, status, delFlag, createdTime, updatedTime)
+private val columnList = listOf(id, name, deptId, username, email, mobile, gender, avatarUrl, password, passwordChanged, remark, status, delFlag, createdTime, updatedTime)
 
 fun UsersMapper.selectOne(completer: SelectCompleter) =
     selectOne(this::selectOne, columnList, Users, completer)
@@ -114,6 +118,7 @@ fun UsersMapper.update(completer: UpdateCompleter) =
 
 fun KotlinUpdateBuilder.updateAllColumns(record: UsersRecord) =
     apply {
+        set(name).equalTo(record::name)
         set(deptId).equalTo(record::deptId)
         set(username).equalTo(record::username)
         set(email).equalTo(record::email)
@@ -131,6 +136,7 @@ fun KotlinUpdateBuilder.updateAllColumns(record: UsersRecord) =
 
 fun KotlinUpdateBuilder.updateSelectiveColumns(record: UsersRecord) =
     apply {
+        set(name).equalToWhenPresent(record::name)
         set(deptId).equalToWhenPresent(record::deptId)
         set(username).equalToWhenPresent(record::username)
         set(email).equalToWhenPresent(record::email)
@@ -148,6 +154,7 @@ fun KotlinUpdateBuilder.updateSelectiveColumns(record: UsersRecord) =
 
 fun UsersMapper.updateByPrimaryKey(record: UsersRecord) =
     update {
+        set(name).equalTo(record::name)
         set(deptId).equalTo(record::deptId)
         set(username).equalTo(record::username)
         set(email).equalTo(record::email)
@@ -166,6 +173,7 @@ fun UsersMapper.updateByPrimaryKey(record: UsersRecord) =
 
 fun UsersMapper.updateByPrimaryKeySelective(record: UsersRecord) =
     update {
+        set(name).equalToWhenPresent(record::name)
         set(deptId).equalToWhenPresent(record::deptId)
         set(username).equalToWhenPresent(record::username)
         set(email).equalToWhenPresent(record::email)

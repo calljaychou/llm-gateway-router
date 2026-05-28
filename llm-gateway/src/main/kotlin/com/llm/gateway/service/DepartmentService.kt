@@ -161,6 +161,14 @@ class DepartmentService(
     }
 
     /**
+     * 查询指定部门及其所有后代部门ID。
+     */
+    fun listSubtreeDeptIds(deptId: Long): List<Long> {
+        ensureDeptExists(deptId)
+        return (listOf(deptId) + findDescendantDeptIds(deptId)).distinct()
+    }
+
+    /**
      * 校验部门下不存在未删除子部门。
      */
     private fun checkDepartmentHasNoChildren(deptId: Long) {

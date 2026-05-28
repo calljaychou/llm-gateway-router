@@ -1,8 +1,12 @@
 package com.llm.gateway.service
 
+import com.github.pagehelper.PageInfo
+import com.github.pagehelper.page.PageMethod
 import com.llm.gateway.common.enums.DepartmentPermissionScope
 import com.llm.gateway.common.enums.NormalStatus
 import com.llm.gateway.common.exceptions.BizException
+import com.llm.gateway.dal.mapper.DepartmentDynamicSqlSupport
+import com.llm.gateway.dal.mapper.DepartmentMapper
 import com.llm.gateway.dal.mapper.DepartmentModelPermissionsDynamicSqlSupport
 import com.llm.gateway.dal.mapper.DepartmentModelPermissionsMapper
 import com.llm.gateway.dal.mapper.ModelsDynamicSqlSupport
@@ -20,11 +24,14 @@ import com.llm.gateway.dal.mapper.updateByPrimaryKeySelective
 import com.llm.gateway.dal.model.DepartmentModelPermissionsRecord
 import com.llm.gateway.dal.model.UserRoleRelRecord
 import com.llm.gateway.dal.model.UsersRecord
+import com.llm.gateway.model.PageResult
 import com.llm.gateway.model.dto.ModelMetaDto
 import com.llm.gateway.model.dto.PermissionPairDto
 import com.llm.gateway.model.params.AdminUserCreateParams
+import com.llm.gateway.model.params.AdminUserPageParams
 import com.llm.gateway.model.params.DepartmentPermissionsUpdateParams
 import com.llm.gateway.model.results.AdminUserCreateResult
+import com.llm.gateway.model.results.AdminUserPageItemResult
 import com.llm.gateway.model.results.DepartmentPermissionViewItem
 import com.llm.gateway.model.results.DepartmentPermissionsUpdateResult
 import com.llm.gateway.model.results.DepartmentPermissionsViewResult
@@ -39,6 +46,7 @@ import org.springframework.transaction.annotation.Transactional
 class AdminUserPermissionService(
     private val usersMapper: UsersMapper,
     private val departmentService: DepartmentService,
+    private val departmentMapper: DepartmentMapper,
     private val rolesMapper: RolesMapper,
     private val userRoleRelMapper: UserRoleRelMapper,
     private val modelsMapper: ModelsMapper,
@@ -69,6 +77,7 @@ class AdminUserPermissionService(
         val now = Date()
         val userRecord = UsersRecord(
             deptId = deptId,
+            name = params.name,
             username = params.username.trim(),
             email = params.email.trim().lowercase(),
             mobile = params.mobile?.trim(),
@@ -108,6 +117,32 @@ class AdminUserPermissionService(
         return AdminUserCreateResult(
             userId = userId,
             passwordChanged = userRecord.passwordChanged ?: false,
+        )
+    }
+
+    fun listUsers(params: AdminUserPageParams): PageResult<AdminUserPageItemResult> {
+        val mobile = params.mobile?.trim()?.ifBlank { null }
+        val email = params.email?.trim()?.lowercase()?.ifBlank { null }
+        val deptIds = params.deptId?.let { departmentService.listSubtreeDeptIds(it) }
+
+        PageMethod.startPage<UsersRecord>(params.pageNum, params.pageSize)
+        val records = usersMapper.select {
+            where { UsersDynamicSqlSupport.Users.delFlag isEqualTo false }
+            if (deptIds != null) {
+                and { UsersDynamicSqlSupport.Users.deptId isIn deptIds }
+            }
+            and { UsersDynamicSqlSupport.Users.mobile isEqualToWhenPresent mobile }
+            and { UsersDynamicSqlSupport.Users.email isEqualToWhenPresent email }
+            orderBy(UsersDynamicSqlSupport.Users.id.descending())
+        }
+        val pageInfo = PageInfo.of(records)
+        val departmentNames = listDepartmentNames(records)
+
+        return PageResult(
+            pageNum = pageInfo.pageNum,
+            pageSize = pageInfo.pageSize,
+            total = pageInfo.total,
+            list = records.map { mapAdminUserPageItem(it, departmentNames) },
         )
     }
 
@@ -225,6 +260,44 @@ class AdminUserPermissionService(
             added = 0,
             removed = removed,
             updated = 0,
+        )
+    }
+
+    /**
+     * 批量查询用户所属部门名称。
+     */
+    private fun listDepartmentNames(records: List<UsersRecord>): Map<Long, String> {
+        val deptIds = records.mapNotNull { it.deptId }.distinct()
+        if (deptIds.isEmpty()) return emptyMap()
+
+        return departmentMapper.select {
+            where { DepartmentDynamicSqlSupport.Department.id isIn deptIds }
+        }.mapNotNull { department ->
+            val deptId = department.id ?: return@mapNotNull null
+            deptId to (department.deptName ?: "")
+        }.toMap()
+    }
+
+    /**
+     * 转换管理端用户分页列表项。
+     */
+    private fun mapAdminUserPageItem(
+        record: UsersRecord,
+        departmentNames: Map<Long, String>,
+    ): AdminUserPageItemResult {
+        val userId = record.id ?: throw BizException(BizException.SYSTEM_FAILED, "用户ID异常")
+        val deptId = record.deptId
+        return AdminUserPageItemResult(
+            userId = userId,
+            name = record.name,
+            username = record.username.orEmpty(),
+            mobile = record.mobile,
+            deptId = deptId,
+            deptName = deptId?.let { departmentNames[it] },
+            email = record.email,
+            gender = record.gender ?: 0,
+            status = record.status ?: 0,
+            createdTime = record.createdTime,
         )
     }
 

@@ -1,9 +1,12 @@
 package com.llm.gateway.controller.admin
 
 import com.llm.gateway.model.ApiResult
+import com.llm.gateway.model.PageResult
 import com.llm.gateway.model.params.AdminUserCreateParams
+import com.llm.gateway.model.params.AdminUserPageParams
 import com.llm.gateway.model.params.DepartmentPermissionsUpdateParams
 import com.llm.gateway.model.results.AdminUserCreateResult
+import com.llm.gateway.model.results.AdminUserPageItemResult
 import com.llm.gateway.model.results.DepartmentPermissionsUpdateResult
 import com.llm.gateway.model.results.DepartmentPermissionsViewResult
 import com.llm.gateway.model.results.UserEffectivePermissionsResult
@@ -36,6 +39,12 @@ class AdminUserPermissionController(
     @PostMapping("/users")
     fun createUser(@RequestBody @Valid params: AdminUserCreateParams): ApiResult<AdminUserCreateResult> {
         return ApiResult.success(adminUserPermissionService.createUser(params))
+    }
+
+    @ApiOperation("分页查询用户列表")
+    @GetMapping("/users")
+    fun listUsers(@Valid params: AdminUserPageParams): ApiResult<PageResult<AdminUserPageItemResult>> {
+        return ApiResult.success(adminUserPermissionService.listUsers(params))
     }
 
     @ApiOperation("覆盖设置部门模型权限")

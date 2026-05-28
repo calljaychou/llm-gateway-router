@@ -1,5 +1,6 @@
 package com.llm.gateway.model.params
 
+import com.llm.gateway.model.PageParams
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
 import javax.validation.constraints.Email
@@ -9,6 +10,9 @@ import javax.validation.constraints.NotNull
 
 @ApiModel("管理端-创建用户参数")
 data class AdminUserCreateParams(
+    @ApiModelProperty(value = "姓名", required = true, example = "alice")
+    @field:NotBlank(message = "用户姓名名不能为空")
+    val name: String,
     @ApiModelProperty(value = "用户名", required = true, example = "alice")
     @field:NotBlank(message = "用户名不能为空")
     val username: String,
@@ -30,3 +34,15 @@ data class AdminUserCreateParams(
     @ApiModelProperty(value = "是否强制首登改密", example = "true")
     val forcePasswordChange: Boolean? = true,
 )
+
+@ApiModel("管理端-用户分页查询参数")
+class AdminUserPageParams : PageParams() {
+    @ApiModelProperty(value = "部门ID", required = false, example = "2001")
+    var deptId: Long? = null
+
+    @ApiModelProperty(value = "手机号", required = false, example = "13800138000")
+    var mobile: String? = null
+
+    @ApiModelProperty(value = "邮箱", required = false, example = "alice@company.com")
+    var email: String? = null
+}

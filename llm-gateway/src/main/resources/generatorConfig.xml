@@ -21,9 +21,9 @@
 <!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
 <!--        </table>-->
 
-<!--        <table tableName="users">-->
-<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
-<!--        </table>-->
+        <table tableName="users">
+            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
+        </table>
 
 <!--        <table tableName="position">-->
 <!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
@@ -61,21 +61,21 @@
 <!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
 <!--        </table>-->
 
-        <table tableName="user_quota_accounts">
-            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
-        </table>
+<!--        <table tableName="user_quota_accounts">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
 
-        <table tableName="user_quota_grants">
-            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
-        </table>
+<!--        <table tableName="user_quota_grants">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
 
-        <table tableName="user_quota_transactions">
-            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
-        </table>
+<!--        <table tableName="user_quota_transactions">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
 
-        <table tableName="usage_logs">
-            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
-        </table>
+<!--        <table tableName="usage_logs">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
 
 <!--        <table tableName="usage_stats_daily_department">-->
 <!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
