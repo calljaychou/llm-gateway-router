@@ -1,17 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, Form, Input, Modal, Select, Space, Table, Tag, TreeSelect, Typography } from 'antd';
-import { FilterOutlined, PlusOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons';
-import { adminDeptApi, adminUserApi, AdminUserListItem, DepartmentTreeItem } from '../api/llmGatewayApi';
+import { App, Breadcrumb, Button, Card, Form, Input, Modal, Select, Space, Table, Tag, TreeSelect, Typography } from 'antd';
+import { FilterOutlined, PlusOutlined, SearchOutlined, SafetyCertificateOutlined, TeamOutlined } from '@ant-design/icons';
+import { adminDeptApi, adminRoleApi, adminUserApi, AdminUserListItem, DepartmentTreeItem, RoleListItem } from '../api/llmGatewayApi';
+import { RoleManage } from './RoleManage';
 
 const { Option } = Select;
 const { Text } = Typography;
+type UserManageView = 'users' | 'roles';
 
 export const UserManage: React.FC = () => {
     const { message } = App.useApp();
     const [users, setUsers] = useState<AdminUserListItem[]>([]);
     const [departments, setDepartments] = useState<DepartmentTreeItem[]>([]);
+    const [roles, setRoles] = useState<RoleListItem[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+    const [activeView, setActiveView] = useState<UserManageView>('users');
     const [pageNum, setPageNum] = useState<number>(1);
     const [pageSize, setPageSize] = useState<number>(10);
     const [total, setTotal] = useState<number>(0);
@@ -28,6 +32,7 @@ export const UserManage: React.FC = () => {
     const textSecondary = '#656d76';
 
     const departmentTreeData = useMemo(() => buildDepartmentTreeSelectData(departments), [departments]);
+    const defaultRoleKeys = useMemo(() => roles.some((role) => role.roleKey === 'user') ? ['user'] : [], [roles]);
 
     const fetchDepartments = async () => {
         try {
@@ -39,6 +44,19 @@ export const UserManage: React.FC = () => {
             }
         } catch {
             message.error('加载部门列表异常');
+        }
+    };
+
+    const fetchRoles = async () => {
+        try {
+            const res = await adminRoleApi.listRoles();
+            if (res.success && res.data) {
+                setRoles(res.data);
+            } else {
+                message.error(res.message || '加载角色列表失败');
+            }
+        } catch {
+            message.error('加载角色列表异常');
         }
     };
 
@@ -67,6 +85,7 @@ export const UserManage: React.FC = () => {
 
     useEffect(() => {
         fetchDepartments();
+        fetchRoles();
     }, []);
 
     useEffect(() => {
@@ -88,7 +107,7 @@ export const UserManage: React.FC = () => {
     const handleOpenModal = () => {
         form.resetFields();
         form.setFieldsValue({
-            roleKeys: ['user'],
+            roleKeys: defaultRoleKeys,
             forcePasswordChange: true,
         });
         setIsModalOpen(true);
@@ -178,9 +197,42 @@ export const UserManage: React.FC = () => {
             <Card
                 bordered={false}
                 style={cardStyle}
-                title={<Space><TeamOutlined style={{ color: textPrimary }} /><span style={{ fontWeight: 600, color: textPrimary }}>全局用户管理</span></Space>}
-                extra={<Button type="primary" icon={<PlusOutlined />} onClick={handleOpenModal}>开通新用户</Button>}
+                title={
+                    <Breadcrumb
+                        items={[
+                            {
+                                title: (
+                                    <Space
+                                        size={6}
+                                        style={{ cursor: 'pointer', color: activeView === 'users' ? textPrimary : '#0969da' }}
+                                        onClick={() => setActiveView('users')}
+                                    >
+                                        <TeamOutlined />
+                                        <span style={{ fontWeight: 600 }}>全局用户管理</span>
+                                    </Space>
+                                ),
+                            },
+                            {
+                                title: (
+                                    <Space
+                                        size={6}
+                                        style={{ cursor: 'pointer', color: activeView === 'roles' ? textPrimary : '#0969da' }}
+                                        onClick={() => setActiveView('roles')}
+                                    >
+                                        <SafetyCertificateOutlined />
+                                        <span style={{ fontWeight: 600 }}>角色管理</span>
+                                    </Space>
+                                ),
+                            },
+                        ]}
+                    />
+                }
+                extra={activeView === 'users' ? <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenModal}>开通新用户</Button> : null}
             >
+                {activeView === 'roles' ? (
+                    <RoleManage onRolesChanged={fetchRoles} />
+                ) : (
+                    <>
                 <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                     <Space>
                         <FilterOutlined style={{ color: textSecondary }} />
@@ -266,9 +318,11 @@ export const UserManage: React.FC = () => {
                         </Form.Item>
                         <Form.Item name="roleKeys" label="系统角色" rules={[{ required: true, message: '请选择角色' }]}>
                             <Select mode="multiple" placeholder="选择角色">
-                                <Option value="user">user</Option>
-                                <Option value="llm-lead">llm-lead</Option>
-                                <Option value="admin">admin</Option>
+                                {roles.map((role) => (
+                                    <Option key={role.id} value={role.roleKey}>
+                                        {role.roleName} ({role.roleKey})
+                                    </Option>
+                                ))}
                             </Select>
                         </Form.Item>
                         <Form.Item name="password" label="初始密码" rules={[{ required: true, message: '请输入初始密码' }]}>
@@ -282,6 +336,8 @@ export const UserManage: React.FC = () => {
                         </Form.Item>
                     </Form>
                 </Modal>
+                    </>
+                )}
             </Card>
         </div>
     );

@@ -30,26 +30,12 @@ class AdminDepartmentController(
 ) {
 
     @ApiOperation(value = "新建一级部门")
-    @ApiResponses(
-        ApiResponse(code = 200, message = "成功"),
-        ApiResponse(code = 400, message = "参数错误"),
-        ApiResponse(code = 401, message = "未认证"),
-        ApiResponse(code = 403, message = "无权限"),
-        ApiResponse(code = 500, message = "系统异常"),
-    )
     @PostMapping
     fun createRootDepartment(@RequestBody @Valid params: DepartmentCreateParams): ApiResult<DepartmentCreateResult> {
         return ApiResult.success(departmentService.createRootDepartment(params))
     }
 
     @ApiOperation(value = "添加子部门")
-    @ApiResponses(
-        ApiResponse(code = 200, message = "成功"),
-        ApiResponse(code = 400, message = "参数错误"),
-        ApiResponse(code = 401, message = "未认证"),
-        ApiResponse(code = 403, message = "无权限"),
-        ApiResponse(code = 500, message = "系统异常"),
-    )
     @PostMapping("/{id}/children")
     fun createChildDepartment(
         @ApiParam(value = "父部门ID", required = true) @PathVariable("id") parentDeptId: Long,
@@ -59,13 +45,6 @@ class AdminDepartmentController(
     }
 
     @ApiOperation(value = "删除部门")
-    @ApiResponses(
-        ApiResponse(code = 200, message = "成功"),
-        ApiResponse(code = 400, message = "参数错误"),
-        ApiResponse(code = 401, message = "未认证"),
-        ApiResponse(code = 403, message = "无权限"),
-        ApiResponse(code = 500, message = "系统异常"),
-    )
     @DeleteMapping("/{id}")
     fun deleteDepartment(
         @ApiParam(value = "部门ID", required = true) @PathVariable("id") deptId: Long,
@@ -74,13 +53,6 @@ class AdminDepartmentController(
     }
 
     @ApiOperation(value = "查询部门树")
-    @ApiResponses(
-        ApiResponse(code = 200, message = "成功"),
-        ApiResponse(code = 400, message = "参数错误"),
-        ApiResponse(code = 401, message = "未认证"),
-        ApiResponse(code = 403, message = "无权限"),
-        ApiResponse(code = 500, message = "系统异常"),
-    )
     @GetMapping("/tree")
     fun getDepartmentTree(): ApiResult<List<DepartmentTreeResult>> {
         return ApiResult.success(departmentService.getDepartmentTree())

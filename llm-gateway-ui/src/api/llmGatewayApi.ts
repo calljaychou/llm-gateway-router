@@ -291,6 +291,33 @@ export interface AdminUserListItem {
     createdTime?: string;
 }
 
+export interface RoleListItem {
+    id: number;
+    roleName: string;
+    roleKey: string;
+    roleSort: number;
+    createdBy?: string;
+    createdTime?: string;
+}
+
+export interface CreateRoleParams {
+    roleName: string;
+    roleKey: string;
+    roleSort?: number;
+}
+
+export interface RoleCreateResult {
+    roleId: number;
+    roleName: string;
+    roleKey: string;
+}
+
+export interface RoleDeleteResult {
+    roleId: number;
+    deleted: boolean;
+    removedUserRoleRelCount: number;
+}
+
 export const adminUserApi = {
     listUsers: async (params: AdminUserPageParams) => {
         const res = await api.get<ApiResult<PageResult<AdminUserListItem>>>('/admin/users', { params });
@@ -298,6 +325,21 @@ export const adminUserApi = {
     },
     createUser: async (params: CreateAdminUserParams) => {
         const res = await api.post<ApiResult<AdminUserCreateResult>>('/admin/users', params);
+        return res.data;
+    }
+};
+
+export const adminRoleApi = {
+    listRoles: async () => {
+        const res = await api.get<ApiResult<RoleListItem[]>>('/admin/roles');
+        return res.data;
+    },
+    createRole: async (params: CreateRoleParams) => {
+        const res = await api.post<ApiResult<RoleCreateResult>>('/admin/roles', params);
+        return res.data;
+    },
+    deleteRole: async (id: number) => {
+        const res = await api.delete<ApiResult<RoleDeleteResult>>(`/admin/roles/${id}`);
         return res.data;
     }
 };
