@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-08T17:25:34.939994+08:00
+ * Generation date: 2026-05-28T23:01:12.565014+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -38,8 +38,8 @@ interface DepartmentMapper {
     @Insert(
         "\${insertStatement}"
     )
-    @Options(useGeneratedKeys=true,keyProperty="list.id")
-    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("list") records: List<DepartmentRecord>): Int
+    @Options(useGeneratedKeys=true,keyProperty="records.id")
+    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("records") records: List<DepartmentRecord>): Int
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
     @ResultMap("DepartmentRecordResult")
@@ -51,7 +51,7 @@ interface DepartmentMapper {
         Result(column="parent_id", property="parentId", jdbcType=JdbcType.BIGINT),
         Result(column="dept_name", property="deptName", jdbcType=JdbcType.VARCHAR),
         Result(column="order_num", property="orderNum", jdbcType=JdbcType.INTEGER),
-        Result(column="leader_user_id", property="leaderUserId", jdbcType=JdbcType.BIGINT),
+        Result(column="leader_name", property="leaderName", jdbcType=JdbcType.VARCHAR),
         Result(column="tel", property="tel", jdbcType=JdbcType.VARCHAR),
         Result(column="status", property="status", jdbcType=JdbcType.INTEGER),
         Result(column="del_flag", property="delFlag", jdbcType=JdbcType.BIT),

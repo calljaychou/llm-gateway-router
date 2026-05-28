@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-08T17:25:34.937986+08:00
+ * Generation date: 2026-05-28T23:01:12.562928+08:00
  */
 package com.llm.gateway.dal.model
 
@@ -11,7 +11,7 @@ data class DepartmentRecord(
     var parentId: Long? = null,
     var deptName: String? = null,
     var orderNum: Int? = null,
-    var leaderUserId: Long? = null,
+    var leaderName: String? = null,
     var tel: String? = null,
     var status: Int? = null,
     var delFlag: Boolean? = null,

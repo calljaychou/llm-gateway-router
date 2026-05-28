@@ -70,10 +70,10 @@ export const QuotaTransactions: React.FC = () => {
     };
 
     const ledgerColumns = [
-        { title: '时间轴', dataIndex: 'createdAt', key: 'createdAt', width: 170 },
+        { title: '发生时间', dataIndex: 'createdAt', key: 'createdAt', width: 170 },
         { title: '业务单号/批次', dataIndex: 'bizNo', key: 'bizNo', ellipsis: true },
         {
-            title: '审计变更类别',
+            title: '变更类别',
             dataIndex: 'changeType',
             key: 'changeType',
             render: (type: string) => <Tag color={type.includes('CONSUME') ? 'orange' : 'green'}>{type}</Tag>
@@ -92,7 +92,7 @@ export const QuotaTransactions: React.FC = () => {
             }
         },
         {
-            title: '可用额度平账演变',
+            title: '变动额度',
             key: 'availableBalance',
             render: (_: any, record: QuotaTransactionItem) => (
                 <span>{record.availableBefore.toLocaleString()} <ArrowRightOutlined style={{ fontSize: 11 }} /> {record.availableAfter.toLocaleString()}</span>

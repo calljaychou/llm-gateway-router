@@ -74,10 +74,17 @@ export const App: React.FC = () => {
         {
             key: 'group-admin',
             type: 'group',
+            label: '组织架构层 (Admin)',
+            children: [
+                { key: 'departments', icon: <ApartmentOutlined />, label: '部门管理' },
+                { key: 'users', icon: <TeamOutlined />, label: '用户管理' },
+            ],
+        },
+        {
+            key: 'group-admin',
+            type: 'group',
             label: '网关管控层 (Admin)',
             children: [
-                { key: 'departments', icon: <ApartmentOutlined />, label: '组织架构管理' },
-                { key: 'users', icon: <TeamOutlined />, label: '用户管理' },
                 { key: 'vendors', icon: <CloudServerOutlined />, label: '供应商管理' },
                 { key: 'models', icon: <AppstoreAddOutlined />, label: '大模型路由配置' },
                 { key: 'master-keys', icon: <SafetyCertificateOutlined />, label: '主密钥(池)' },

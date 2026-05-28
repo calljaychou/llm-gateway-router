@@ -180,7 +180,7 @@ export const MasterKeyManage: React.FC = () => {
                         pageSize: pageSize,
                         total: total,
                         showSizeChanger: true,
-                        showTotal: (total) => `共录入 ${total} 个账单密钥`,
+                        showTotal: (total) => `共 ${total} 个密钥`,
                         pageSizeOptions: ['10', '20', '50', '100']
                     }}
                 />

@@ -55,13 +55,6 @@ class AdminUserPermissionController(
     }
 
     @ApiOperation("查询用户详情")
-    @ApiResponses(
-        value = [
-            ApiResponse(code = 200, message = "查询成功"),
-            ApiResponse(code = 400, message = "用户不存在"),
-            ApiResponse(code = 403, message = "无权限访问"),
-        ]
-    )
     @GetMapping("/users/{id}/detail")
     fun getUserDetail(
         @ApiParam(value = "用户ID", required = true) @PathVariable("id") userId: Long,
@@ -70,13 +63,6 @@ class AdminUserPermissionController(
     }
 
     @ApiOperation("修改用户密码")
-    @ApiResponses(
-        value = [
-            ApiResponse(code = 200, message = "修改成功"),
-            ApiResponse(code = 400, message = "用户不存在或状态不允许"),
-            ApiResponse(code = 403, message = "无权限访问"),
-        ]
-    )
     @PutMapping("/users/{id}/password")
     fun changeUserPassword(
         @ApiParam(value = "用户ID", required = true) @PathVariable("id") userId: Long,
@@ -86,13 +72,6 @@ class AdminUserPermissionController(
     }
 
     @ApiOperation("修改用户信息")
-    @ApiResponses(
-        value = [
-            ApiResponse(code = 200, message = "修改成功"),
-            ApiResponse(code = 400, message = "参数错误或用户不存在"),
-            ApiResponse(code = 403, message = "无权限访问"),
-        ]
-    )
     @PutMapping("/users/{id}")
     fun updateUser(
         @ApiParam(value = "用户ID", required = true) @PathVariable("id") userId: Long,

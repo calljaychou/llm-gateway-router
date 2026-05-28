@@ -145,6 +145,8 @@ export const UserManage: React.FC = () => {
         form.resetFields();
         form.setFieldsValue({
             roleKeys: defaultRoleKeys,
+            gender: 3,
+            status: 1,
             forcePasswordChange: true,
         });
         setIsModalOpen(true);
@@ -181,6 +183,8 @@ export const UserManage: React.FC = () => {
                 username: values.username.trim(),
                 email: values.email.trim(),
                 mobile: values.mobile?.trim() || undefined,
+                gender: values.gender,
+                status: values.status,
                 deptId: values.deptId,
                 roleKeys: values.roleKeys,
                 password: values.password,
@@ -244,7 +248,7 @@ export const UserManage: React.FC = () => {
             width: 90,
             render: (status: number) => status === 1
                 ? <Tag color="success" style={{border: 'none'}}>正常</Tag>
-                : <Tag color="error" style={{border: 'none'}}>停用</Tag>,
+                : <Tag color="error" style={{border: 'none'}}>已离职</Tag>,
         },
         {
             title: '创建时间',
@@ -390,53 +394,89 @@ export const UserManage: React.FC = () => {
                             onCancel={() => setIsModalOpen(false)}
                             onOk={() => form.submit()}
                             okText="确认开通"
+                            width={760}
                             destroyOnClose
                         >
                             <Form form={form} layout="vertical" onFinish={handleCreateUser} style={{marginTop: 16}}>
-                                <Form.Item name="name" label="姓名" rules={[{required: true, message: '请输入姓名'}]}>
-                                    <Input placeholder="例如：Alice Chen"/>
-                                </Form.Item>
-                                <Form.Item name="username" label="用户名"
-                                           rules={[{required: true, message: '请输入用户名'}]}>
-                                    <Input placeholder="例如：alice"/>
-                                </Form.Item>
-                                <Form.Item name="email" label="邮箱"
-                                           rules={[{required: true, type: 'email', message: '请输入有效邮箱'}]}>
-                                    <Input placeholder="alice@company.com"/>
-                                </Form.Item>
-                                <Form.Item name="mobile" label="手机号">
-                                    <Input placeholder="13800138000"/>
-                                </Form.Item>
-                                <Form.Item name="deptId" label="所属部门"
-                                           rules={[{required: true, message: '请选择所属部门'}]}>
-                                    <TreeSelect
-                                        showSearch
-                                        placeholder="选择部门"
-                                        treeData={departmentTreeData}
-                                        treeDefaultExpandAll
-                                        treeNodeFilterProp="title"
-                                    />
-                                </Form.Item>
-                                <Form.Item name="roleKeys" label="系统角色"
-                                           rules={[{required: true, message: '请选择角色'}]}>
-                                    <Select mode="multiple" placeholder="选择角色">
-                                        {roles.map((role) => (
-                                            <Option key={role.id} value={role.roleKey}>
-                                                {role.roleName} ({role.roleKey})
-                                            </Option>
-                                        ))}
-                                    </Select>
-                                </Form.Item>
-                                <Form.Item name="password" label="初始密码"
-                                           rules={[{required: true, message: '请输入初始密码'}]}>
-                                    <Input.Password placeholder="Temp@123456"/>
-                                </Form.Item>
-                                <Form.Item name="forcePasswordChange" label="首登改密" initialValue={true}>
-                                    <Select>
-                                        <Option value={true}>强制首次登录修改密码</Option>
-                                        <Option value={false}>不强制修改</Option>
-                                    </Select>
-                                </Form.Item>
+                                <Row gutter={16}>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item name="name" label="姓名" rules={[{required: true, message: '请输入姓名'}]}>
+                                            <Input placeholder="例如：Alice Chen"/>
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item name="username" label="用户名"
+                                                   rules={[{required: true, message: '请输入用户名'}]}>
+                                            <Input placeholder="例如：alice"/>
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item name="email" label="邮箱"
+                                                   rules={[{required: true, type: 'email', message: '请输入有效邮箱'}]}>
+                                            <Input placeholder="alice@company.com"/>
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item name="mobile" label="手机号">
+                                            <Input placeholder="13800138000"/>
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item name="gender" label="性别" rules={[{required: true, message: '请选择性别'}]}>
+                                            <Select placeholder="选择性别">
+                                                <Option value={1}>男</Option>
+                                                <Option value={2}>女</Option>
+                                                <Option value={3}>未知</Option>
+                                            </Select>
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item name="status" label="用户状态" rules={[{required: true, message: '请选择用户状态'}]}>
+                                            <Select placeholder="选择用户状态">
+                                                <Option value={1}>正常</Option>
+                                                <Option value={0}>已离职</Option>
+                                            </Select>
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item name="deptId" label="所属部门"
+                                                   rules={[{required: true, message: '请选择所属部门'}]}>
+                                            <TreeSelect
+                                                showSearch
+                                                placeholder="选择部门"
+                                                treeData={departmentTreeData}
+                                                treeDefaultExpandAll
+                                                treeNodeFilterProp="title"
+                                            />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item name="roleKeys" label="系统角色"
+                                                   rules={[{required: true, message: '请选择角色'}]}>
+                                            <Select mode="multiple" placeholder="选择角色">
+                                                {roles.map((role) => (
+                                                    <Option key={role.id} value={role.roleKey}>
+                                                        {role.roleName} ({role.roleKey})
+                                                    </Option>
+                                                ))}
+                                            </Select>
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item name="password" label="初始密码"
+                                                   rules={[{required: true, message: '请输入初始密码'}]}>
+                                            <Input.Password placeholder="Temp@123456"/>
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} md={12}>
+                                        <Form.Item name="forcePasswordChange" label="首登改密" initialValue={true}>
+                                            <Select>
+                                                <Option value={true}>强制首次登录修改密码</Option>
+                                                <Option value={false}>不强制修改</Option>
+                                            </Select>
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
                             </Form>
                         </Modal>
                     </>
@@ -507,6 +547,8 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
             username: detail.user.username,
             email: detail.user.email,
             mobile: detail.user.mobile,
+            gender: detail.user.gender ?? 3,
+            status: detail.user.status ?? 1,
             deptId: detail.user.deptId,
             roleKeys: detail.roles.map((role) => role.roleKey),
         });
@@ -523,6 +565,8 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
                 username: values.username.trim(),
                 email: values.email.trim(),
                 mobile: values.mobile?.trim() || undefined,
+                gender: values.gender,
+                status: values.status,
                 deptId: values.deptId,
                 roleKeys: values.roleKeys,
             });
@@ -668,7 +712,7 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
                                             <Descriptions.Item
                                                 label="部门ID">{detail.department.deptId}</Descriptions.Item>
                                             <Descriptions.Item
-                                                label="负责人">{detail.department.leaderUserId || '-'}</Descriptions.Item>
+                                                label="负责人">{detail.department.leaderName || '-'}</Descriptions.Item>
                                             <Descriptions.Item
                                                 label="电话">{detail.department.tel || '-'}</Descriptions.Item>
                                         </Descriptions>
@@ -781,40 +825,72 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
                 onCancel={() => setIsUserModalOpen(false)}
                 onOk={() => userForm.submit()}
                 okText="保存"
+                width={760}
                 destroyOnClose
             >
                 <Form form={userForm} layout="vertical" onFinish={handleUpdateUser} style={{marginTop: 16}}>
-                    <Form.Item name="name" label="姓名" rules={[{required: true, message: '请输入姓名'}]}>
-                        <Input placeholder="例如：Alice Chen"/>
-                    </Form.Item>
-                    <Form.Item name="username" label="用户名" rules={[{required: true, message: '请输入用户名'}]}>
-                        <Input placeholder="例如：alice"/>
-                    </Form.Item>
-                    <Form.Item name="email" label="邮箱"
-                               rules={[{required: true, type: 'email', message: '请输入有效邮箱'}]}>
-                        <Input placeholder="alice@company.com"/>
-                    </Form.Item>
-                    <Form.Item name="mobile" label="手机号">
-                        <Input placeholder="13800138000"/>
-                    </Form.Item>
-                    <Form.Item name="deptId" label="所属部门" rules={[{required: true, message: '请选择所属部门'}]}>
-                        <TreeSelect
-                            showSearch
-                            placeholder="选择部门"
-                            treeData={departmentTreeData}
-                            treeDefaultExpandAll
-                            treeNodeFilterProp="title"
-                        />
-                    </Form.Item>
-                    <Form.Item name="roleKeys" label="系统角色" rules={[{required: true, message: '请选择角色'}]}>
-                        <Select mode="multiple" placeholder="选择角色">
-                            {roles.map((role) => (
-                                <Option key={role.id} value={role.roleKey}>
-                                    {role.roleName} ({role.roleKey})
-                                </Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
+                    <Row gutter={16}>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="name" label="姓名" rules={[{required: true, message: '请输入姓名'}]}>
+                                <Input placeholder="例如：Alice Chen"/>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="username" label="用户名" rules={[{required: true, message: '请输入用户名'}]}>
+                                <Input placeholder="例如：alice"/>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="email" label="邮箱"
+                                       rules={[{required: true, type: 'email', message: '请输入有效邮箱'}]}>
+                                <Input placeholder="alice@company.com"/>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="mobile" label="手机号">
+                                <Input placeholder="13800138000"/>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="gender" label="性别" rules={[{required: true, message: '请选择性别'}]}>
+                                <Select placeholder="选择性别">
+                                    <Option value={1}>男</Option>
+                                    <Option value={2}>女</Option>
+                                    <Option value={3}>未知</Option>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="status" label="用户状态" rules={[{required: true, message: '请选择用户状态'}]}>
+                                <Select placeholder="选择用户状态">
+                                    <Option value={1}>正常</Option>
+                                    <Option value={0}>已离职</Option>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="deptId" label="所属部门" rules={[{required: true, message: '请选择所属部门'}]}>
+                                <TreeSelect
+                                    showSearch
+                                    placeholder="选择部门"
+                                    treeData={departmentTreeData}
+                                    treeDefaultExpandAll
+                                    treeNodeFilterProp="title"
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="roleKeys" label="系统角色" rules={[{required: true, message: '请选择角色'}]}>
+                                <Select mode="multiple" placeholder="选择角色">
+                                    {roles.map((role) => (
+                                        <Option key={role.id} value={role.roleKey}>
+                                            {role.roleName} ({role.roleKey})
+                                        </Option>
+                                    ))}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
                 </Form>
             </Modal>
         </Space>
@@ -828,7 +904,7 @@ function SectionTitle({title, textPrimary}: { title: string; textPrimary: string
 function formatUserStatus(status?: number): React.ReactNode {
     return status === 1
         ? <Tag color="success" style={{border: 'none'}}>正常</Tag>
-        : <Tag color="error" style={{border: 'none'}}>停用</Tag>;
+        : <Tag color="error" style={{border: 'none'}}>已离职</Tag>;
 }
 
 function formatDelFlagStatus(delFlag?: boolean): React.ReactNode {

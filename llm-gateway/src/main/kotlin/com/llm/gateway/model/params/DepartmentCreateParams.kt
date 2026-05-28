@@ -13,8 +13,8 @@ data class DepartmentCreateParams(
     @ApiModelProperty(value = "排序号，数值越小越靠前", example = "10")
     @field:PositiveOrZero(message = "排序号不能小于0")
     val orderNum: Int? = 0,
-    @ApiModelProperty(value = "负责人用户ID", example = "1001")
-    val leaderUserId: Long? = null,
+    @ApiModelProperty(value = "负责人", example = "1001")
+    val leaderName: String? = null,
     @ApiModelProperty(value = "部门联系电话", example = "010-88886666")
     val tel: String? = null,
 )

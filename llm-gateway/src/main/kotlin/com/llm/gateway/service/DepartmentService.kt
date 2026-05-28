@@ -76,7 +76,6 @@ class DepartmentService(
     /**
      * 创建部门并处理相关缓存失效。
      */
-    @Transactional(rollbackFor = [Exception::class])
     fun createDepartment(record: DepartmentRecord): Long {
         departmentMapper.insert(record)
         val newDeptId = record.id ?: throw BizException(BizException.SYSTEM_FAILED, "创建部门失败")
@@ -142,25 +141,6 @@ class DepartmentService(
     }
 
     /**
-     * 更新部门并按子树范围失效祖先路径缓存。
-     */
-    @Transactional(rollbackFor = [Exception::class])
-    fun updateDepartment(record: DepartmentRecord) {
-        val deptId = record.id ?: throw BizException(BizException.BUSINESS_FAILED, "部门ID不能为空")
-        ensureDeptExists(deptId)
-        departmentMapper.updateByPrimaryKeySelective(record)
-        evictAncestorPathCacheForSubtree(deptId)
-    }
-
-    /**
-     * 供外部在部门结构变更后主动触发缓存失效。
-     */
-    fun evictAncestorPathCacheForSubtree(deptId: Long) {
-        val descendantIds = findDescendantDeptIds(deptId) + deptId
-        descendantIds.distinct().forEach { evictAncestorPathCache(it) }
-    }
-
-    /**
      * 查询指定部门及其所有后代部门ID。
      */
     fun listSubtreeDeptIds(deptId: Long): List<Long> {
@@ -210,7 +190,7 @@ class DepartmentService(
             parentId = parentId,
             deptName = deptName,
             orderNum = params.orderNum ?: 0,
-            leaderUserId = params.leaderUserId,
+            leaderName = params.leaderName,
             tel = params.tel?.trim()?.takeIf { it.isNotBlank() },
             status = NormalStatus,
             delFlag = false,
@@ -272,7 +252,7 @@ class DepartmentService(
                 name = department.deptName.orEmpty(),
                 parentId = department.parentId ?: ROOT_PARENT_ID,
                 orderNum = department.orderNum ?: 0,
-                leaderUserId = department.leaderUserId,
+                leaderName= department.leaderName,
                 tel = department.tel,
                 status = department.status ?: NormalStatus,
                 children = buildDepartmentTree(deptId, childrenMap, visitedDeptIds),

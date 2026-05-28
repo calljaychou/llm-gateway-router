@@ -112,8 +112,8 @@ data class AdminUserDepartmentResult(
     val deptName: String,
     @ApiModelProperty(value = "排序号", required = true)
     val orderNum: Int,
-    @ApiModelProperty(value = "负责人用户ID")
-    val leaderUserId: Long?,
+    @ApiModelProperty(value = "负责人用户")
+    val leaderName: String?,
     @ApiModelProperty(value = "联系电话")
     val tel: String?,
     @ApiModelProperty(value = "状态", required = true)

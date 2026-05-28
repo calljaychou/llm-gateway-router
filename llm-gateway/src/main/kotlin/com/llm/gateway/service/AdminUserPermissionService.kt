@@ -91,12 +91,12 @@ class AdminUserPermissionService(
             username = params.username.trim(),
             email = params.email.trim().lowercase(),
             mobile = params.mobile?.trim(),
-            gender = 3,
+            gender = params.gender ?: 3,
             avatarUrl = null,
             password = passwordEncoder.encode(params.password),
             passwordChanged = !(params.forcePasswordChange ?: true),
             remark = null,
-            status = NormalStatus,
+            status = params.status ?: NormalStatus,
             delFlag = false,
             createdTime = now,
             updatedTime = now,
@@ -159,6 +159,8 @@ class AdminUserPermissionService(
                 set(UsersDynamicSqlSupport.Users.name).equalTo(params.name.trim())
                 set(UsersDynamicSqlSupport.Users.username).equalTo(params.username.trim())
                 set(UsersDynamicSqlSupport.Users.email).equalTo(params.email.trim().lowercase())
+                set(UsersDynamicSqlSupport.Users.gender).equalToWhenPresent(params.gender)
+                set(UsersDynamicSqlSupport.Users.status).equalToWhenPresent(params.status)
                 if (mobile == null) {
                     set(UsersDynamicSqlSupport.Users.mobile).equalToNull()
                 } else {
@@ -268,7 +270,8 @@ class AdminUserPermissionService(
         val modelByAlias = models.associateBy { it.modelAlias!! }
 
         val desiredPermissions = normalizedItems.map { item ->
-            val modelId = modelByAlias[item.modelAlias]?.id ?: throw BizException(BizException.BUSINESS_FAILED, "模型不存在")
+            val modelId =
+                modelByAlias[item.modelAlias]?.id ?: throw BizException(BizException.BUSINESS_FAILED, "模型不存在")
             DepartmentPermissionUpdateItemDto(
                 modelAlias = item.modelAlias,
                 modelId = modelId,
@@ -494,7 +497,7 @@ class AdminUserPermissionService(
             parentId = record.parentId ?: 0L,
             deptName = record.deptName.orEmpty(),
             orderNum = record.orderNum ?: 0,
-            leaderUserId = record.leaderUserId,
+            leaderName = record.leaderName,
             tel = record.tel,
             status = record.status ?: 0,
         )
@@ -535,7 +538,22 @@ class AdminUserPermissionService(
     private fun getUserQuotaConfig(userId: Long): AdminUserQuotaConfigResult? {
         return userQuotaAccountsMapper.selectOne {
             where { UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.userId isEqualTo userId }
-        }?.let { mapUserQuotaConfig(it) }
+        }?.let { mapUserQuotaConfig(it) } ?: emptyQuota(userId)
+    }
+
+    private fun emptyQuota(userId: Long): AdminUserQuotaConfigResult? {
+        return AdminUserQuotaConfigResult(
+            userId = userId,
+            currentQuotaTokens = 0L,
+            availableTokens = 0L,
+            usedTokens = 0L,
+            expiredTokens = 0L,
+            transferredInTokens = 0L,
+            transferredOutTokens = 0L,
+            allowTransferOut = false,
+            earliestExpireAt = null,
+            updatedAt = null
+        )
     }
 
     /**

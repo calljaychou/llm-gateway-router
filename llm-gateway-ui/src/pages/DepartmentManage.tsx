@@ -1,12 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { Card, Table, Button, Space, Modal, Form, Input, InputNumber, Drawer, Select, Tag, App, Typography } from 'antd';
-import { ApartmentOutlined, PlusOutlined, SafetyCertificateOutlined, DeleteOutlined } from '@ant-design/icons';
-import { adminDeptApi, adminGatewayApi, DepartmentPermissionItem, DepartmentTreeItem, ModelVendorListItem } from '../api/llmGatewayApi';
-const { Option } = Select;
-const { Text } = Typography;
+import React, {useEffect, useState} from 'react';
+import {Card, Table, Button, Space, Modal, Form, Input, InputNumber, Drawer, Select, Tag, App, Typography} from 'antd';
+import {ApartmentOutlined, PlusOutlined, SafetyCertificateOutlined, DeleteOutlined} from '@ant-design/icons';
+import {
+    adminDeptApi,
+    adminGatewayApi,
+    DepartmentPermissionItem,
+    DepartmentTreeItem,
+    ModelVendorListItem
+} from '../api/llmGatewayApi';
+
+const {Option} = Select;
+const {Text} = Typography;
 
 export const DepartmentManage: React.FC = () => {
-    const { message, modal } = App.useApp();
+    const {message, modal} = App.useApp();
     const [treeData, setTreeData] = useState<DepartmentTreeItem[]>([]);
     const [models, setModels] = useState<ModelVendorListItem[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
@@ -22,7 +29,7 @@ export const DepartmentManage: React.FC = () => {
     const [activeDept, setActiveDept] = useState<DepartmentTreeItem | null>(null);
 
     // 通用样式变量 (适配明亮主题)
-    const cardStyle = { backgroundColor: '#ffffff', borderRadius: 12, border: '1px solid #d0d7de' };
+    const cardStyle = {backgroundColor: '#ffffff', borderRadius: 12, border: '1px solid #d0d7de'};
     const textPrimary = '#1f2328';
     const textSecondary = '#656d76';
 
@@ -60,7 +67,7 @@ export const DepartmentManage: React.FC = () => {
     const handleOpenDeptModal = (parentId: number = 0) => {
         setCurrentParentId(parentId);
         deptForm.resetFields();
-        deptForm.setFieldsValue({ orderNum: 10 }); // 默认排序
+        deptForm.setFieldsValue({orderNum: 10}); // 默认排序
         setIsDeptModalOpen(true);
     };
 
@@ -124,8 +131,12 @@ export const DepartmentManage: React.FC = () => {
             const res = await adminDeptApi.getDeptPermissions(record.id, 'direct');
             if (res.success && res.data?.models) {
                 // 将后端结构映射为前端动态表单所需的格式
-                const items = res.data.models.map((m: any) => ({ modelAlias: m.modelAlias, scope: m.scope, status: m.status ?? 1 }));
-                permissionForm.setFieldsValue({ items });
+                const items = res.data.models.map((m: any) => ({
+                    modelAlias: m.modelAlias,
+                    scope: m.scope,
+                    status: m.status ?? 1
+                }));
+                permissionForm.setFieldsValue({items});
             }
         } catch {
             message.warning('读取当前权限策略失败，您可直接覆盖配置');
@@ -143,7 +154,7 @@ export const DepartmentManage: React.FC = () => {
                 }))
                 .filter((item): item is DepartmentPermissionItem => Boolean(item.modelAlias && item.scope && item.status !== undefined));
 
-            const res = await adminDeptApi.replaceDeptPermissions(activeDept.id, { items: payloadItems });
+            const res = await adminDeptApi.replaceDeptPermissions(activeDept.id, {items: payloadItems});
             if (!res.success) {
                 throw new Error(res.message || '授权策略下发失败');
             }
@@ -168,7 +179,7 @@ export const DepartmentManage: React.FC = () => {
             scope: model.scope,
             status: model.status ?? 1,
         }));
-        permissionForm.setFieldsValue({ items });
+        permissionForm.setFieldsValue({items});
     };
 
     // --- 表格列定义 ---
@@ -178,43 +189,46 @@ export const DepartmentManage: React.FC = () => {
             dataIndex: 'name',
             key: 'name',
             width: '28%',
-            render: (text: string) => <Text style={{ color: textPrimary, fontWeight: 500 }}>{text}</Text>
+            render: (text: string) => <Text style={{color: textPrimary, fontWeight: 500}}>{text}</Text>
         },
         {
             title: '排序优先度',
             dataIndex: 'orderNum',
             key: 'orderNum',
             width: '12%',
-            render: (num: number) => <Text style={{ color: textSecondary }}>{num}</Text>
+            render: (num: number) => <Text style={{color: textSecondary}}>{num}</Text>
         },
         {
-            title: '负责人ID (Leader)',
-            dataIndex: 'leaderUserId',
-            key: 'leaderUserId',
+            title: '负责人(Leader)',
+            dataIndex: 'leaderName',
+            key: 'leaderName',
             width: '15%',
-            render: (id?: number) => id ? <Tag color="blue" style={{ border: 'none' }}>UID: {id}</Tag> : <Text style={{ color: textSecondary }}>未绑定</Text>
+            render: (name?: string) => name ? <Text style={{color: textSecondary}}>{name}</Text> :
+                <Text style={{color: textSecondary}}>-</Text>
         },
         {
             title: '运转状态',
             dataIndex: 'status',
             key: 'status',
             width: '10%',
-            render: (s: number) => s === 1 ? <Tag color="success" style={{ border: 'none' }}>运行中</Tag> : <Tag color="error" style={{ border: 'none' }}>已停用</Tag>
+            render: (s: number) => s === 1 ? <Tag color="success" style={{border: 'none'}}>运行中</Tag> :
+                <Tag color="error" style={{border: 'none'}}>已停用</Tag>
         },
         {
             title: '管控操作',
             key: 'action',
             render: (_: any, record: DepartmentTreeItem) => (
                 <Space size="middle">
-                    <Button type="link" size="small" onClick={() => handleOpenDeptModal(record.id)} style={{ padding: 0 }}>
+                    <Button type="link" size="small" onClick={() => handleOpenDeptModal(record.id)}
+                            style={{padding: 0}}>
                         添加下级架构
                     </Button>
                     <Button
                         type="text"
                         size="small"
-                        icon={<SafetyCertificateOutlined />}
+                        icon={<SafetyCertificateOutlined/>}
                         onClick={() => handleOpenPermissionDrawer(record)}
-                        style={{ color: '#8250df', backgroundColor: '#fbeaff', padding: '0 8px' }}
+                        style={{color: '#8250df', backgroundColor: '#fbeaff', padding: '0 8px'}}
                     >
                         分配模型
                     </Button>
@@ -222,9 +236,9 @@ export const DepartmentManage: React.FC = () => {
                         type="text"
                         danger
                         size="small"
-                        icon={<DeleteOutlined />}
+                        icon={<DeleteOutlined/>}
                         onClick={() => handleDeleteDept(record.id, record.name)}
-                        style={{ padding: '0 8px' }}
+                        style={{padding: '0 8px'}}
                     >
                         删除
                     </Button>
@@ -234,18 +248,18 @@ export const DepartmentManage: React.FC = () => {
     ];
 
     return (
-        <div style={{ backgroundColor: '#f6f8fa', minHeight: '100%', padding: '24px' }}>
+        <div style={{backgroundColor: '#f6f8fa', minHeight: '100%', padding: '24px'}}>
             <Card
                 bordered={false}
-                style={{ ...cardStyle, minHeight: 600 }}
+                style={{...cardStyle, minHeight: 600}}
                 title={
                     <Space>
-                        <ApartmentOutlined style={{ color: textPrimary }} />
-                        <span style={{ color: textPrimary, fontWeight: 600, fontSize: 16 }}>企业级组织架构管控台</span>
+                        <ApartmentOutlined style={{color: textPrimary}}/>
+                        <span style={{color: textPrimary, fontWeight: 600, fontSize: 16}}>企业级组织架构管控台</span>
                     </Space>
                 }
                 extra={
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDeptModal(0)}>
+                    <Button type="primary" icon={<PlusOutlined/>} onClick={() => handleOpenDeptModal(0)}>
                         新建一级部门
                     </Button>
                 }
@@ -262,24 +276,28 @@ export const DepartmentManage: React.FC = () => {
 
                 {/* 部门创建弹窗 */}
                 <Modal
-                    title={<span style={{ color: textPrimary, fontWeight: 600 }}>{currentParentId === 0 ? "建立全新一级管控单元" : "添加下设子部门"}</span>}
+                    title={<span style={{
+                        color: textPrimary,
+                        fontWeight: 600
+                    }}>{currentParentId === 0 ? "建立全新一级管控单元" : "添加下设子部门"}</span>}
                     open={isDeptModalOpen}
                     onCancel={() => setIsDeptModalOpen(false)}
                     onOk={() => deptForm.submit()}
                     destroyOnClose
                 >
-                    <Form form={deptForm} layout="vertical" onFinish={handleDeptSubmit} style={{ marginTop: 24 }}>
-                        <Form.Item name="deptName" label="部门名称" rules={[{ required: true, message: '必须输入部门或团队名称' }]}>
-                            <Input placeholder="例如：华南区数据科学组 / 核心计费研发部" />
+                    <Form form={deptForm} layout="vertical" onFinish={handleDeptSubmit} style={{marginTop: 24}}>
+                        <Form.Item name="deptName" label="部门名称"
+                                   rules={[{required: true, message: '必须输入部门或团队名称'}]}>
+                            <Input placeholder="例如：华南区数据科学组 / 核心计费研发部"/>
                         </Form.Item>
                         <Form.Item name="orderNum" label="展示优先级次序 (数值越小越优先)">
-                            <InputNumber min={1} max={999} style={{ width: '100%' }} />
+                            <InputNumber min={1} max={999} style={{width: '100%'}}/>
                         </Form.Item>
-                        <Form.Item name="leaderUserId" label="绑定负责人用户UID">
-                            <InputNumber style={{ width: '100%' }} placeholder="输入内部用户流水号 (选填)" />
+                        <Form.Item name="leaderName" label="负责人">
+                            <Input placeholder="（选填）"/>
                         </Form.Item>
                         <Form.Item name="tel" label="部门联系方式">
-                            <Input placeholder="输入固话或紧急联系方式 (选填)" />
+                            <Input placeholder="输入固话或紧急联系方式 (选填)"/>
                         </Form.Item>
                     </Form>
                 </Modal>
@@ -288,8 +306,8 @@ export const DepartmentManage: React.FC = () => {
                 <Drawer
                     title={
                         <Space>
-                            <SafetyCertificateOutlined style={{ color: '#8250df' }} />
-                            <span style={{ color: textPrimary, fontWeight: 600 }}>大模型网关路由鉴权控制</span>
+                            <SafetyCertificateOutlined style={{color: '#8250df'}}/>
+                            <span style={{color: textPrimary, fontWeight: 600}}>大模型网关路由鉴权控制</span>
                         </Space>
                     }
                     width={680}
@@ -301,33 +319,46 @@ export const DepartmentManage: React.FC = () => {
                         </Button>
                     }
                 >
-                    <div style={{ marginBottom: 24, padding: '16px', backgroundColor: '#f6f8fa', borderRadius: 8, border: '1px solid #d0d7de' }}>
-                        <Text style={{ color: textPrimary, fontWeight: 500 }}>当前目标控制节点：</Text>
-                        <Tag color="#fbeaff" style={{ color: '#8250df', marginLeft: 8, border: 'none', fontWeight: 500, fontSize: 14 }}>
+                    <div style={{
+                        marginBottom: 24,
+                        padding: '16px',
+                        backgroundColor: '#f6f8fa',
+                        borderRadius: 8,
+                        border: '1px solid #d0d7de'
+                    }}>
+                        <Text style={{color: textPrimary, fontWeight: 500}}>当前目标控制节点：</Text>
+                        <Tag color="#fbeaff"
+                             style={{color: '#8250df', marginLeft: 8, border: 'none', fontWeight: 500, fontSize: 14}}>
                             {activeDept?.name}
                         </Tag>
-                        <div style={{ marginTop: 12, fontSize: 13, color: textSecondary, lineHeight: 1.5 }}>
+                        <div style={{marginTop: 12, fontSize: 13, color: textSecondary, lineHeight: 1.5}}>
                             提示：授权控制策略默认采用<b>继承下发机制</b>。若将作用域配置为 <Text code>SUBTREE</Text>，则该组别节点及其下设的所有子孙组别均自动继承此模型路由调用许可。
                         </div>
                     </div>
 
                     <Form form={permissionForm} layout="vertical" onFinish={handlePermissionSubmit}>
                         <Form.List name="items">
-                            {(fields, { add, remove }) => (
+                            {(fields, {add, remove}) => (
                                 <>
-                                    {fields.map(({ key, name, ...restField }) => (
+                                    {fields.map(({key, name, ...restField}) => (
                                         <Card
                                             size="small"
                                             key={key}
-                                            style={{ marginBottom: 16, border: '1px dashed #d0d7de', borderRadius: 8 }}
-                                            extra={<Button type="link" onClick={() => remove(name)} style={{ color: '#cf222e', padding: 0 }}>移除此项规则</Button>}
+                                            style={{marginBottom: 16, border: '1px dashed #d0d7de', borderRadius: 8}}
+                                            extra={<Button type="link" onClick={() => remove(name)}
+                                                           style={{color: '#cf222e', padding: 0}}>移除此项规则</Button>}
                                         >
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) 160px 120px', gap: 12, alignItems: 'start' }}>
+                                            <div style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: 'minmax(220px, 1fr) 160px 120px',
+                                                gap: 12,
+                                                alignItems: 'start'
+                                            }}>
                                                 <Form.Item
                                                     {...restField}
                                                     name={[name, 'modelAlias']}
-                                                    rules={[{ required: true, message: '请指定模型路由' }]}
-                                                    style={{ marginBottom: 0 }}
+                                                    rules={[{required: true, message: '请指定模型路由'}]}
+                                                    style={{marginBottom: 0}}
                                                 >
                                                     <Select
                                                         showSearch
@@ -341,7 +372,8 @@ export const DepartmentManage: React.FC = () => {
                                                                 data-search={`${model.vendorName} ${model.modelAlias}`}
                                                             >
                                                                 <Space size={6}>
-                                                                    <Tag color="blue" style={{ border: 'none', marginInlineEnd: 0 }}>
+                                                                    <Tag color="blue"
+                                                                         style={{border: 'none', marginInlineEnd: 0}}>
                                                                         {model.vendorName}
                                                                     </Tag>
                                                                     <Text code>{model.modelAlias}</Text>
@@ -354,8 +386,8 @@ export const DepartmentManage: React.FC = () => {
                                                 <Form.Item
                                                     {...restField}
                                                     name={[name, 'scope']}
-                                                    rules={[{ required: true, message: '必须选择作用域' }]}
-                                                    style={{ marginBottom: 0 }}
+                                                    rules={[{required: true, message: '必须选择作用域'}]}
+                                                    style={{marginBottom: 0}}
                                                 >
                                                     <Select placeholder="控制策略作用域">
                                                         <Option value="SELF">仅限本组调用</Option>
@@ -366,9 +398,9 @@ export const DepartmentManage: React.FC = () => {
                                                 <Form.Item
                                                     {...restField}
                                                     name={[name, 'status']}
-                                                    rules={[{ required: true, message: '必须选择状态' }]}
+                                                    rules={[{required: true, message: '必须选择状态'}]}
                                                     initialValue={1}
-                                                    style={{ marginBottom: 0 }}
+                                                    style={{marginBottom: 0}}
                                                 >
                                                     <Select placeholder="状态">
                                                         <Option value={1}>启用</Option>
@@ -379,7 +411,9 @@ export const DepartmentManage: React.FC = () => {
                                         </Card>
                                     ))}
                                     <Form.Item>
-                                        <Button type="dashed" onClick={() => add({ status: 1 })} block icon={<PlusOutlined />} style={{ height: 40, borderColor: '#0969da', color: '#0969da' }}>
+                                        <Button type="dashed" onClick={() => add({status: 1})} block
+                                                icon={<PlusOutlined/>}
+                                                style={{height: 40, borderColor: '#0969da', color: '#0969da'}}>
                                             添加新网关路由映射规则项
                                         </Button>
                                     </Form.Item>

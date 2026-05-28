@@ -4,6 +4,8 @@ import com.llm.gateway.model.PageParams
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
 import javax.validation.constraints.Email
+import javax.validation.constraints.Max
+import javax.validation.constraints.Min
 import javax.validation.constraints.NotBlank
 import javax.validation.constraints.NotEmpty
 import javax.validation.constraints.NotNull
@@ -22,6 +24,14 @@ data class AdminUserCreateParams(
     val email: String,
     @ApiModelProperty(value = "手机号", example = "13800138000")
     val mobile: String? = null,
+    @ApiModelProperty(value = "性别：1男 2女 3未知", example = "3")
+    @field:Min(value = 1, message = "性别仅支持1男、2女、3未知")
+    @field:Max(value = 3, message = "性别仅支持1男、2女、3未知")
+    val gender: Int? = 3,
+    @ApiModelProperty(value = "用户状态：0停用 1正常", example = "1")
+    @field:Min(value = 0, message = "用户状态仅支持0停用、1正常")
+    @field:Max(value = 1, message = "用户状态仅支持0停用、1正常")
+    val status: Int? = 1,
     @ApiModelProperty(value = "部门ID", required = true, example = "2001")
     @field:NotNull(message = "部门ID不能为空")
     val deptId: Long?,
@@ -56,6 +66,14 @@ data class AdminUserUpdateParams(
     val email: String,
     @ApiModelProperty(value = "手机号", example = "13800138000")
     val mobile: String? = null,
+    @ApiModelProperty(value = "性别：1男 2女 3未知", example = "3")
+    @field:Min(value = 1, message = "性别仅支持1男、2女、3未知")
+    @field:Max(value = 3, message = "性别仅支持1男、2女、3未知")
+    val gender: Int? = null,
+    @ApiModelProperty(value = "用户状态：0停用 1正常", example = "1")
+    @field:Min(value = 0, message = "用户状态仅支持0停用、1正常")
+    @field:Max(value = 1, message = "用户状态仅支持0停用、1正常")
+    val status: Int? = null,
     @ApiModelProperty(value = "部门ID", required = true, example = "2001")
     @field:NotNull(message = "部门ID不能为空")
     val deptId: Long?,

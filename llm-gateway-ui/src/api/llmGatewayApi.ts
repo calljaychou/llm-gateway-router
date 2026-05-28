@@ -207,7 +207,7 @@ export const quotaApi = {
 /** ==================== 3. 管理端-组织架构与用户管理 ==================== */
 export interface CreateDepartmentParams {
     deptName: string;
-    leaderUserId?: number;
+    leaderName?: string;
     orderNum?: number;
     tel?: string;
 }
@@ -219,7 +219,7 @@ export interface DepartmentTreeItem {
     parentId: number;
     status: number;
     children?: DepartmentTreeItem[];
-    leaderUserId?: number;
+    leaderName?: string;
     tel?: string;
 }
 
@@ -263,6 +263,8 @@ export interface CreateAdminUserParams {
     username: string;
     email: string;
     mobile?: string;
+    gender?: number;
+    status?: number;
     deptId: number;
     roleKeys: string[];
     password: string;
@@ -274,6 +276,8 @@ export interface UpdateAdminUserParams {
     username: string;
     email: string;
     mobile?: string;
+    gender?: number;
+    status?: number;
     deptId: number;
     roleKeys: string[];
 }
@@ -340,7 +344,7 @@ export interface AdminUserDepartmentInfo {
     parentId: number;
     deptName: string;
     orderNum: number;
-    leaderUserId?: number;
+    leaderName?: string;
     tel?: string;
     status: number;
 }
