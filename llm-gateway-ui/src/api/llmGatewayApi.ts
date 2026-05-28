@@ -239,7 +239,9 @@ export interface DepartmentPermissionViewItem {
     realModelName: string;
     scope: 'SELF' | 'SUBTREE';
     sourceDeptId: number;
+    sourceDeptName: string;
     vendorId: number;
+    vendorName: string;
 }
 
 export interface DepartmentPermissionsViewResult {
@@ -270,6 +272,15 @@ export interface AdminUserCreateResult {
     passwordChanged: boolean;
 }
 
+export interface ChangeAdminUserPasswordParams {
+    password: string;
+}
+
+export interface AdminUserPasswordChangeResult {
+    userId: number;
+    passwordChanged: boolean;
+}
+
 export interface AdminUserPageParams {
     deptId?: number;
     mobile?: string;
@@ -289,6 +300,66 @@ export interface AdminUserListItem {
     gender: number;
     status: number;
     createdTime?: string;
+}
+
+export interface AdminUserBaseInfo {
+    userId: number;
+    name?: string;
+    deptId?: number;
+    username?: string;
+    email?: string;
+    mobile?: string;
+    gender?: number;
+    avatarUrl?: string;
+    passwordChanged?: boolean;
+    remark?: string;
+    status?: number;
+    delFlag?: boolean;
+    createdTime?: string;
+    updatedTime?: string;
+}
+
+export interface AdminUserDepartmentInfo {
+    deptId: number;
+    parentId: number;
+    deptName: string;
+    orderNum: number;
+    leaderUserId?: number;
+    tel?: string;
+    status: number;
+}
+
+export interface AdminUserModelPermission {
+    active: boolean;
+    billingType: string;
+    modelAlias: string;
+    realModelName: string;
+    scope: 'SELF' | 'SUBTREE';
+    sourceDeptId: number;
+    sourceDeptName: string;
+    vendorId: number;
+    vendorName: string;
+}
+
+export interface AdminUserQuotaConfig {
+    userId: number;
+    currentQuotaTokens: number;
+    availableTokens: number;
+    usedTokens: number;
+    expiredTokens: number;
+    transferredInTokens: number;
+    transferredOutTokens: number;
+    allowTransferOut: boolean;
+    earliestExpireAt?: string;
+    updatedAt?: string;
+}
+
+export interface AdminUserDetail {
+    user: AdminUserBaseInfo;
+    department?: AdminUserDepartmentInfo;
+    roles: RoleListItem[];
+    modelPermissions: AdminUserModelPermission[];
+    quota?: AdminUserQuotaConfig;
 }
 
 export interface RoleListItem {
@@ -323,8 +394,16 @@ export const adminUserApi = {
         const res = await api.get<ApiResult<PageResult<AdminUserListItem>>>('/admin/users', { params });
         return res.data;
     },
+    getUserDetail: async (id: number) => {
+        const res = await api.get<ApiResult<AdminUserDetail>>(`/admin/users/${id}/detail`);
+        return res.data;
+    },
     createUser: async (params: CreateAdminUserParams) => {
         const res = await api.post<ApiResult<AdminUserCreateResult>>('/admin/users', params);
+        return res.data;
+    },
+    changeUserPassword: async (id: number, params: ChangeAdminUserPasswordParams) => {
+        const res = await api.put<ApiResult<AdminUserPasswordChangeResult>>(`/admin/users/${id}/password`, params);
         return res.data;
     }
 };

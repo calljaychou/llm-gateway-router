@@ -19,12 +19,16 @@ data class DepartmentPermissionViewItem(
     val realModelName: String,
     @ApiModelProperty(value = "供应商ID", required = true)
     val vendorId: Long,
+    @ApiModelProperty(value = "供应商名称", required = true)
+    val vendorName: String,
     @ApiModelProperty(value = "计费类型(FREE/PAID)", required = true)
     val billingType: String,
     @ApiModelProperty(value = "模型是否启用", required = true)
     val active: Boolean,
     @ApiModelProperty(value = "权限来源部门ID", required = true)
     val sourceDeptId: Long,
+    @ApiModelProperty(value = "权限来源部门名称", required = true)
+    val sourceDeptName: String,
     @ApiModelProperty(value = "作用域(SELF/SUBTREE)", required = true)
     val scope: String,
 )

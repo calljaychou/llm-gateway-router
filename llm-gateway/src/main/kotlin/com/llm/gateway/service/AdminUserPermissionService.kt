@@ -5,6 +5,7 @@ import com.github.pagehelper.page.PageMethod
 import com.llm.gateway.common.enums.DepartmentPermissionScope
 import com.llm.gateway.common.enums.NormalStatus
 import com.llm.gateway.common.exceptions.BizException
+import com.llm.gateway.common.logger
 import com.llm.gateway.dal.mapper.DepartmentDynamicSqlSupport
 import com.llm.gateway.dal.mapper.DepartmentMapper
 import com.llm.gateway.dal.mapper.DepartmentModelPermissionsDynamicSqlSupport
@@ -14,6 +15,11 @@ import com.llm.gateway.dal.mapper.ModelsMapper
 import com.llm.gateway.dal.mapper.RolesDynamicSqlSupport
 import com.llm.gateway.dal.mapper.RolesMapper
 import com.llm.gateway.dal.mapper.UserRoleRelMapper
+import com.llm.gateway.dal.mapper.UserRoleRelDynamicSqlSupport
+import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport
+import com.llm.gateway.dal.mapper.UserQuotaAccountsMapper
+import com.llm.gateway.dal.mapper.VendorsDynamicSqlSupport
+import com.llm.gateway.dal.mapper.VendorsMapper
 import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport
 import com.llm.gateway.dal.mapper.UsersMapper
 import com.llm.gateway.dal.mapper.insert
@@ -22,6 +28,9 @@ import com.llm.gateway.dal.mapper.select
 import com.llm.gateway.dal.mapper.selectOne
 import com.llm.gateway.dal.mapper.updateByPrimaryKeySelective
 import com.llm.gateway.dal.model.DepartmentModelPermissionsRecord
+import com.llm.gateway.dal.model.DepartmentRecord
+import com.llm.gateway.dal.model.RolesRecord
+import com.llm.gateway.dal.model.UserQuotaAccountsRecord
 import com.llm.gateway.dal.model.UserRoleRelRecord
 import com.llm.gateway.dal.model.UsersRecord
 import com.llm.gateway.model.PageResult
@@ -29,12 +38,19 @@ import com.llm.gateway.model.dto.ModelMetaDto
 import com.llm.gateway.model.dto.PermissionPairDto
 import com.llm.gateway.model.params.AdminUserCreateParams
 import com.llm.gateway.model.params.AdminUserPageParams
+import com.llm.gateway.model.params.AdminUserPasswordChangeParams
 import com.llm.gateway.model.params.DepartmentPermissionsUpdateParams
 import com.llm.gateway.model.results.AdminUserCreateResult
+import com.llm.gateway.model.results.AdminUserBaseInfoResult
+import com.llm.gateway.model.results.AdminUserDepartmentResult
+import com.llm.gateway.model.results.AdminUserDetailResult
 import com.llm.gateway.model.results.AdminUserPageItemResult
+import com.llm.gateway.model.results.AdminUserPasswordChangeResult
+import com.llm.gateway.model.results.AdminUserQuotaConfigResult
 import com.llm.gateway.model.results.DepartmentPermissionViewItem
 import com.llm.gateway.model.results.DepartmentPermissionsUpdateResult
 import com.llm.gateway.model.results.DepartmentPermissionsViewResult
+import com.llm.gateway.model.results.RoleListItemResult
 import com.llm.gateway.model.results.UserEffectivePermissionsResult
 import java.util.Date
 import org.springframework.dao.DataIntegrityViolationException
@@ -49,10 +65,14 @@ class AdminUserPermissionService(
     private val departmentMapper: DepartmentMapper,
     private val rolesMapper: RolesMapper,
     private val userRoleRelMapper: UserRoleRelMapper,
+    private val userQuotaAccountsMapper: UserQuotaAccountsMapper,
+    private val vendorsMapper: VendorsMapper,
     private val modelsMapper: ModelsMapper,
     private val departmentModelPermissionsMapper: DepartmentModelPermissionsMapper,
     private val passwordEncoder: PasswordEncoder,
 ) {
+
+    private val log = logger()
 
     @Transactional(rollbackFor = [Exception::class])
     fun createUser(params: AdminUserCreateParams): AdminUserCreateResult {
@@ -117,6 +137,45 @@ class AdminUserPermissionService(
         return AdminUserCreateResult(
             userId = userId,
             passwordChanged = userRecord.passwordChanged ?: false,
+        )
+    }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun changeUserPassword(userId: Long, params: AdminUserPasswordChangeParams): AdminUserPasswordChangeResult {
+        ensureUserExists(userId)
+
+        usersMapper.updateByPrimaryKeySelective(
+            UsersRecord(
+                id = userId,
+                password = passwordEncoder.encode(params.password),
+                passwordChanged = false,
+                updatedTime = Date(),
+            )
+        )
+        log.info("管理员修改用户密码成功 userId={}", userId)
+
+        return AdminUserPasswordChangeResult(
+            userId = userId,
+            passwordChanged = false,
+        )
+    }
+
+    fun getUserDetail(userId: Long): AdminUserDetailResult {
+        val user = usersMapper.selectOne {
+            where { UsersDynamicSqlSupport.Users.id isEqualTo userId }
+            and { UsersDynamicSqlSupport.Users.delFlag isEqualTo false }
+        } ?: throw BizException(BizException.BUSINESS_FAILED, "用户不存在")
+        val department = user.deptId?.let { getUserDepartment(it) }
+        val roles = listUserRoles(userId)
+        val quota = getUserQuotaConfig(userId)
+        val modelPermissions = user.deptId?.let { buildEffectivePermissionView(it) }.orEmpty()
+
+        return AdminUserDetailResult(
+            user = mapAdminUserBaseInfo(user),
+            department = department,
+            roles = roles,
+            modelPermissions = modelPermissions,
+            quota = quota,
         )
     }
 
@@ -279,6 +338,16 @@ class AdminUserPermissionService(
     }
 
     /**
+     * 校验用户存在且未删除。
+     */
+    private fun ensureUserExists(userId: Long): UsersRecord {
+        return usersMapper.selectOne {
+            where { UsersDynamicSqlSupport.Users.id isEqualTo userId }
+            and { UsersDynamicSqlSupport.Users.delFlag isEqualTo false }
+        } ?: throw BizException(BizException.BUSINESS_FAILED, "用户不存在")
+    }
+
+    /**
      * 转换管理端用户分页列表项。
      */
     private fun mapAdminUserPageItem(
@@ -298,6 +367,110 @@ class AdminUserPermissionService(
             gender = record.gender ?: 0,
             status = record.status ?: 0,
             createdTime = record.createdTime,
+        )
+    }
+
+    /**
+     * 转换用户表完整基础信息，排除密码哈希等敏感字段。
+     */
+    private fun mapAdminUserBaseInfo(record: UsersRecord): AdminUserBaseInfoResult {
+        val userId = record.id ?: throw BizException(BizException.SYSTEM_FAILED, "用户ID异常")
+        return AdminUserBaseInfoResult(
+            userId = userId,
+            name = record.name,
+            deptId = record.deptId,
+            username = record.username,
+            email = record.email,
+            mobile = record.mobile,
+            gender = record.gender,
+            avatarUrl = record.avatarUrl,
+            passwordChanged = record.passwordChanged,
+            remark = record.remark,
+            status = record.status,
+            delFlag = record.delFlag,
+            createdTime = record.createdTime,
+            updatedTime = record.updatedTime,
+        )
+    }
+
+    /**
+     * 查询用户绑定部门详情。
+     */
+    private fun getUserDepartment(deptId: Long): AdminUserDepartmentResult? {
+        return departmentMapper.selectOne {
+            where { DepartmentDynamicSqlSupport.Department.id isEqualTo deptId }
+            and { DepartmentDynamicSqlSupport.Department.delFlag isEqualTo false }
+        }?.let { mapUserDepartment(it) }
+    }
+
+    /**
+     * 转换用户关联部门信息。
+     */
+    private fun mapUserDepartment(record: DepartmentRecord): AdminUserDepartmentResult {
+        return AdminUserDepartmentResult(
+            deptId = record.id ?: throw BizException(BizException.SYSTEM_FAILED, "部门ID异常"),
+            parentId = record.parentId ?: 0L,
+            deptName = record.deptName.orEmpty(),
+            orderNum = record.orderNum ?: 0,
+            leaderUserId = record.leaderUserId,
+            tel = record.tel,
+            status = record.status ?: 0,
+        )
+    }
+
+    /**
+     * 查询用户关联角色列表。
+     */
+    private fun listUserRoles(userId: Long): List<RoleListItemResult> {
+        val roleIds = userRoleRelMapper.select {
+            where { UserRoleRelDynamicSqlSupport.UserRoleRel.userId isEqualTo userId }
+        }.mapNotNull { it.roleId }.distinct()
+        if (roleIds.isEmpty()) return emptyList()
+
+        return rolesMapper.select {
+            where { RolesDynamicSqlSupport.Roles.id isIn roleIds }
+            orderBy(RolesDynamicSqlSupport.Roles.roleSort, RolesDynamicSqlSupport.Roles.id)
+        }.map { mapRoleListItem(it) }
+    }
+
+    /**
+     * 转换角色列表项。
+     */
+    private fun mapRoleListItem(record: RolesRecord): RoleListItemResult {
+        return RoleListItemResult(
+            id = record.id ?: throw BizException(BizException.SYSTEM_FAILED, "角色ID异常"),
+            roleName = record.roleName.orEmpty(),
+            roleKey = record.roleKey.orEmpty(),
+            roleSort = record.roleSort ?: 0,
+            createdBy = record.createdBy,
+            createdTime = record.createdTime,
+        )
+    }
+
+    /**
+     * 查询用户配额配置详情，未配置时返回空。
+     */
+    private fun getUserQuotaConfig(userId: Long): AdminUserQuotaConfigResult? {
+        return userQuotaAccountsMapper.selectOne {
+            where { UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.userId isEqualTo userId }
+        }?.let { mapUserQuotaConfig(it) }
+    }
+
+    /**
+     * 转换用户配额账户快照。
+     */
+    private fun mapUserQuotaConfig(record: UserQuotaAccountsRecord): AdminUserQuotaConfigResult {
+        return AdminUserQuotaConfigResult(
+            userId = record.userId ?: 0L,
+            currentQuotaTokens = record.currentQuotaTokens ?: 0L,
+            availableTokens = record.availableTokens ?: 0L,
+            usedTokens = record.usedTokens ?: 0L,
+            expiredTokens = record.expiredTokens ?: 0L,
+            transferredInTokens = record.transferredInTokens ?: 0L,
+            transferredOutTokens = record.transferredOutTokens ?: 0L,
+            allowTransferOut = record.allowTransferOut ?: false,
+            earliestExpireAt = record.earliestExpireAt,
+            updatedAt = record.updatedTime,
         )
     }
 
@@ -354,15 +527,18 @@ class AdminUserPermissionService(
             return emptyList()
         }
         val modelMetaMap = queryModelMetaMap(directPermissions.mapNotNull { it.modelId }.distinct())
+        val departmentNames = listDepartmentNamesByIds(listOf(deptId))
         return directPermissions.mapNotNull { record ->
             val modelMeta = modelMetaMap[record.modelId] ?: return@mapNotNull null
             DepartmentPermissionViewItem(
                 modelAlias = modelMeta.modelAlias,
                 realModelName = modelMeta.realModelName,
                 vendorId = modelMeta.vendorId,
+                vendorName = modelMeta.vendorName,
                 billingType = modelMeta.billingType,
                 active = modelMeta.active,
                 sourceDeptId = deptId,
+                sourceDeptName = departmentNames[deptId].orEmpty(),
                 scope = record.scope ?: DepartmentPermissionScope.SELF.value,
             )
         }.sortedBy { it.modelAlias }
@@ -384,6 +560,7 @@ class AdminUserPermissionService(
         }
 
         val modelMetaMap = queryModelMetaMap(permissions.mapNotNull { it.modelId }.distinct())
+        val departmentNames = listDepartmentNamesByIds(permissions.mapNotNull { it.deptId }.distinct())
         val distanceByDept = ancestorPath.withIndex().associate { it.value to it.index }
         val winnerByModel = linkedMapOf<Long, DepartmentPermissionViewItem>()
 
@@ -399,9 +576,11 @@ class AdminUserPermissionService(
                 modelAlias = modelMeta.modelAlias,
                 realModelName = modelMeta.realModelName,
                 vendorId = modelMeta.vendorId,
+                vendorName = modelMeta.vendorName,
                 billingType = modelMeta.billingType,
                 active = modelMeta.active,
                 sourceDeptId = sourceDeptId,
+                sourceDeptName = departmentNames[sourceDeptId].orEmpty(),
                 scope = sourceScope,
             )
         }
@@ -433,9 +612,11 @@ class AdminUserPermissionService(
         if (modelIds.isEmpty()) {
             return emptyMap()
         }
-        return modelsMapper.select {
+        val models = modelsMapper.select {
             where { ModelsDynamicSqlSupport.Models.id isIn modelIds }
-        }.mapNotNull { model ->
+        }
+        val vendorNames = listVendorNames(models.mapNotNull { it.vendorId }.distinct())
+        return models.mapNotNull { model ->
             val id = model.id ?: return@mapNotNull null
             val modelAlias = model.modelAlias ?: return@mapNotNull null
             val realModelName = model.realModelName ?: return@mapNotNull null
@@ -445,9 +626,38 @@ class AdminUserPermissionService(
                 modelAlias = modelAlias,
                 realModelName = realModelName,
                 vendorId = vendorId,
+                vendorName = vendorNames[vendorId].orEmpty(),
                 billingType = billingType,
                 active = model.active ?: false,
             )
+        }.toMap()
+    }
+
+    /**
+     * 批量查询部门名称。
+     */
+    private fun listDepartmentNamesByIds(deptIds: List<Long>): Map<Long, String> {
+        if (deptIds.isEmpty()) return emptyMap()
+
+        return departmentMapper.select {
+            where { DepartmentDynamicSqlSupport.Department.id isIn deptIds }
+        }.mapNotNull { department ->
+            val deptId = department.id ?: return@mapNotNull null
+            deptId to department.deptName.orEmpty()
+        }.toMap()
+    }
+
+    /**
+     * 批量查询供应商名称。
+     */
+    private fun listVendorNames(vendorIds: List<Long>): Map<Long, String> {
+        if (vendorIds.isEmpty()) return emptyMap()
+
+        return vendorsMapper.select {
+            where { VendorsDynamicSqlSupport.Vendors.id isIn vendorIds }
+        }.mapNotNull { vendor ->
+            val vendorId = vendor.id ?: return@mapNotNull null
+            vendorId to vendor.name.orEmpty()
         }.toMap()
     }
 }

@@ -137,17 +137,17 @@ export const QuotaTransactions: React.FC = () => {
                     ) : (
                         <div style={{ maxWidth: 600, margin: '20px 0' }}>
                             <Form form={form} layout="vertical" onFinish={handleTransferSubmit}>
-                                <Form.Item name="targetUserId" label="划转目标用户唯一识别码 (Target User ID)" rules={[{ required: true, message: '请输入合法的转入方用户ID' }]}>
-                                    <InputNumber style={{ width: '100%' }} placeholder="请输入目标系统的数字 User ID" precision={0} />
+                                <Form.Item name="targetUserId" label="划转目标用户唯一识别码" rules={[{ required: true, message: '请输入合法的转入方账号' }]}>
+                                    <InputNumber style={{ width: '100%' }} placeholder="请输入目标账号（用户名、手机号或邮箱）" precision={0} />
                                 </Form.Item>
                                 <Form.Item name="transferTokens" label="调配划转 Token 资产总量" rules={[{ required: true, message: '请输入划配总量' }]}>
                                     <InputNumber style={{ width: '100%' }} min={1} placeholder="请输入大模型 Token 资源划配数" precision={0} />
                                 </Form.Item>
-                                <Form.Item name="remark" label="转配审批事由/备注留痕">
-                                    <Input.TextArea rows={4} placeholder="例如: 支援数据分析团队第二季度大模型微调推理额度" maxLength={200} />
+                                <Form.Item name="remark" label="转配事由备注">
+                                    <Input.TextArea rows={4} placeholder="例如: 支援xx用户本月大项目开发额度" maxLength={200} />
                                 </Form.Item>
                                 <Form.Item>
-                                    <Button type="primary" htmlType="submit" loading={transferLoading}>立即执行跨境安全划转</Button>
+                                    <Button type="primary" htmlType="submit" loading={transferLoading}>确认并提交</Button>
                                 </Form.Item>
                             </Form>
                         </div>

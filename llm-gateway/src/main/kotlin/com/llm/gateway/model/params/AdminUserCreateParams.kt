@@ -35,6 +35,13 @@ data class AdminUserCreateParams(
     val forcePasswordChange: Boolean? = true,
 )
 
+@ApiModel("管理端-修改用户密码参数")
+data class AdminUserPasswordChangeParams(
+    @ApiModelProperty(value = "新密码", required = true, example = "Temp@123456")
+    @field:NotBlank(message = "新密码不能为空")
+    val password: String,
+)
+
 @ApiModel("管理端-用户分页查询参数")
 class AdminUserPageParams : PageParams() {
     @ApiModelProperty(value = "部门ID", required = false, example = "2001")
