@@ -314,9 +314,12 @@ export const UserManage: React.FC = () => {
                 ) : activeView === 'detail' ? (
                     <UserDetailView
                         detail={selectedUserDetail}
+                        departments={departments}
+                        roles={roles}
                         loading={detailLoading}
                         onBack={handleBackToUsers}
                         onReload={handleViewDetail}
+                        onUserUpdated={fetchUsers}
                         textPrimary={textPrimary}
                         textSecondary={textSecondary}
                     />
@@ -463,21 +466,78 @@ function formatGender(gender: number): string {
 
 interface UserDetailViewProps {
     detail: AdminUserDetail | null;
+    departments: DepartmentTreeItem[];
+    roles: RoleListItem[];
     loading: boolean;
     onBack: () => void;
     onReload: (userId: number) => void;
+    onUserUpdated: () => void;
     textPrimary: string;
     textSecondary: string;
 }
 
-const UserDetailView: React.FC<UserDetailViewProps> = ({detail, loading, onBack, onReload, textPrimary, textSecondary}) => {
+const UserDetailView: React.FC<UserDetailViewProps> = ({
+    detail,
+    departments,
+    roles,
+    loading,
+    onBack,
+    onReload,
+    onUserUpdated,
+    textPrimary,
+    textSecondary
+}) => {
     const {message} = App.useApp();
     const [passwordForm] = Form.useForm();
+    const [userForm] = Form.useForm();
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState<boolean>(false);
+    const [isUserModalOpen, setIsUserModalOpen] = useState<boolean>(false);
+    const departmentTreeData = useMemo(() => buildDepartmentTreeSelectData(departments), [departments]);
 
     const handleOpenPasswordModal = () => {
         passwordForm.resetFields();
         setIsPasswordModalOpen(true);
+    };
+
+    const handleOpenUserModal = () => {
+        if (!detail) return;
+        userForm.resetFields();
+        userForm.setFieldsValue({
+            name: detail.user.name,
+            username: detail.user.username,
+            email: detail.user.email,
+            mobile: detail.user.mobile,
+            deptId: detail.user.deptId,
+            roleKeys: detail.roles.map((role) => role.roleKey),
+        });
+        setIsUserModalOpen(true);
+    };
+
+    const handleUpdateUser = async (values: any) => {
+        const userId = detail?.user.userId;
+        if (!userId) return;
+
+        try {
+            const res = await adminUserApi.updateUser(userId, {
+                name: values.name.trim(),
+                username: values.username.trim(),
+                email: values.email.trim(),
+                mobile: values.mobile?.trim() || undefined,
+                deptId: values.deptId,
+                roleKeys: values.roleKeys,
+            });
+            if (!res.success) {
+                throw new Error(res.message || '保存用户信息失败');
+            }
+            message.success('用户信息已保存');
+            setIsUserModalOpen(false);
+            userForm.resetFields();
+            onReload(userId);
+            onUserUpdated();
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : '保存用户信息失败';
+            message.error(errorMessage);
+        }
     };
 
     const handleChangePassword = async (values: { password: string }) => {
@@ -544,22 +604,20 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({detail, loading, onBack,
             width: 110,
             render: (scope: string) => <Tag color="blue" style={{border: 'none'}}>{scope}</Tag>,
         },
-        {
-            title: '状态',
-            dataIndex: 'active',
-            key: 'active',
-            width: 100,
-            render: (active: boolean) => active
-                ? <Tag color="success" style={{border: 'none'}}>启用</Tag>
-                : <Tag color="error" style={{border: 'none'}}>停用</Tag>,
-        },
     ];
 
     return (
         <Space direction="vertical" size={18} style={{width: '100%'}}>
-            <Button icon={<ArrowLeftOutlined/>} onClick={onBack}>
-                返回用户列表
-            </Button>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12}}>
+                <Button icon={<ArrowLeftOutlined/>} onClick={onBack}>
+                    返回用户列表
+                </Button>
+                {detail ? (
+                    <Button type="primary" onClick={handleOpenUserModal}>
+                        修改用户信息
+                    </Button>
+                ) : null}
+            </div>
 
             <section style={detailSectionStyle}>
                 <SectionTitle title="用户基础信息" textPrimary={textPrimary}/>
@@ -713,6 +771,49 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({detail, loading, onBack,
                         rules={[{required: true, message: '请输入新密码'}]}
                     >
                         <Input.Password placeholder="Temp@123456"/>
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            <Modal
+                title="修改用户信息"
+                open={isUserModalOpen}
+                onCancel={() => setIsUserModalOpen(false)}
+                onOk={() => userForm.submit()}
+                okText="保存"
+                destroyOnClose
+            >
+                <Form form={userForm} layout="vertical" onFinish={handleUpdateUser} style={{marginTop: 16}}>
+                    <Form.Item name="name" label="姓名" rules={[{required: true, message: '请输入姓名'}]}>
+                        <Input placeholder="例如：Alice Chen"/>
+                    </Form.Item>
+                    <Form.Item name="username" label="用户名" rules={[{required: true, message: '请输入用户名'}]}>
+                        <Input placeholder="例如：alice"/>
+                    </Form.Item>
+                    <Form.Item name="email" label="邮箱"
+                               rules={[{required: true, type: 'email', message: '请输入有效邮箱'}]}>
+                        <Input placeholder="alice@company.com"/>
+                    </Form.Item>
+                    <Form.Item name="mobile" label="手机号">
+                        <Input placeholder="13800138000"/>
+                    </Form.Item>
+                    <Form.Item name="deptId" label="所属部门" rules={[{required: true, message: '请选择所属部门'}]}>
+                        <TreeSelect
+                            showSearch
+                            placeholder="选择部门"
+                            treeData={departmentTreeData}
+                            treeDefaultExpandAll
+                            treeNodeFilterProp="title"
+                        />
+                    </Form.Item>
+                    <Form.Item name="roleKeys" label="系统角色" rules={[{required: true, message: '请选择角色'}]}>
+                        <Select mode="multiple" placeholder="选择角色">
+                            {roles.map((role) => (
+                                <Option key={role.id} value={role.roleKey}>
+                                    {role.roleName} ({role.roleKey})
+                                </Option>
+                            ))}
+                        </Select>
                     </Form.Item>
                 </Form>
             </Modal>

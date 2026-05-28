@@ -5,11 +5,13 @@ import com.llm.gateway.model.PageResult
 import com.llm.gateway.model.params.AdminUserCreateParams
 import com.llm.gateway.model.params.AdminUserPageParams
 import com.llm.gateway.model.params.AdminUserPasswordChangeParams
+import com.llm.gateway.model.params.AdminUserUpdateParams
 import com.llm.gateway.model.params.DepartmentPermissionsUpdateParams
 import com.llm.gateway.model.results.AdminUserCreateResult
 import com.llm.gateway.model.results.AdminUserDetailResult
 import com.llm.gateway.model.results.AdminUserPageItemResult
 import com.llm.gateway.model.results.AdminUserPasswordChangeResult
+import com.llm.gateway.model.results.AdminUserUpdateResult
 import com.llm.gateway.model.results.DepartmentPermissionsUpdateResult
 import com.llm.gateway.model.results.DepartmentPermissionsViewResult
 import com.llm.gateway.model.results.UserEffectivePermissionsResult
@@ -81,6 +83,22 @@ class AdminUserPermissionController(
         @RequestBody @Valid params: AdminUserPasswordChangeParams,
     ): ApiResult<AdminUserPasswordChangeResult> {
         return ApiResult.success(adminUserPermissionService.changeUserPassword(userId, params))
+    }
+
+    @ApiOperation("修改用户信息")
+    @ApiResponses(
+        value = [
+            ApiResponse(code = 200, message = "修改成功"),
+            ApiResponse(code = 400, message = "参数错误或用户不存在"),
+            ApiResponse(code = 403, message = "无权限访问"),
+        ]
+    )
+    @PutMapping("/users/{id}")
+    fun updateUser(
+        @ApiParam(value = "用户ID", required = true) @PathVariable("id") userId: Long,
+        @RequestBody @Valid params: AdminUserUpdateParams,
+    ): ApiResult<AdminUserUpdateResult> {
+        return ApiResult.success(adminUserPermissionService.updateUser(userId, params))
     }
 
     @ApiOperation("覆盖设置部门模型权限")

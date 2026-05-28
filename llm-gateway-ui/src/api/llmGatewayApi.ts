@@ -226,6 +226,7 @@ export interface DepartmentTreeItem {
 export interface DepartmentPermissionItem {
     modelAlias: string;
     scope: 'SELF' | 'SUBTREE';
+    status: number;
 }
 
 export interface ReplaceDepartmentPermissionsParams {
@@ -238,6 +239,7 @@ export interface DepartmentPermissionViewItem {
     modelAlias: string;
     realModelName: string;
     scope: 'SELF' | 'SUBTREE';
+    status: number;
     sourceDeptId: number;
     sourceDeptName: string;
     vendorId: number;
@@ -267,9 +269,23 @@ export interface CreateAdminUserParams {
     forcePasswordChange?: boolean;
 }
 
+export interface UpdateAdminUserParams {
+    name: string;
+    username: string;
+    email: string;
+    mobile?: string;
+    deptId: number;
+    roleKeys: string[];
+}
+
 export interface AdminUserCreateResult {
     userId: number;
     passwordChanged: boolean;
+}
+
+export interface AdminUserUpdateResult {
+    userId: number;
+    roleCount: number;
 }
 
 export interface ChangeAdminUserPasswordParams {
@@ -400,6 +416,10 @@ export const adminUserApi = {
     },
     createUser: async (params: CreateAdminUserParams) => {
         const res = await api.post<ApiResult<AdminUserCreateResult>>('/admin/users', params);
+        return res.data;
+    },
+    updateUser: async (id: number, params: UpdateAdminUserParams) => {
+        const res = await api.put<ApiResult<AdminUserUpdateResult>>(`/admin/users/${id}`, params);
         return res.data;
     },
     changeUserPassword: async (id: number, params: ChangeAdminUserPasswordParams) => {

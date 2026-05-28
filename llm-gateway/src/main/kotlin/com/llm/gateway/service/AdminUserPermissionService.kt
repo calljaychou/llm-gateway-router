@@ -26,6 +26,8 @@ import com.llm.gateway.dal.mapper.insert
 import com.llm.gateway.dal.mapper.insertMultiple
 import com.llm.gateway.dal.mapper.select
 import com.llm.gateway.dal.mapper.selectOne
+import com.llm.gateway.dal.mapper.delete
+import com.llm.gateway.dal.mapper.update
 import com.llm.gateway.dal.mapper.updateByPrimaryKeySelective
 import com.llm.gateway.dal.model.DepartmentModelPermissionsRecord
 import com.llm.gateway.dal.model.DepartmentRecord
@@ -35,10 +37,10 @@ import com.llm.gateway.dal.model.UserRoleRelRecord
 import com.llm.gateway.dal.model.UsersRecord
 import com.llm.gateway.model.PageResult
 import com.llm.gateway.model.dto.ModelMetaDto
-import com.llm.gateway.model.dto.PermissionPairDto
 import com.llm.gateway.model.params.AdminUserCreateParams
 import com.llm.gateway.model.params.AdminUserPageParams
 import com.llm.gateway.model.params.AdminUserPasswordChangeParams
+import com.llm.gateway.model.params.AdminUserUpdateParams
 import com.llm.gateway.model.params.DepartmentPermissionsUpdateParams
 import com.llm.gateway.model.results.AdminUserCreateResult
 import com.llm.gateway.model.results.AdminUserBaseInfoResult
@@ -47,6 +49,7 @@ import com.llm.gateway.model.results.AdminUserDetailResult
 import com.llm.gateway.model.results.AdminUserPageItemResult
 import com.llm.gateway.model.results.AdminUserPasswordChangeResult
 import com.llm.gateway.model.results.AdminUserQuotaConfigResult
+import com.llm.gateway.model.results.AdminUserUpdateResult
 import com.llm.gateway.model.results.DepartmentPermissionViewItem
 import com.llm.gateway.model.results.DepartmentPermissionsUpdateResult
 import com.llm.gateway.model.results.DepartmentPermissionsViewResult
@@ -79,20 +82,7 @@ class AdminUserPermissionService(
         val deptId = params.deptId ?: throw BizException(BizException.BUSINESS_FAILED, "部门ID不能为空")
         departmentService.ensureDeptExists(deptId)
 
-        val normalizedRoleKeys = params.roleKeys
-            .map { it.trim().lowercase() }
-            .filter { it.isNotBlank() }
-            .distinct()
-        if (normalizedRoleKeys.isEmpty()) {
-            throw BizException(BizException.BUSINESS_FAILED, "角色列表不能为空")
-        }
-
-        val roleRecords = rolesMapper.select {
-            where { RolesDynamicSqlSupport.Roles.roleKey isIn normalizedRoleKeys }
-        }
-        if (roleRecords.size != normalizedRoleKeys.size) {
-            throw BizException(BizException.BUSINESS_FAILED, "存在非法角色标识")
-        }
+        val roleRecords = listValidRoles(params.roleKeys)
 
         val now = Date()
         val userRecord = UsersRecord(
@@ -126,13 +116,7 @@ class AdminUserPermissionService(
         }
 
         val userId = userRecord.id ?: throw BizException(BizException.SYSTEM_FAILED, "创建用户失败")
-        val userRoleRecords = roleRecords.map { role ->
-            UserRoleRelRecord(
-                userId = userId,
-                roleId = role.id ?: throw BizException(BizException.SYSTEM_FAILED, "角色ID异常"),
-            )
-        }
-        userRoleRelMapper.insertMultiple(userRoleRecords)
+        insertUserRoles(userId, roleRecords)
 
         return AdminUserCreateResult(
             userId = userId,
@@ -157,6 +141,50 @@ class AdminUserPermissionService(
         return AdminUserPasswordChangeResult(
             userId = userId,
             passwordChanged = false,
+        )
+    }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun updateUser(userId: Long, params: AdminUserUpdateParams): AdminUserUpdateResult {
+        ensureUserExists(userId)
+        val deptId = params.deptId ?: throw BizException(BizException.BUSINESS_FAILED, "部门ID不能为空")
+        departmentService.ensureDeptExists(deptId)
+        val roleRecords = listValidRoles(params.roleKeys)
+
+        val now = Date()
+        val mobile = params.mobile?.trim()?.ifBlank { null }
+        try {
+            usersMapper.update {
+                set(UsersDynamicSqlSupport.Users.deptId).equalTo(deptId)
+                set(UsersDynamicSqlSupport.Users.name).equalTo(params.name.trim())
+                set(UsersDynamicSqlSupport.Users.username).equalTo(params.username.trim())
+                set(UsersDynamicSqlSupport.Users.email).equalTo(params.email.trim().lowercase())
+                if (mobile == null) {
+                    set(UsersDynamicSqlSupport.Users.mobile).equalToNull()
+                } else {
+                    set(UsersDynamicSqlSupport.Users.mobile).equalTo(mobile)
+                }
+                set(UsersDynamicSqlSupport.Users.updatedTime).equalTo(now)
+                where { UsersDynamicSqlSupport.Users.id isEqualTo userId }
+                and { UsersDynamicSqlSupport.Users.delFlag isEqualTo false }
+            }
+        } catch (e: DataIntegrityViolationException) {
+            val message = e.message.orEmpty().lowercase()
+            if (message.contains("username")) {
+                throw BizException(BizException.BUSINESS_FAILED, "用户名已存在")
+            }
+            if (message.contains("email")) {
+                throw BizException(BizException.BUSINESS_FAILED, "邮箱已存在")
+            }
+            throw BizException(BizException.SYSTEM_FAILED, "修改用户信息失败")
+        }
+
+        replaceUserRoles(userId, roleRecords)
+        log.info("修改用户信息成功 userId={}, roleCount={}", userId, roleRecords.size)
+
+        return AdminUserUpdateResult(
+            userId = userId,
+            roleCount = roleRecords.size,
         )
     }
 
@@ -223,10 +251,14 @@ class AdminUserPermissionService(
         val normalizedItems = params.items.map { item ->
             val scopeEnum = DepartmentPermissionScope.parse(item.scope)
                 ?: throw BizException(BizException.BUSINESS_FAILED, "作用域仅支持 SELF 或 SUBTREE")
-            item.modelAlias.trim() to scopeEnum.value
+            DepartmentPermissionUpdateItemDto(
+                modelAlias = item.modelAlias.trim(),
+                scope = scopeEnum.value,
+                status = item.status ?: NormalStatus,
+            )
         }.distinct()
 
-        val modelAliases = normalizedItems.map { it.first }.distinct()
+        val modelAliases = normalizedItems.map { it.modelAlias }.distinct()
         val models = modelsMapper.select {
             where { ModelsDynamicSqlSupport.Models.modelAlias isIn modelAliases }
         }
@@ -235,26 +267,35 @@ class AdminUserPermissionService(
         }
         val modelByAlias = models.associateBy { it.modelAlias!! }
 
-        val desiredPairs = normalizedItems.map { pair ->
-            val modelId = modelByAlias[pair.first]?.id ?: throw BizException(BizException.BUSINESS_FAILED, "模型不存在")
-            PermissionPairDto(modelId, pair.second)
-        }.toSet()
+        val desiredPermissions = normalizedItems.map { item ->
+            val modelId = modelByAlias[item.modelAlias]?.id ?: throw BizException(BizException.BUSINESS_FAILED, "模型不存在")
+            DepartmentPermissionUpdateItemDto(
+                modelAlias = item.modelAlias,
+                modelId = modelId,
+                scope = item.scope,
+                status = item.status,
+            )
+        }
+        val desiredByRule = desiredPermissions.associateBy { PermissionRuleKey(it.modelId, it.scope) }
+        if (desiredByRule.size != desiredPermissions.size) {
+            throw BizException(BizException.BUSINESS_FAILED, "同一模型和作用域不能重复配置")
+        }
 
         val now = Date()
         var added = 0
         var removed = 0
         var updated = 0
-        val existingByPair = existing.associateBy { PermissionPairDto(it.modelId ?: -1L, it.scope ?: "") }
+        val existingByRule = existing.associateBy { PermissionRuleKey(it.modelId ?: -1L, it.scope ?: "") }
 
-        desiredPairs.forEach { pair ->
-            val existed = existingByPair[pair]
+        desiredByRule.forEach { (ruleKey, item) ->
+            val existed = existingByRule[ruleKey]
             if (existed == null) {
                 departmentModelPermissionsMapper.insert(
                     DepartmentModelPermissionsRecord(
                         deptId = deptId,
-                        modelId = pair.modelId,
-                        scope = pair.scope,
-                        status = NormalStatus,
+                        modelId = item.modelId,
+                        scope = item.scope,
+                        status = item.status,
                         createdBy = operator,
                         createdTime = now,
                         updatedBy = operator,
@@ -264,8 +305,8 @@ class AdminUserPermissionService(
                 added++
                 return@forEach
             }
-            if (existed.status != NormalStatus) {
-                existed.status = NormalStatus
+            if (existed.status != item.status) {
+                existed.status = item.status
                 existed.updatedBy = operator
                 existed.updatedTime = now
                 departmentModelPermissionsMapper.updateByPrimaryKeySelective(existed)
@@ -276,12 +317,12 @@ class AdminUserPermissionService(
         existing.forEach { record ->
             val modelId = record.modelId ?: return@forEach
             val scope = record.scope ?: return@forEach
-            val pair = PermissionPairDto(modelId, scope)
-            if (pair !in desiredPairs && record.status == NormalStatus) {
-                record.status = 0
-                record.updatedBy = operator
-                record.updatedTime = now
-                departmentModelPermissionsMapper.updateByPrimaryKeySelective(record)
+            val ruleKey = PermissionRuleKey(modelId, scope)
+            if (ruleKey !in desiredByRule.keys) {
+                val recordId = record.id ?: return@forEach
+                departmentModelPermissionsMapper.delete {
+                    where { DepartmentModelPermissionsDynamicSqlSupport.DepartmentModelPermissions.id isEqualTo recordId }
+                }
                 removed++
             }
         }
@@ -302,16 +343,13 @@ class AdminUserPermissionService(
         existing: List<DepartmentModelPermissionsRecord>,
         operator: String?,
     ): DepartmentPermissionsUpdateResult {
-        val now = Date()
         var removed = 0
         existing.forEach { record ->
-            if (record.status == NormalStatus) {
-                record.status = 0
-                record.updatedBy = operator
-                record.updatedTime = now
-                departmentModelPermissionsMapper.updateByPrimaryKeySelective(record)
-                removed++
+            val recordId = record.id ?: return@forEach
+            departmentModelPermissionsMapper.delete {
+                where { DepartmentModelPermissionsDynamicSqlSupport.DepartmentModelPermissions.id isEqualTo recordId }
             }
+            removed++
         }
 
         return DepartmentPermissionsUpdateResult(
@@ -345,6 +383,50 @@ class AdminUserPermissionService(
             where { UsersDynamicSqlSupport.Users.id isEqualTo userId }
             and { UsersDynamicSqlSupport.Users.delFlag isEqualTo false }
         } ?: throw BizException(BizException.BUSINESS_FAILED, "用户不存在")
+    }
+
+    /**
+     * 校验角色标识合法，并返回对应角色记录。
+     */
+    private fun listValidRoles(roleKeys: List<String>): List<RolesRecord> {
+        val normalizedRoleKeys = roleKeys
+            .map { it.trim().lowercase() }
+            .filter { it.isNotBlank() }
+            .distinct()
+        if (normalizedRoleKeys.isEmpty()) {
+            throw BizException(BizException.BUSINESS_FAILED, "角色列表不能为空")
+        }
+
+        val roleRecords = rolesMapper.select {
+            where { RolesDynamicSqlSupport.Roles.roleKey isIn normalizedRoleKeys }
+        }
+        if (roleRecords.size != normalizedRoleKeys.size) {
+            throw BizException(BizException.BUSINESS_FAILED, "存在非法角色标识")
+        }
+        return roleRecords
+    }
+
+    /**
+     * 覆盖用户角色关联关系。
+     */
+    private fun replaceUserRoles(userId: Long, roleRecords: List<RolesRecord>) {
+        userRoleRelMapper.delete {
+            where { UserRoleRelDynamicSqlSupport.UserRoleRel.userId isEqualTo userId }
+        }
+        insertUserRoles(userId, roleRecords)
+    }
+
+    /**
+     * 新增用户角色关联关系。
+     */
+    private fun insertUserRoles(userId: Long, roleRecords: List<RolesRecord>) {
+        val userRoleRecords = roleRecords.map { role ->
+            UserRoleRelRecord(
+                userId = userId,
+                roleId = role.id ?: throw BizException(BizException.SYSTEM_FAILED, "角色ID异常"),
+            )
+        }
+        userRoleRelMapper.insertMultiple(userRoleRecords)
     }
 
     /**
@@ -516,12 +598,11 @@ class AdminUserPermissionService(
     }
 
     /**
-     * 查询指定部门的直接授权视图，仅返回该部门自身配置且状态生效的模型权限。
+     * 查询指定部门的直接授权视图，返回该部门自身配置的模型权限及启停状态。
      */
     private fun buildDirectPermissionView(deptId: Long): List<DepartmentPermissionViewItem> {
         val directPermissions = departmentModelPermissionsMapper.select {
             where { DepartmentModelPermissionsDynamicSqlSupport.DepartmentModelPermissions.deptId isEqualTo deptId }
-            and { DepartmentModelPermissionsDynamicSqlSupport.DepartmentModelPermissions.status isEqualTo NormalStatus }
         }
         if (directPermissions.isEmpty()) {
             return emptyList()
@@ -540,6 +621,7 @@ class AdminUserPermissionService(
                 sourceDeptId = deptId,
                 sourceDeptName = departmentNames[deptId].orEmpty(),
                 scope = record.scope ?: DepartmentPermissionScope.SELF.value,
+                status = record.status ?: 0,
             )
         }.sortedBy { it.modelAlias }
     }
@@ -582,6 +664,7 @@ class AdminUserPermissionService(
                 sourceDeptId = sourceDeptId,
                 sourceDeptName = departmentNames[sourceDeptId].orEmpty(),
                 scope = sourceScope,
+                status = permission.status ?: 0,
             )
         }
 
@@ -660,4 +743,16 @@ class AdminUserPermissionService(
             vendorId to vendor.name.orEmpty()
         }.toMap()
     }
+
+    private data class DepartmentPermissionUpdateItemDto(
+        val modelAlias: String,
+        val modelId: Long = 0L,
+        val scope: String,
+        val status: Int,
+    )
+
+    private data class PermissionRuleKey(
+        val modelId: Long,
+        val scope: String,
+    )
 }

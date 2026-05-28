@@ -31,4 +31,6 @@ data class DepartmentPermissionViewItem(
     val sourceDeptName: String,
     @ApiModelProperty(value = "作用域(SELF/SUBTREE)", required = true)
     val scope: String,
+    @ApiModelProperty(value = "授权状态，1=启用，0=停用", required = true)
+    val status: Int,
 )

@@ -124,7 +124,7 @@ export const DepartmentManage: React.FC = () => {
             const res = await adminDeptApi.getDeptPermissions(record.id, 'direct');
             if (res.success && res.data?.models) {
                 // 将后端结构映射为前端动态表单所需的格式
-                const items = res.data.models.map((m: any) => ({ modelAlias: m.modelAlias, scope: m.scope }));
+                const items = res.data.models.map((m: any) => ({ modelAlias: m.modelAlias, scope: m.scope, status: m.status ?? 1 }));
                 permissionForm.setFieldsValue({ items });
             }
         } catch {
@@ -139,8 +139,9 @@ export const DepartmentManage: React.FC = () => {
                 .map((item) => ({
                     modelAlias: item.modelAlias?.trim(),
                     scope: item.scope,
+                    status: item.status ?? 1,
                 }))
-                .filter((item): item is DepartmentPermissionItem => Boolean(item.modelAlias && item.scope));
+                .filter((item): item is DepartmentPermissionItem => Boolean(item.modelAlias && item.scope && item.status !== undefined));
 
             const res = await adminDeptApi.replaceDeptPermissions(activeDept.id, { items: payloadItems });
             if (!res.success) {
@@ -165,6 +166,7 @@ export const DepartmentManage: React.FC = () => {
         const items = (res.data?.models || []).map((model) => ({
             modelAlias: model.modelAlias,
             scope: model.scope,
+            status: model.status ?? 1,
         }));
         permissionForm.setFieldsValue({ items });
     };
@@ -290,7 +292,7 @@ export const DepartmentManage: React.FC = () => {
                             <span style={{ color: textPrimary, fontWeight: 600 }}>大模型网关路由鉴权控制</span>
                         </Space>
                     }
-                    width={500}
+                    width={680}
                     onClose={() => setIsPermissionDrawerOpen(false)}
                     open={isPermissionDrawerOpen}
                     extra={
@@ -320,12 +322,12 @@ export const DepartmentManage: React.FC = () => {
                                             style={{ marginBottom: 16, border: '1px dashed #d0d7de', borderRadius: 8 }}
                                             extra={<Button type="link" onClick={() => remove(name)} style={{ color: '#cf222e', padding: 0 }}>移除此项规则</Button>}
                                         >
-                                            <Space style={{ display: 'flex', width: '100%' }} align="baseline">
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) 160px 120px', gap: 12, alignItems: 'start' }}>
                                                 <Form.Item
                                                     {...restField}
                                                     name={[name, 'modelAlias']}
                                                     rules={[{ required: true, message: '请指定模型路由' }]}
-                                                    style={{ width: 220 }}
+                                                    style={{ marginBottom: 0 }}
                                                 >
                                                     <Select
                                                         showSearch
@@ -353,18 +355,31 @@ export const DepartmentManage: React.FC = () => {
                                                     {...restField}
                                                     name={[name, 'scope']}
                                                     rules={[{ required: true, message: '必须选择作用域' }]}
-                                                    style={{ width: 160 }}
+                                                    style={{ marginBottom: 0 }}
                                                 >
                                                     <Select placeholder="控制策略作用域">
                                                         <Option value="SELF">仅限本组调用</Option>
                                                         <Option value="SUBTREE">级联渗透全部分支</Option>
                                                     </Select>
                                                 </Form.Item>
-                                            </Space>
+
+                                                <Form.Item
+                                                    {...restField}
+                                                    name={[name, 'status']}
+                                                    rules={[{ required: true, message: '必须选择状态' }]}
+                                                    initialValue={1}
+                                                    style={{ marginBottom: 0 }}
+                                                >
+                                                    <Select placeholder="状态">
+                                                        <Option value={1}>启用</Option>
+                                                        <Option value={0}>停用</Option>
+                                                    </Select>
+                                                </Form.Item>
+                                            </div>
                                         </Card>
                                     ))}
                                     <Form.Item>
-                                        <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} style={{ height: 40, borderColor: '#0969da', color: '#0969da' }}>
+                                        <Button type="dashed" onClick={() => add({ status: 1 })} block icon={<PlusOutlined />} style={{ height: 40, borderColor: '#0969da', color: '#0969da' }}>
                                             添加新网关路由映射规则项
                                         </Button>
                                     </Form.Item>

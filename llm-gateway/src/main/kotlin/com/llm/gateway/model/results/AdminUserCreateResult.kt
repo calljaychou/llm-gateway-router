@@ -21,6 +21,14 @@ data class AdminUserPasswordChangeResult(
     val passwordChanged: Boolean,
 )
 
+@ApiModel("管理端-修改用户信息结果")
+data class AdminUserUpdateResult(
+    @ApiModelProperty(value = "用户ID", required = true)
+    val userId: Long,
+    @ApiModelProperty(value = "已绑定角色数量", required = true)
+    val roleCount: Int,
+)
+
 @ApiModel("管理端-用户分页列表项")
 data class AdminUserPageItemResult(
     @ApiModelProperty(value = "用户ID", required = true)
