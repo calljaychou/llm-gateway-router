@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-27T18:07:45.509188+08:00
+ * Generation date: 2026-05-29T11:44:24.642898+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -19,6 +19,7 @@ import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport.Users.passwordChanged
 import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport.Users.remark
 import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport.Users.status
 import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport.Users.updatedTime
+import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport.Users.useTime
 import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport.Users.username
 import com.llm.gateway.dal.model.UsersRecord
 import org.mybatis.dynamic.sql.SqlBuilder.isEqualTo
@@ -54,6 +55,7 @@ fun UsersMapper.insert(record: UsersRecord) =
         map(remark).toProperty("remark")
         map(status).toProperty("status")
         map(delFlag).toProperty("delFlag")
+        map(useTime).toProperty("useTime")
         map(createdTime).toProperty("createdTime")
         map(updatedTime).toProperty("updatedTime")
     }
@@ -72,6 +74,7 @@ fun UsersMapper.insertMultiple(records: Collection<UsersRecord>) =
         map(remark).toProperty("remark")
         map(status).toProperty("status")
         map(delFlag).toProperty("delFlag")
+        map(useTime).toProperty("useTime")
         map(createdTime).toProperty("createdTime")
         map(updatedTime).toProperty("updatedTime")
     }
@@ -93,11 +96,12 @@ fun UsersMapper.insertSelective(record: UsersRecord) =
         map(remark).toPropertyWhenPresent("remark", record::remark)
         map(status).toPropertyWhenPresent("status", record::status)
         map(delFlag).toPropertyWhenPresent("delFlag", record::delFlag)
+        map(useTime).toPropertyWhenPresent("useTime", record::useTime)
         map(createdTime).toPropertyWhenPresent("createdTime", record::createdTime)
         map(updatedTime).toPropertyWhenPresent("updatedTime", record::updatedTime)
     }
 
-private val columnList = listOf(id, name, deptId, username, email, mobile, gender, avatarUrl, password, passwordChanged, remark, status, delFlag, createdTime, updatedTime)
+private val columnList = listOf(id, name, deptId, username, email, mobile, gender, avatarUrl, password, passwordChanged, remark, status, delFlag, useTime, createdTime, updatedTime)
 
 fun UsersMapper.selectOne(completer: SelectCompleter) =
     selectOne(this::selectOne, columnList, Users, completer)
@@ -130,6 +134,7 @@ fun KotlinUpdateBuilder.updateAllColumns(record: UsersRecord) =
         set(remark).equalTo(record::remark)
         set(status).equalTo(record::status)
         set(delFlag).equalTo(record::delFlag)
+        set(useTime).equalTo(record::useTime)
         set(createdTime).equalTo(record::createdTime)
         set(updatedTime).equalTo(record::updatedTime)
     }
@@ -148,6 +153,7 @@ fun KotlinUpdateBuilder.updateSelectiveColumns(record: UsersRecord) =
         set(remark).equalToWhenPresent(record::remark)
         set(status).equalToWhenPresent(record::status)
         set(delFlag).equalToWhenPresent(record::delFlag)
+        set(useTime).equalToWhenPresent(record::useTime)
         set(createdTime).equalToWhenPresent(record::createdTime)
         set(updatedTime).equalToWhenPresent(record::updatedTime)
     }
@@ -166,6 +172,7 @@ fun UsersMapper.updateByPrimaryKey(record: UsersRecord) =
         set(remark).equalTo(record::remark)
         set(status).equalTo(record::status)
         set(delFlag).equalTo(record::delFlag)
+        set(useTime).equalTo(record::useTime)
         set(createdTime).equalTo(record::createdTime)
         set(updatedTime).equalTo(record::updatedTime)
         where(id, isEqualTo(record::id))
@@ -185,6 +192,7 @@ fun UsersMapper.updateByPrimaryKeySelective(record: UsersRecord) =
         set(remark).equalToWhenPresent(record::remark)
         set(status).equalToWhenPresent(record::status)
         set(delFlag).equalToWhenPresent(record::delFlag)
+        set(useTime).equalToWhenPresent(record::useTime)
         set(createdTime).equalToWhenPresent(record::createdTime)
         set(updatedTime).equalToWhenPresent(record::updatedTime)
         where(id, isEqualTo(record::id))

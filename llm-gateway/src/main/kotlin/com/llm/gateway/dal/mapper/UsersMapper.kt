@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-27T18:07:45.507215+08:00
+ * Generation date: 2026-05-29T11:44:24.640485+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -60,6 +60,7 @@ interface UsersMapper {
         Result(column="remark", property="remark", jdbcType=JdbcType.VARCHAR),
         Result(column="status", property="status", jdbcType=JdbcType.INTEGER),
         Result(column="del_flag", property="delFlag", jdbcType=JdbcType.BIT),
+        Result(column="use_time", property="useTime", jdbcType=JdbcType.TIMESTAMP),
         Result(column="created_time", property="createdTime", jdbcType=JdbcType.TIMESTAMP),
         Result(column="updated_time", property="updatedTime", jdbcType=JdbcType.TIMESTAMP)
     ])

@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-27T18:07:45.504899+08:00
+ * Generation date: 2026-05-29T11:44:24.638043+08:00
  */
 package com.llm.gateway.dal.model
 
@@ -20,6 +20,7 @@ data class UsersRecord(
     var remark: String? = null,
     var status: Int? = null,
     var delFlag: Boolean? = null,
+    var useTime: Date? = null,
     var createdTime: Date? = null,
     var updatedTime: Date? = null
 )

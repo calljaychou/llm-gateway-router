@@ -1,6 +1,9 @@
 package com.llm.gateway.controller
 
 import com.llm.gateway.common.exceptions.BizException
+import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport
+import com.llm.gateway.dal.mapper.UsersMapper
+import com.llm.gateway.dal.mapper.update
 import com.llm.gateway.model.ApiResult
 import com.llm.gateway.model.params.LoginParams
 import com.llm.gateway.model.results.LoginResult
@@ -8,6 +11,7 @@ import com.llm.gateway.security.CustomUserDetails
 import com.llm.gateway.security.jwt.JwtTokenProvider
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
+import java.util.Date
 import javax.validation.Valid
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.authentication.AuthenticationManager
@@ -25,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController
 class AuthController(
     private val authenticationManager: AuthenticationManager,
     private val jwtTokenProvider: JwtTokenProvider,
+    private val usersMapper: UsersMapper,
 ) {
 
     @Value("\${jwt.expirationSeconds:86400}")
@@ -42,6 +47,7 @@ class AuthController(
             val token = jwtTokenProvider.generateToken(userDetails)
             val roles = userDetails.authorities.map(GrantedAuthority::getAuthority)
             val user = userDetails.getUser()
+            recordFirstUseTime(user.id, user.useTime)
 
             ApiResult.success(
                 LoginResult(
@@ -57,6 +63,18 @@ class AuthController(
             )
         } catch (_: BadCredentialsException) {
             throw BizException(BizException.UNAUTHORIZED, "用户名或密码错误")
+        }
+    }
+
+    /**
+     * 记录用户首次登录系统的时间，已有使用时间时不覆盖。
+     */
+    private fun recordFirstUseTime(userId: Long?, useTime: Date?) {
+        if (userId == null || useTime != null) return
+        usersMapper.update {
+            set(UsersDynamicSqlSupport.Users.useTime).equalTo(Date())
+            where { UsersDynamicSqlSupport.Users.id isEqualTo userId }
+            and { UsersDynamicSqlSupport.Users.useTime.isNull() }
         }
     }
 }

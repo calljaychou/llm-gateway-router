@@ -22,21 +22,22 @@ export const QuotaDashboard: React.FC = () => {
     const cardStyle = { backgroundColor: '#ffffff', padding: 20, borderRadius: 12, border: '1px solid #d0d7de' };
     const textPrimary = '#1f2328';
     const textSecondary = '#656d76';
+    const loginUserName = localStorage.getItem('llm_gateway_name') || localStorage.getItem('llm_gateway_username') || '系统用户';
 
     return (
         <div style={{ backgroundColor: '#f6f8fa', minHeight: '100%', padding: '24px', color: textPrimary }}>
             {/* 1. Header Section */}
             <div style={{ marginBottom: 32 }}>
-                <Title level={2} style={{ color: textPrimary, margin: 0 }}>Hello! JayChou</Title>
+                <Title level={2} style={{ color: textPrimary, margin: 0 }}>Hello! {loginUserName}</Title>
                 <Text style={{ color: textSecondary, fontSize: 16 }}>
                     This is your day <span style={{ color: '#0969da', fontWeight: 'bold' }}>182</span> of using TRAK.
                 </Text>
                 <div style={{ marginTop: 12 }}>
                     <Space>
-                        <Tag color="#ddf4ff" style={{ color: '#0969da', border: 'none', fontWeight: 500 }}># Gary</Tag>
+                        <Tag color="#ddf4ff" style={{ color: '#0969da', border: 'none', fontWeight: 500 }}># Guru</Tag>
                         <Tag color="#dafbe1" style={{ color: '#1a7f37', border: 'none', fontWeight: 500 }}># Agent Crafter</Tag>
                         <Tag color="#fbeaff" style={{ color: '#8250df', border: 'none', fontWeight: 500 }}># Single-Model BFF</Tag>
-                        <Tag color="#fff8c5" style={{ color: '#9a6700', border: 'none', fontWeight: 500 }}># Monday Raven</Tag>
+                        <Tag color="#fff8c5" style={{ color: '#9a6700', border: 'none', fontWeight: 500 }}># Early Bird</Tag>
                     </Space>
                 </div>
             </div>

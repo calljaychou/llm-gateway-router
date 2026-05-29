@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-27T18:07:45.506442+08:00
+ * Generation date: 2026-05-29T11:44:24.639673+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -35,6 +35,8 @@ object UsersDynamicSqlSupport {
         val status = column<Int>("status", JDBCType.INTEGER)
 
         val delFlag = column<Boolean>("del_flag", JDBCType.BIT)
+
+        val useTime = column<Date>("use_time", JDBCType.TIMESTAMP)
 
         val createdTime = column<Date>("created_time", JDBCType.TIMESTAMP)
 

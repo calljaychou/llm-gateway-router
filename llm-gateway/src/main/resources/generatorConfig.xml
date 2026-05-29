@@ -17,13 +17,13 @@
         <javaModelGenerator targetPackage="com.llm.gateway.dal.model" targetProject="src/main/kotlin"/>
         <javaClientGenerator targetPackage="com.llm.gateway.dal.mapper" targetProject="src/main/kotlin"/>
 
-        <table tableName="department">
-            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
-        </table>
-
-<!--        <table tableName="users">-->
+<!--        <table tableName="department">-->
 <!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
 <!--        </table>-->
+
+        <table tableName="users">
+            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
+        </table>
 
 <!--        <table tableName="position">-->
 <!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
