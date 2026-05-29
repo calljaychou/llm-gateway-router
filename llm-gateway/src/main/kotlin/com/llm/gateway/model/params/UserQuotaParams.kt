@@ -6,6 +6,7 @@ import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
 import java.util.Date
 import javax.validation.constraints.Min
+import javax.validation.constraints.NotBlank
 import javax.validation.constraints.NotNull
 import javax.validation.constraints.Size
 
@@ -24,9 +25,9 @@ data class AdminUserQuotaAdjustmentParams(
 
 @ApiModel("用户端-配额转配参数")
 data class UserQuotaTransferParams(
-    @ApiModelProperty(value = "转入用户ID", required = true)
-    @field:NotNull(message = "转入用户ID不能为空")
-    val targetUserId: Long?,
+    @ApiModelProperty(value = "转入用户账号", required = true)
+    @field:NotBlank(message = "转入用户账号不能为空")
+    val targetUser: String?,
     @ApiModelProperty(value = "转配Token数量", required = true)
     @field:NotNull(message = "转配额度不能为空")
     @field:Min(value = 1, message = "转配额度必须大于0")

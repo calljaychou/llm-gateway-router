@@ -15,6 +15,7 @@ import org.apache.ibatis.annotations.Result
 import org.apache.ibatis.annotations.ResultMap
 import org.apache.ibatis.annotations.Results
 import org.apache.ibatis.annotations.SelectProvider
+import org.apache.ibatis.annotations.Update
 import org.apache.ibatis.annotations.UpdateProvider
 import org.apache.ibatis.type.JdbcType
 import org.mybatis.dynamic.sql.delete.render.DeleteStatementProvider
@@ -22,6 +23,7 @@ import org.mybatis.dynamic.sql.insert.render.InsertStatementProvider
 import org.mybatis.dynamic.sql.select.render.SelectStatementProvider
 import org.mybatis.dynamic.sql.update.render.UpdateStatementProvider
 import org.mybatis.dynamic.sql.util.SqlProviderAdapter
+import java.util.Date
 
 @Mapper
 interface UserQuotaGrantsMapper {
@@ -67,4 +69,27 @@ interface UserQuotaGrantsMapper {
 
     @UpdateProvider(type=SqlProviderAdapter::class, method="update")
     fun update(updateStatement: UpdateStatementProvider): Int
+
+    @Update(
+        """
+        update user_quota_grants
+        set status = case when remaining_tokens - #{deductTokens} = 0 then #{depletedStatus} else #{activeStatus} end,
+            remaining_tokens = remaining_tokens - #{deductTokens},
+            updated_time = #{updatedTime}
+        where id = #{grantId}
+          and user_id = #{userId}
+          and status = #{activeStatus}
+          and remaining_tokens >= #{deductTokens}
+          and expires_at > #{now}
+        """
+    )
+    fun deductRemainingTokens(
+        @Param("grantId") grantId: Long,
+        @Param("userId") userId: Long,
+        @Param("deductTokens") deductTokens: Long,
+        @Param("activeStatus") activeStatus: String,
+        @Param("depletedStatus") depletedStatus: String,
+        @Param("now") now: Date,
+        @Param("updatedTime") updatedTime: Date,
+    ): Int
 }

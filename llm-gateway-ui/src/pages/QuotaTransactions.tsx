@@ -53,12 +53,12 @@ export const QuotaTransactions: React.FC = () => {
         setTransferLoading(true);
         try {
             const res = await quotaApi.transferQuota({
-                targetUserId: values.targetUserId,
+                targetUser: values.targetUser.trim(),
                 transferTokens: values.transferTokens,
                 remark: values.remark
             });
             if (res.success) {
-                message.success(`划转成功！顺利向目标用户 [${values.targetUserId}] 共享划配 ${values.transferTokens.toLocaleString()} Tokens`);
+                message.success(`划转成功！顺利向目标用户 [${values.targetUser}] 共享划配 ${values.transferTokens.toLocaleString()} Tokens`);
                 form.resetFields();
                 setActiveTab('ledger');
             }
@@ -137,8 +137,8 @@ export const QuotaTransactions: React.FC = () => {
                     ) : (
                         <div style={{ maxWidth: 600, margin: '20px 0' }}>
                             <Form form={form} layout="vertical" onFinish={handleTransferSubmit}>
-                                <Form.Item name="targetUserId" label="划转目标用户唯一识别码" rules={[{ required: true, message: '请输入合法的转入方账号' }]}>
-                                    <InputNumber style={{ width: '100%' }} placeholder="请输入目标账号（用户名、手机号或邮箱）" precision={0} />
+                                <Form.Item name="targetUser" label="划转目标用户账号" rules={[{ required: true, message: '请输入合法的转入方账号' }]}>
+                                    <Input placeholder="请输入目标账号（用户名、手机号或邮箱）" />
                                 </Form.Item>
                                 <Form.Item name="transferTokens" label="调配划转 Token 资产总量" rules={[{ required: true, message: '请输入划配总量' }]}>
                                     <InputNumber style={{ width: '100%' }} min={1} placeholder="请输入大模型 Token 资源划配数" precision={0} />

@@ -5,10 +5,12 @@ import {
     Button,
     Card,
     Col,
+    DatePicker,
     Descriptions,
     Empty,
     Form,
     Input,
+    InputNumber,
     Modal,
     Row,
     Select,
@@ -33,6 +35,7 @@ import {
     adminRoleApi,
     adminUserApi,
     AdminUserDetail,
+    AdminUserQuotaAdjustmentParams,
     AdminUserListItem,
     DepartmentTreeItem,
     RoleListItem
@@ -42,6 +45,7 @@ import {RoleManage} from './RoleManage';
 const {Option} = Select;
 const {Text, Title} = Typography;
 type UserManageView = 'users' | 'roles' | 'detail';
+type QuotaAdjustmentDirection = 'increase' | 'recycle';
 
 export const UserManage: React.FC = () => {
     const {message} = App.useApp();
@@ -530,8 +534,12 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
     const {message} = App.useApp();
     const [passwordForm] = Form.useForm();
     const [userForm] = Form.useForm();
+    const [quotaForm] = Form.useForm();
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState<boolean>(false);
     const [isUserModalOpen, setIsUserModalOpen] = useState<boolean>(false);
+    const [isQuotaModalOpen, setIsQuotaModalOpen] = useState<boolean>(false);
+    const [quotaAdjusting, setQuotaAdjusting] = useState<boolean>(false);
+    const quotaAdjustmentDirection = Form.useWatch('direction', quotaForm);
     const departmentTreeData = useMemo(() => buildDepartmentTreeSelectData(departments), [departments]);
 
     const handleOpenPasswordModal = () => {
@@ -553,6 +561,12 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
             roleKeys: detail.roles.map((role) => role.roleKey),
         });
         setIsUserModalOpen(true);
+    };
+
+    const handleOpenQuotaModal = () => {
+        quotaForm.resetFields();
+        quotaForm.setFieldsValue({direction: 'increase'});
+        setIsQuotaModalOpen(true);
     };
 
     const handleUpdateUser = async (values: any) => {
@@ -602,6 +616,39 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : '修改用户密码失败';
             message.error(errorMessage);
+        }
+    };
+
+    const handleAdjustUserQuota = async (values: {
+        direction: QuotaAdjustmentDirection;
+        tokens: number;
+        expiresAt?: { format: (template: string) => string };
+        remark?: string;
+    }) => {
+        const userId = detail?.user.userId;
+        if (!userId) return;
+
+        const params: AdminUserQuotaAdjustmentParams = {
+            adjustTokens: values.direction === 'increase' ? values.tokens : -values.tokens,
+            expiresAt: values.direction === 'increase' ? values.expiresAt?.format('YYYY-MM-DD HH:mm:ss') : undefined,
+            remark: values.remark?.trim() || undefined,
+        };
+
+        setQuotaAdjusting(true);
+        try {
+            const res = await adminUserApi.adjustUserQuota(userId, params);
+            if (!res.success) {
+                throw new Error(res.message || '调整用户配额失败');
+            }
+            message.success('用户配额已调整');
+            setIsQuotaModalOpen(false);
+            quotaForm.resetFields();
+            onReload(userId);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : '调整用户配额失败';
+            message.error(errorMessage);
+        } finally {
+            setQuotaAdjusting(false);
         }
     };
 
@@ -765,7 +812,7 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
             </section>
 
             <section style={detailSectionStyle}>
-                <SectionTitle title="用户配置详情" textPrimary={textPrimary}/>
+                <SectionTitle title="用户配额详情" textPrimary={textPrimary}/>
                 {loading ? (
                     <Skeleton active paragraph={{rows: 3}}/>
                 ) : detail?.quota ? (
@@ -775,7 +822,17 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
                                 <Statistic title="总配额" value={detail.quota.currentQuotaTokens}/>
                             </Col>
                             <Col span={6}>
-                                <Statistic title="当前可用配额" value={detail.quota.availableTokens}/>
+                                <div
+                                    onClick={handleOpenQuotaModal}
+                                    style={{cursor: 'pointer', display: 'inline-block'}}
+                                    title="点击调整用户配额"
+                                >
+                                    <Statistic
+                                        title="当前可用配额"
+                                        value={detail.quota.availableTokens}
+                                        valueStyle={{color: '#0969da', textDecoration: 'underline'}}
+                                    />
+                                </div>
                             </Col>
                             <Col span={6}>
                                 <Statistic title="已使用配额" value={detail.quota.usedTokens}/>
@@ -815,6 +872,62 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
                         rules={[{required: true, message: '请输入新密码'}]}
                     >
                         <Input.Password placeholder="Temp@123456"/>
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            <Modal
+                title="调整用户配额"
+                open={isQuotaModalOpen}
+                onCancel={() => setIsQuotaModalOpen(false)}
+                onOk={() => quotaForm.submit()}
+                okText="确认调整"
+                confirmLoading={quotaAdjusting}
+                destroyOnClose
+            >
+                <Form
+                    form={quotaForm}
+                    layout="vertical"
+                    onFinish={handleAdjustUserQuota}
+                    style={{marginTop: 16}}
+                >
+                    <Form.Item name="direction" label="调整方向" rules={[{required: true, message: '请选择调整方向'}]}>
+                        <Select>
+                            <Option value="increase">新增配额</Option>
+                            <Option value="recycle">回收配额</Option>
+                        </Select>
+                    </Form.Item>
+                    <Form.Item
+                        name="tokens"
+                        label="调整Token数量"
+                        rules={[{required: true, message: '请输入调整Token数量'}]}
+                    >
+                        <InputNumber min={1} precision={0} style={{width: '100%'}} placeholder="例如：100000"/>
+                    </Form.Item>
+                    <Form.Item
+                        name="expiresAt"
+                        label="新增额度过期时间"
+                        rules={[
+                            {
+                                required: quotaAdjustmentDirection === 'increase',
+                                message: '请输入新增额度过期时间',
+                            },
+                        ]}
+                    >
+                        <DatePicker
+                            showTime
+                            format="YYYY-MM-DD HH:mm:ss"
+                            disabled={quotaAdjustmentDirection === 'recycle'}
+                            style={{width: '100%'}}
+                            placeholder="请选择过期时间"
+                        />
+                    </Form.Item>
+                    <Form.Item
+                        name="remark"
+                        label="备注"
+                        rules={[{max: 255, message: '备注不能超过255个字符'}]}
+                    >
+                        <Input.TextArea rows={3} maxLength={255} showCount placeholder="请输入调整原因"/>
                     </Form.Item>
                 </Form>
             </Modal>

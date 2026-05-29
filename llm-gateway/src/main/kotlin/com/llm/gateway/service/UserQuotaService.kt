@@ -7,6 +7,7 @@ import com.llm.gateway.common.enums.UserQuotaGrantSourceType
 import com.llm.gateway.common.enums.UserQuotaGrantStatus
 import com.llm.gateway.common.enums.UserQuotaTransactionChangeType
 import com.llm.gateway.common.exceptions.BizException
+import com.llm.gateway.common.logger
 import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport
 import com.llm.gateway.dal.mapper.UserQuotaAccountsMapper
 import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport
@@ -23,6 +24,7 @@ import com.llm.gateway.dal.mapper.updateByPrimaryKeySelective
 import com.llm.gateway.dal.model.UserQuotaAccountsRecord
 import com.llm.gateway.dal.model.UserQuotaGrantsRecord
 import com.llm.gateway.dal.model.UserQuotaTransactionsRecord
+import com.llm.gateway.dal.model.UsersRecord
 import com.llm.gateway.model.PageParams
 import com.llm.gateway.model.params.AdminUserQuotaAdjustmentParams
 import com.llm.gateway.model.params.UserQuotaTransactionsPageParams
@@ -34,8 +36,12 @@ import com.llm.gateway.model.results.UserQuotaTransactionResult
 import com.llm.gateway.model.results.UserQuotaTransferResult
 import java.util.Date
 import java.util.UUID
+import java.util.concurrent.TimeUnit
+import org.redisson.api.RLock
+import org.redisson.api.RedissonClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 
 @Service
 class UserQuotaService(
@@ -43,9 +49,15 @@ class UserQuotaService(
     private val userQuotaAccountsMapper: UserQuotaAccountsMapper,
     private val userQuotaGrantsMapper: UserQuotaGrantsMapper,
     private val userQuotaTransactionsMapper: UserQuotaTransactionsMapper,
+    private val redissonClient: RedissonClient,
+    private val transactionTemplate: TransactionTemplate,
 ) {
+    private val log = logger()
+
     companion object {
         private const val ACTIVE_GRANT_LIMIT = 5
+        private const val QUOTA_TRANSFER_LOCK_PREFIX = "gateway:user-quota:transfer:"
+        private const val QUOTA_TRANSFER_LOCK_WAIT_SECONDS = 5L
     }
 
     fun getCurrentQuota(userId: Long): UserQuotaAccountResult {
@@ -157,10 +169,9 @@ class UserQuotaService(
         return mapAccountResult(after, includeActiveGrants = true)
     }
 
-    @Transactional(rollbackFor = [Exception::class])
     fun transferQuota(fromUserId: Long, params: UserQuotaTransferParams): UserQuotaTransferResult {
         ensureActiveUser(fromUserId)
-        val targetUserId = params.targetUserId ?: throw BizException(BizException.BUSINESS_FAILED, "转入用户ID不能为空")
+        val targetUserId = resolveTransferTargetUserId(params.targetUser)
         val transferTokens = params.transferTokens ?: throw BizException(BizException.BUSINESS_FAILED, "转配额度不能为空")
         if (targetUserId == fromUserId) {
             throw BizException(BizException.BUSINESS_FAILED, "不允许给自己转配额度")
@@ -170,6 +181,76 @@ class UserQuotaService(
         }
         ensureActiveUser(targetUserId)
 
+        return withQuotaTransferLocks(fromUserId, targetUserId) {
+            transactionTemplate.execute {
+                transferQuotaCore(fromUserId, targetUserId, transferTokens, params.remark?.trim())
+            } ?: throw BizException(BizException.BUSINESS_FAILED, "配额转配失败")
+        }
+    }
+
+    /**
+     * 根据用户名、手机号或邮箱精确锁定转入用户。
+     */
+    private fun resolveTransferTargetUserId(targetUser: String?): Long {
+        val keyword = targetUser?.trim()?.takeIf { it.isNotBlank() }
+            ?: throw BizException(BizException.BUSINESS_FAILED, "转入用户账号不能为空")
+        val matchedUsers = listOf(
+            findActiveUserByUsername(keyword),
+            findActiveUserByMobile(keyword),
+            findActiveUserByEmail(keyword.lowercase()),
+        ).flatten().distinctBy { it.id }
+
+        if (matchedUsers.isEmpty()) {
+            throw BizException(BizException.BUSINESS_FAILED, "转入用户不存在或已禁用")
+        }
+        if (matchedUsers.size > 1) {
+            throw BizException(BizException.BUSINESS_FAILED, "转入用户账号匹配到多个用户，请使用唯一的用户名、手机号或邮箱")
+        }
+        return matchedUsers.first().id ?: throw BizException(BizException.BUSINESS_FAILED, "转入用户ID缺失")
+    }
+
+    /**
+     * 按用户名查询有效用户。
+     */
+    private fun findActiveUserByUsername(username: String): List<UsersRecord> {
+        return usersMapper.select {
+            where { UsersDynamicSqlSupport.Users.username isEqualTo username }
+            and { UsersDynamicSqlSupport.Users.status isEqualTo NormalStatus }
+            and { UsersDynamicSqlSupport.Users.delFlag isEqualTo false }
+        }
+    }
+
+    /**
+     * 按手机号查询有效用户。
+     */
+    private fun findActiveUserByMobile(mobile: String): List<UsersRecord> {
+        return usersMapper.select {
+            where { UsersDynamicSqlSupport.Users.mobile isEqualTo mobile }
+            and { UsersDynamicSqlSupport.Users.status isEqualTo NormalStatus }
+            and { UsersDynamicSqlSupport.Users.delFlag isEqualTo false }
+        }
+    }
+
+    /**
+     * 按邮箱查询有效用户。
+     */
+    private fun findActiveUserByEmail(email: String): List<UsersRecord> {
+        return usersMapper.select {
+            where { UsersDynamicSqlSupport.Users.email isEqualTo email }
+            and { UsersDynamicSqlSupport.Users.status isEqualTo NormalStatus }
+            and { UsersDynamicSqlSupport.Users.delFlag isEqualTo false }
+        }
+    }
+
+    /**
+     * 执行用户配额转配核心流程：校验转出余额、扣减转出批次、创建转入批次并记录双边流水。
+     */
+    private fun transferQuotaCore(
+        fromUserId: Long,
+        targetUserId: Long,
+        transferTokens: Long,
+        remark: String?,
+    ): UserQuotaTransferResult {
         val fromBefore = requireAccount(fromUserId)
         if (fromBefore.allowTransferOut != true) {
             throw BizException(BizException.BUSINESS_FAILED, "当前用户不允许发起额度转配")
@@ -189,7 +270,7 @@ class UserQuotaService(
                 tokens = split.tokens,
                 expiresAt = split.expiresAt,
                 operatorUserId = fromUserId,
-                remark = params.remark?.trim(),
+                remark = remark,
             )
         }
 
@@ -198,7 +279,6 @@ class UserQuotaService(
         fromAfter.transferredOutTokens = (fromAfter.transferredOutTokens ?: 0L) + transferTokens
         fromAfter.updatedTime = Date()
         userQuotaAccountsMapper.updateByPrimaryKeySelective(fromAfter)
-        val remark = params.remark?.trim()
         insertTransaction(
             userId = fromUserId,
             grantId = null,
@@ -224,6 +304,17 @@ class UserQuotaService(
             remark = remark,
         )
 
+        log.info(
+            "用户配额转配成功 fromUserId={}, targetUserId={}, transferTokens={}, fromAvailableBefore={}, fromAvailableAfter={}, targetAvailableBefore={}, targetAvailableAfter={}",
+            fromUserId,
+            targetUserId,
+            transferTokens,
+            fromBefore.availableTokens,
+            fromAfter.availableTokens,
+            targetBefore.availableTokens,
+            targetAfter.availableTokens,
+        )
+
         return UserQuotaTransferResult(
             fromUserId = fromUserId,
             targetUserId = targetUserId,
@@ -231,6 +322,34 @@ class UserQuotaService(
             fromAccount = mapAccountResult(fromAfter, includeActiveGrants = true),
             targetAccount = mapAccountResult(targetAfter, includeActiveGrants = true),
         )
+    }
+
+    /**
+     * 获取转出和转入用户的配额转配锁，按用户ID排序加锁以避免互转死锁。
+     */
+    private fun <T> withQuotaTransferLocks(fromUserId: Long, targetUserId: Long, block: () -> T): T {
+        val locks = listOf(fromUserId, targetUserId)
+            .distinct()
+            .sorted()
+            .map { redissonClient.getLock("$QUOTA_TRANSFER_LOCK_PREFIX$it") }
+        val locked = mutableListOf<RLock>()
+        try {
+            locks.forEach { lock ->
+                val acquired = lock.tryLock(QUOTA_TRANSFER_LOCK_WAIT_SECONDS, TimeUnit.SECONDS)
+                if (!acquired) {
+                    log.warn("用户配额转配锁获取失败 fromUserId={}, targetUserId={}", fromUserId, targetUserId)
+                    throw BizException(BizException.BUSINESS_FAILED, "配额转配处理中，请稍后重试")
+                }
+                locked += lock
+            }
+            return block()
+        } finally {
+            locked.asReversed().forEach { lock ->
+                if (lock.isHeldByCurrentThread) {
+                    lock.unlock()
+                }
+            }
+        }
     }
 
     private fun ensureActiveUser(userId: Long) {
@@ -308,8 +427,56 @@ class UserQuotaService(
         deductFromActiveGrants(userId, tokens)
     }
 
+    /**
+     * 按最早过期批次优先扣减用户剩余额度，单个批次使用条件更新避免并发转配超扣。
+     */
     private fun deductFromActiveGrants(userId: Long, tokens: Long): List<QuotaDeductSplit> {
-        val grants = userQuotaGrantsMapper.select {
+        var remainingToDeduct = tokens
+        val splits = mutableListOf<QuotaDeductSplit>()
+
+        while (remainingToDeduct > 0) {
+            val grant = queryEarliestActiveGrant(userId)
+                ?: break
+            val grantId = grant.id ?: throw BizException(BizException.BUSINESS_FAILED, "配额账户数据异常，请重试")
+            val grantRemaining = grant.remainingTokens ?: 0L
+            val deductTokens = minOf(grantRemaining, remainingToDeduct)
+            if (deductTokens <= 0) break
+
+            // 通过数据库条件更新保证并发场景下只有一个请求能成功扣减该批次。
+            val updated = userQuotaGrantsMapper.deductRemainingTokens(
+                grantId = grantId,
+                userId = userId,
+                deductTokens = deductTokens,
+                activeStatus = UserQuotaGrantStatus.ACTIVE.value,
+                depletedStatus = UserQuotaGrantStatus.DEPLETED.value,
+                now = Date(),
+                updatedTime = Date(),
+            )
+            if (updated == 0) {
+                log.warn("用户配额批次扣减冲突 userId={}, grantId={}, deductTokens={}", userId, grantId, deductTokens)
+                continue
+            }
+
+            splits += QuotaDeductSplit(
+                sourceGrantId = grantId,
+                tokens = deductTokens,
+                expiresAt = grant.expiresAt ?: throw BizException(BizException.BUSINESS_FAILED, "配额批次过期时间缺失"),
+            )
+            remainingToDeduct -= deductTokens
+        }
+
+        if (remainingToDeduct > 0) {
+            log.warn("用户配额扣减不足 userId={}, tokens={}, remainingToDeduct={}", userId, tokens, remainingToDeduct)
+            throw BizException(BizException.BUSINESS_FAILED, "剩余额度不足")
+        }
+        return splits
+    }
+
+    /**
+     * 查询用户最早过期的有效配额批次，用于转配和回收时按过期时间优先扣减。
+     */
+    private fun queryEarliestActiveGrant(userId: Long): UserQuotaGrantsRecord? {
+        return userQuotaGrantsMapper.select {
             where { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.userId isEqualTo userId }
             and { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.status isEqualTo UserQuotaGrantStatus.ACTIVE.value }
             and { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.remainingTokens isGreaterThan 0L }
@@ -318,34 +485,8 @@ class UserQuotaService(
                 UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.expiresAt,
                 UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.id
             )
-        }
-        var remainingToDeduct = tokens
-        val splits = mutableListOf<QuotaDeductSplit>()
-
-        grants.forEach { grant ->
-            if (remainingToDeduct <= 0) return@forEach
-            val grantId = grant.id ?: throw BizException(BizException.BUSINESS_FAILED, "配额账户数据异常，请重试")
-            val grantRemaining = grant.remainingTokens ?: 0L
-            val deduct = minOf(grantRemaining, remainingToDeduct)
-            if (deduct <= 0) return@forEach
-
-            grant.remainingTokens = grantRemaining - deduct
-            grant.status = if (grant.remainingTokens == 0L) UserQuotaGrantStatus.DEPLETED.value else UserQuotaGrantStatus.ACTIVE.value
-            grant.updatedTime = Date()
-            userQuotaGrantsMapper.updateByPrimaryKeySelective(grant)
-
-            splits += QuotaDeductSplit(
-                sourceGrantId = grantId,
-                tokens = deduct,
-                expiresAt = grant.expiresAt ?: throw BizException(BizException.BUSINESS_FAILED, "配额批次过期时间缺失"),
-            )
-            remainingToDeduct -= deduct
-        }
-
-        if (remainingToDeduct > 0) {
-            throw BizException(BizException.BUSINESS_FAILED, "剩余额度不足")
-        }
-        return splits
+            limit(1L)
+        }.firstOrNull()
     }
 
     private fun rebuildAccount(userId: Long): UserQuotaAccountsRecord {

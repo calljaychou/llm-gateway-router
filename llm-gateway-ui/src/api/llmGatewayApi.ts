@@ -174,7 +174,7 @@ export interface QuotaTransactionItem {
 }
 
 export interface QuotaTransferParams {
-    targetUserId: number;
+    targetUser: string;
     transferTokens: number;
     remark?: string;
 }
@@ -299,6 +299,12 @@ export interface ChangeAdminUserPasswordParams {
 export interface AdminUserPasswordChangeResult {
     userId: number;
     passwordChanged: boolean;
+}
+
+export interface AdminUserQuotaAdjustmentParams {
+    adjustTokens: number;
+    expiresAt?: string;
+    remark?: string;
 }
 
 export interface AdminUserPageParams {
@@ -428,6 +434,10 @@ export const adminUserApi = {
     },
     changeUserPassword: async (id: number, params: ChangeAdminUserPasswordParams) => {
         const res = await api.put<ApiResult<AdminUserPasswordChangeResult>>(`/admin/users/${id}/password`, params);
+        return res.data;
+    },
+    adjustUserQuota: async (id: number, params: AdminUserQuotaAdjustmentParams) => {
+        const res = await api.post<ApiResult<UserQuotaAccountSnapshot>>(`/admin/users/${id}/quota/adjustments`, params);
         return res.data;
     }
 };
