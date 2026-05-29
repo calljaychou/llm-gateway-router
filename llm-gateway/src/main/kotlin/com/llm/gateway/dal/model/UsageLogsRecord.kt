@@ -1,9 +1,10 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-21T18:47:35.940257+08:00
+ * Generation date: 2026-05-29T14:51:25.345958+08:00
  */
 package com.llm.gateway.dal.model
 
+import java.math.BigDecimal
 import java.util.Date
 
 data class UsageLogsRecord(
@@ -17,9 +18,11 @@ data class UsageLogsRecord(
     var endpoint: String? = null,
     var useStream: Boolean? = null,
     var reservedTokens: Int? = null,
+    var estimatedAmountCny: BigDecimal? = null,
     var promptTokens: Int? = null,
     var completionTokens: Int? = null,
     var totalTokens: Int? = null,
+    var amountCny: BigDecimal? = null,
     var latencyMs: Int? = null,
     var statusCode: Int? = null,
     var errorCode: String? = null,
@@ -27,5 +30,6 @@ data class UsageLogsRecord(
     var settledAt: Date? = null,
     var retryCount: Int? = null,
     var calcSource: String? = null,
-    var createdAt: Date? = null
+    var createdAt: Date? = null,
+    var amountCalcDetail: String? = null
 )

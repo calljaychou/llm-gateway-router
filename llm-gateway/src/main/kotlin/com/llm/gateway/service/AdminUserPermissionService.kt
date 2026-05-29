@@ -55,6 +55,7 @@ import com.llm.gateway.model.results.DepartmentPermissionsUpdateResult
 import com.llm.gateway.model.results.DepartmentPermissionsViewResult
 import com.llm.gateway.model.results.RoleListItemResult
 import com.llm.gateway.model.results.UserEffectivePermissionsResult
+import java.math.BigDecimal
 import java.util.Date
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -76,6 +77,10 @@ class AdminUserPermissionService(
 ) {
 
     private val log = logger()
+
+    companion object {
+        private val ZERO_AMOUNT = BigDecimal.ZERO
+    }
 
     @Transactional(rollbackFor = [Exception::class])
     fun createUser(params: AdminUserCreateParams): AdminUserCreateResult {
@@ -544,12 +549,12 @@ class AdminUserPermissionService(
     private fun emptyQuota(userId: Long): AdminUserQuotaConfigResult? {
         return AdminUserQuotaConfigResult(
             userId = userId,
-            currentQuotaTokens = 0L,
-            availableTokens = 0L,
-            usedTokens = 0L,
-            expiredTokens = 0L,
-            transferredInTokens = 0L,
-            transferredOutTokens = 0L,
+            currentQuotaAmount = ZERO_AMOUNT,
+            availableAmount = ZERO_AMOUNT,
+            usedAmount = ZERO_AMOUNT,
+            expiredAmount = ZERO_AMOUNT,
+            transferredInAmount = ZERO_AMOUNT,
+            transferredOutAmount = ZERO_AMOUNT,
             allowTransferOut = false,
             earliestExpireAt = null,
             updatedAt = null
@@ -562,12 +567,12 @@ class AdminUserPermissionService(
     private fun mapUserQuotaConfig(record: UserQuotaAccountsRecord): AdminUserQuotaConfigResult {
         return AdminUserQuotaConfigResult(
             userId = record.userId ?: 0L,
-            currentQuotaTokens = record.currentQuotaTokens ?: 0L,
-            availableTokens = record.availableTokens ?: 0L,
-            usedTokens = record.usedTokens ?: 0L,
-            expiredTokens = record.expiredTokens ?: 0L,
-            transferredInTokens = record.transferredInTokens ?: 0L,
-            transferredOutTokens = record.transferredOutTokens ?: 0L,
+            currentQuotaAmount = record.currentQuotaAmount ?: ZERO_AMOUNT,
+            availableAmount = record.availableAmount ?: ZERO_AMOUNT,
+            usedAmount = record.usedAmount ?: ZERO_AMOUNT,
+            expiredAmount = record.expiredAmount ?: ZERO_AMOUNT,
+            transferredInAmount = record.transferredInAmount ?: ZERO_AMOUNT,
+            transferredOutAmount = record.transferredOutAmount ?: ZERO_AMOUNT,
             allowTransferOut = record.allowTransferOut ?: false,
             earliestExpireAt = record.earliestExpireAt,
             updatedAt = record.updatedTime,

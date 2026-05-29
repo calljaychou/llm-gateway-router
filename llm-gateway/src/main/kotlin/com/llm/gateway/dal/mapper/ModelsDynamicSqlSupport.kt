@@ -20,6 +20,10 @@ object ModelsDynamicSqlSupport {
 
         val billingType = column<String>("billing_type", JDBCType.CHAR)
 
+        val inputPriceCnyPerMillion = column<java.math.BigDecimal>("input_price_cny_per_million", JDBCType.DECIMAL)
+
+        val outputPriceCnyPerMillion = column<java.math.BigDecimal>("output_price_cny_per_million", JDBCType.DECIMAL)
+
         val active = column<Boolean>("active", JDBCType.BIT)
 
         val createdTime = column<Date>("created_time", JDBCType.TIMESTAMP)

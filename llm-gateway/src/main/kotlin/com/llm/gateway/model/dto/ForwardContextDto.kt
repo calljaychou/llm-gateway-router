@@ -2,6 +2,7 @@ package com.llm.gateway.model.dto
 
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
+import java.math.BigDecimal
 
 @ApiModel("上游转发上下文")
 data class ForwardContextDto(
@@ -17,4 +18,10 @@ data class ForwardContextDto(
     val modelAlias: String,
     @field:ApiModelProperty("供应商ID")
     val vendorId: Long,
+    @field:ApiModelProperty("模型ID")
+    val modelId: Long,
+    @field:ApiModelProperty("输入Token每百万单价")
+    val inputPriceCnyPerMillion: BigDecimal,
+    @field:ApiModelProperty("输出Token每百万单价")
+    val outputPriceCnyPerMillion: BigDecimal,
 )

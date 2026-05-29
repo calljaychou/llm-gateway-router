@@ -1,9 +1,10 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-21T18:47:35.940409+08:00
+ * Generation date: 2026-05-29T14:51:25.346083+08:00
  */
 package com.llm.gateway.dal.mapper
 
+import java.math.BigDecimal
 import java.sql.JDBCType
 import java.util.Date
 import org.mybatis.dynamic.sql.SqlTable
@@ -30,11 +31,15 @@ object UsageLogsDynamicSqlSupport {
 
         val reservedTokens = column<Int>("reserved_tokens", JDBCType.INTEGER)
 
+        val estimatedAmountCny = column<BigDecimal>("estimated_amount_cny", JDBCType.DECIMAL)
+
         val promptTokens = column<Int>("prompt_tokens", JDBCType.INTEGER)
 
         val completionTokens = column<Int>("completion_tokens", JDBCType.INTEGER)
 
         val totalTokens = column<Int>("total_tokens", JDBCType.INTEGER)
+
+        val amountCny = column<BigDecimal>("amount_cny", JDBCType.DECIMAL)
 
         val latencyMs = column<Int>("latency_ms", JDBCType.INTEGER)
 
@@ -51,5 +56,7 @@ object UsageLogsDynamicSqlSupport {
         val calcSource = column<String>("calc_source", JDBCType.VARCHAR)
 
         val createdAt = column<Date>("created_at", JDBCType.TIMESTAMP)
+
+        val amountCalcDetail = column<String>("amount_calc_detail", JDBCType.LONGVARCHAR)
     }
 }

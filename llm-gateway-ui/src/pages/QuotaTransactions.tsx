@@ -105,11 +105,11 @@ export const QuotaTransactions: React.FC = () => {
         try {
             const res = await quotaApi.transferQuota({
                 targetUser: values.targetUser.trim(),
-                transferTokens: values.transferTokens,
+                transferAmount: values.transferAmount,
                 remark: values.remark
             });
             if (res.success) {
-                message.success(`划转成功！顺利向目标用户 [${values.targetUser}] 共享划配 ${values.transferTokens.toLocaleString()} Tokens`);
+                message.success(`划转成功！顺利向目标用户 [${values.targetUser}] 共享划配 ${values.transferAmount.toLocaleString()} 元`);
                 form.resetFields();
                 setActiveTab('ledger');
                 fetchQuotaSnapshot();
@@ -134,13 +134,13 @@ export const QuotaTransactions: React.FC = () => {
         },
         {
             title: '额度变动 (Delta)',
-            dataIndex: 'deltaTokens',
-            key: 'deltaTokens',
+            dataIndex: 'deltaAmount',
+            key: 'deltaAmount',
             render: (delta: number) => {
                 const isNegative = delta < 0;
                 return (
                     <Text strong style={{ color: isNegative ? '#ff4d4f' : '#52c41a' }}>
-                        {isNegative ? '' : '+'}{delta.toLocaleString()} Tokens
+                        {isNegative ? '' : '+'}{delta.toLocaleString()}
                     </Text>
                 );
             }
@@ -149,7 +149,7 @@ export const QuotaTransactions: React.FC = () => {
             title: '变动额度',
             key: 'availableBalance',
             render: (_: any, record: QuotaTransactionItem) => (
-                <span>{record.availableBefore.toLocaleString()} <ArrowRightOutlined style={{ fontSize: 11 }} /> {record.availableAfter.toLocaleString()}</span>
+                <span>{record.availableBeforeAmount.toLocaleString()} <ArrowRightOutlined style={{ fontSize: 11 }} /> {record.availableAfterAmount.toLocaleString()}</span>
             )
         },
         { title: '流水备注', dataIndex: 'remark', key: 'remark', ellipsis: true }
@@ -162,21 +162,21 @@ export const QuotaTransactions: React.FC = () => {
                     <>
                         <Row gutter={16}>
                             <Col span={6}>
-                                <Statistic title="总配额" value={quotaSnapshot.currentQuotaTokens} />
+                                <Statistic title="总配额" value={quotaSnapshot.currentQuotaAmount} />
                             </Col>
                             <Col span={6}>
-                                <Statistic title="当前可用配额" value={quotaSnapshot.availableTokens} valueStyle={{ color: '#0969da' }} />
+                                <Statistic title="当前可用配额" value={quotaSnapshot.availableAmount} valueStyle={{ color: '#0969da' }} />
                             </Col>
                             <Col span={6}>
-                                <Statistic title="已使用配额" value={quotaSnapshot.usedTokens} />
+                                <Statistic title="已使用配额" value={quotaSnapshot.usedAmount} />
                             </Col>
                             <Col span={6}>
-                                <Statistic title="已过期配额" value={quotaSnapshot.expiredTokens} />
+                                <Statistic title="已过期配额" value={quotaSnapshot.expiredAmount} />
                             </Col>
                         </Row>
                         <Descriptions column={3} size="small" bordered style={{ marginTop: 16 }}>
-                            <Descriptions.Item label="累计转入">{quotaSnapshot.transferredInTokens}</Descriptions.Item>
-                            <Descriptions.Item label="累计转出">{quotaSnapshot.transferredOutTokens}</Descriptions.Item>
+                            <Descriptions.Item label="累计转入">{quotaSnapshot.transferredInAmount}</Descriptions.Item>
+                            <Descriptions.Item label="累计转出">{quotaSnapshot.transferredOutAmount}</Descriptions.Item>
                             <Descriptions.Item label="允许转配">{quotaSnapshot.allowTransferOut ? '是' : '否'}</Descriptions.Item>
                             <Descriptions.Item label="最早过期时间">{quotaSnapshot.earliestExpireAt || '-'}</Descriptions.Item>
                             <Descriptions.Item label="更新时间" span={2}>{quotaSnapshot.updatedAt || '-'}</Descriptions.Item>
@@ -224,8 +224,8 @@ export const QuotaTransactions: React.FC = () => {
                                     <Form.Item name="targetUser" label="划转目标用户账号" rules={[{ required: true, message: '请输入合法的转入方账号' }]}>
                                         <Input placeholder="请输入目标账号（用户名、手机号或邮箱）" />
                                     </Form.Item>
-                                    <Form.Item name="transferTokens" label="调配划转 Token 资产总量" rules={[{ required: true, message: '请输入划配总量' }]}>
-                                        <InputNumber style={{ width: '100%' }} min={1} placeholder="请输入大模型 Token 资源划配数" precision={0} />
+                                    <Form.Item name="transferAmount" label="调配划转金额" rules={[{ required: true, message: '请输入划配金额' }]}>
+                                        <InputNumber style={{ width: '100%' }} min={0.000001} placeholder="请输入金额" precision={6} />
                                     </Form.Item>
                                     <Form.Item name="remark" label="转配事由备注">
                                         <Input.TextArea rows={4} placeholder="例如: 支援xx用户本月大项目开发额度" maxLength={200} />

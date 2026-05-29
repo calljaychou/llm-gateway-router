@@ -1,8 +1,6 @@
 package com.llm.gateway.service
 
 import com.llm.gateway.common.enums.NormalStatus
-import com.llm.gateway.dal.mapper.ModelsDynamicSqlSupport
-import com.llm.gateway.dal.mapper.ModelsMapper
 import com.llm.gateway.dal.mapper.UsageLogsMapper
 import com.llm.gateway.dal.mapper.UsersDynamicSqlSupport
 import com.llm.gateway.dal.mapper.UsersMapper
@@ -11,7 +9,6 @@ import com.llm.gateway.dal.mapper.selectOne
 import com.llm.gateway.dal.model.UsageLogsRecord
 import com.llm.gateway.model.dto.UsageLogRecordCommand
 import java.util.Date
-import org.apache.commons.math3.fitting.leastsquares.LeastSquaresFactory.model
 import org.springframework.stereotype.Service
 
 @Service
@@ -32,13 +29,15 @@ class UsageLogService(
                 deptId = user?.deptId ?: 0L,
                 apiKeyId = null,
                 vendorId = command.vendorId,
-                modelId = null,
+                modelId = command.modelId,
                 endpoint = command.endpoint,
                 useStream = command.stream,
                 reservedTokens = command.reservedTokens,
+                estimatedAmountCny = command.estimatedAmountCny,
                 promptTokens = command.usage.promptTokens,
                 completionTokens = command.usage.completionTokens,
                 totalTokens = command.usage.totalTokens,
+                amountCny = command.amountCny,
                 latencyMs = command.latencyMs,
                 statusCode = command.statusCode,
                 errorCode = command.errorCode,
@@ -47,6 +46,7 @@ class UsageLogService(
                 retryCount = 0,
                 calcSource = command.calcSource,
                 createdAt = Date(),
+                amountCalcDetail = command.amountCalcDetail,
             )
         )
     }

@@ -35,6 +35,7 @@ import com.llm.gateway.model.results.UserQuotaAccountResult
 import com.llm.gateway.model.results.UserQuotaGrantResult
 import com.llm.gateway.model.results.UserQuotaTransactionResult
 import com.llm.gateway.model.results.UserQuotaTransferResult
+import java.math.BigDecimal
 import java.util.Date
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -59,6 +60,7 @@ class UserQuotaService(
         private const val ACTIVE_GRANT_LIMIT = 5
         private const val QUOTA_TRANSFER_LOCK_PREFIX = "gateway:user-quota:transfer:"
         private const val QUOTA_TRANSFER_LOCK_WAIT_SECONDS = 5L
+        private val ZERO_AMOUNT = BigDecimal.ZERO
     }
 
     fun getCurrentQuota(userId: Long): UserQuotaAccountResult {
@@ -116,13 +118,13 @@ class UserQuotaService(
         operatorUserId: Long?,
     ): UserQuotaAccountResult {
         ensureActiveUser(userId)
-        val adjustTokens = params.adjustTokens ?: throw BizException(BizException.BUSINESS_FAILED, "调整额度不能为空")
-        if (adjustTokens == 0L) {
+        val adjustAmount = params.adjustAmount ?: throw BizException(BizException.BUSINESS_FAILED, "调整额度不能为空")
+        if (adjustAmount.compareTo(ZERO_AMOUNT) == 0) {
             throw BizException(BizException.BUSINESS_FAILED, "调整额度不能为0")
         }
 
         val before = findAccount(userId) ?: createZeroAccount(userId)
-        if (adjustTokens > 0) {
+        if (adjustAmount > ZERO_AMOUNT) {
             val expiresAt = params.expiresAt ?: throw BizException(BizException.BUSINESS_FAILED, "新增额度必须指定过期时间")
             if (!expiresAt.after(Date())) {
                 throw BizException(BizException.BUSINESS_FAILED, "过期时间必须晚于当前时间")
@@ -132,7 +134,7 @@ class UserQuotaService(
                 sourceType = UserQuotaGrantSourceType.ADMIN_GRANT,
                 sourceUserId = null,
                 sourceGrantId = null,
-                tokens = adjustTokens,
+                amount = adjustAmount,
                 expiresAt = expiresAt,
                 operatorUserId = operatorUserId,
                 remark = params.remark?.trim(),
@@ -142,7 +144,7 @@ class UserQuotaService(
                 userId = userId,
                 grantId = null,
                 changeType = UserQuotaTransactionChangeType.ADMIN_GRANT,
-                deltaTokens = adjustTokens,
+                deltaAmount = adjustAmount,
                 before = before,
                 after = after,
                 counterpartyUserId = null,
@@ -153,13 +155,13 @@ class UserQuotaService(
             return mapAccountResult(after, includeActiveGrants = true)
         }
 
-        reclaimQuota(userId, -adjustTokens)
+        reclaimQuota(userId, adjustAmount.negate())
         val after = rebuildAccount(userId)
         insertTransaction(
             userId = userId,
             grantId = null,
             changeType = UserQuotaTransactionChangeType.ADMIN_RECLAIM,
-            deltaTokens = adjustTokens,
+            deltaAmount = adjustAmount,
             before = before,
             after = after,
             counterpartyUserId = null,
@@ -193,18 +195,18 @@ class UserQuotaService(
         ensureActiveUser(fromUserId)
         validateTransferPermission(fromUserId)
         val targetUserId = resolveTransferTargetUserId(params.targetUser)
-        val transferTokens = params.transferTokens ?: throw BizException(BizException.BUSINESS_FAILED, "转配额度不能为空")
+        val transferAmount = params.transferAmount ?: throw BizException(BizException.BUSINESS_FAILED, "转配额度不能为空")
         if (targetUserId == fromUserId) {
             throw BizException(BizException.BUSINESS_FAILED, "不允许给自己转配额度")
         }
-        if (transferTokens <= 0) {
+        if (transferAmount <= ZERO_AMOUNT) {
             throw BizException(BizException.BUSINESS_FAILED, "转配额度必须大于0")
         }
         ensureActiveUser(targetUserId)
 
         return withQuotaTransferLocks(fromUserId, targetUserId) {
             transactionTemplate.execute {
-                transferQuotaCore(fromUserId, targetUserId, transferTokens, params.remark?.trim())
+                transferQuotaCore(fromUserId, targetUserId, transferAmount, params.remark?.trim())
             } ?: throw BizException(BizException.BUSINESS_FAILED, "配额转配失败")
         }
     }
@@ -279,26 +281,26 @@ class UserQuotaService(
     private fun transferQuotaCore(
         fromUserId: Long,
         targetUserId: Long,
-        transferTokens: Long,
+        transferAmount: BigDecimal,
         remark: String?,
     ): UserQuotaTransferResult {
         val fromBefore = requireAccount(fromUserId)
         if (fromBefore.allowTransferOut != true) {
             throw BizException(BizException.BUSINESS_FAILED, "当前用户不允许发起额度转配")
         }
-        if ((fromBefore.availableTokens ?: 0L) < transferTokens) {
+        if ((fromBefore.availableAmount ?: ZERO_AMOUNT) < transferAmount) {
             throw BizException(BizException.BUSINESS_FAILED, "剩余额度不足，无法转配")
         }
         val targetBefore = findAccount(targetUserId) ?: createZeroAccount(targetUserId)
 
-        val splits = deductFromActiveGrants(fromUserId, transferTokens)
+        val splits = deductFromActiveGrants(fromUserId, transferAmount)
         splits.forEach { split ->
             createGrant(
                 userId = targetUserId,
                 sourceType = UserQuotaGrantSourceType.TRANSFER_IN,
                 sourceUserId = fromUserId,
                 sourceGrantId = split.sourceGrantId,
-                tokens = split.tokens,
+                amount = split.amount,
                 expiresAt = split.expiresAt,
                 operatorUserId = fromUserId,
                 remark = remark,
@@ -307,14 +309,14 @@ class UserQuotaService(
 
         val fromAfter = rebuildAccount(fromUserId)
         val targetAfter = rebuildAccount(targetUserId)
-        fromAfter.transferredOutTokens = (fromAfter.transferredOutTokens ?: 0L) + transferTokens
+        fromAfter.transferredOutAmount = (fromAfter.transferredOutAmount ?: ZERO_AMOUNT) + transferAmount
         fromAfter.updatedTime = Date()
         userQuotaAccountsMapper.updateByPrimaryKeySelective(fromAfter)
         insertTransaction(
             userId = fromUserId,
             grantId = null,
             changeType = UserQuotaTransactionChangeType.TRANSFER_OUT,
-            deltaTokens = -transferTokens,
+            deltaAmount = transferAmount.negate(),
             before = fromBefore,
             after = fromAfter,
             counterpartyUserId = targetUserId,
@@ -326,7 +328,7 @@ class UserQuotaService(
             userId = targetUserId,
             grantId = null,
             changeType = UserQuotaTransactionChangeType.TRANSFER_IN,
-            deltaTokens = transferTokens,
+            deltaAmount = transferAmount,
             before = targetBefore,
             after = targetAfter,
             counterpartyUserId = fromUserId,
@@ -336,20 +338,20 @@ class UserQuotaService(
         )
 
         log.info(
-            "用户配额转配成功 fromUserId={}, targetUserId={}, transferTokens={}, fromAvailableBefore={}, fromAvailableAfter={}, targetAvailableBefore={}, targetAvailableAfter={}",
+            "用户配额转配成功 fromUserId={}, targetUserId={}, transferAmount={}, fromAvailableBefore={}, fromAvailableAfter={}, targetAvailableBefore={}, targetAvailableAfter={}",
             fromUserId,
             targetUserId,
-            transferTokens,
-            fromBefore.availableTokens,
-            fromAfter.availableTokens,
-            targetBefore.availableTokens,
-            targetAfter.availableTokens,
+            transferAmount,
+            fromBefore.availableAmount,
+            fromAfter.availableAmount,
+            targetBefore.availableAmount,
+            targetAfter.availableAmount,
         )
 
         return UserQuotaTransferResult(
             fromUserId = fromUserId,
             targetUserId = targetUserId,
-            transferTokens = transferTokens,
+            transferAmount = transferAmount,
             fromAccount = mapAccountResult(fromAfter, includeActiveGrants = true),
             targetAccount = mapAccountResult(targetAfter, includeActiveGrants = true),
         )
@@ -371,7 +373,7 @@ class UserQuotaService(
                     log.warn("用户配额转配锁获取失败 fromUserId={}, targetUserId={}", fromUserId, targetUserId)
                     throw BizException(BizException.BUSINESS_FAILED, "配额转配处理中，请稍后重试")
                 }
-                locked += lock
+                locked.add(lock)
             }
             return block()
         } finally {
@@ -405,12 +407,12 @@ class UserQuotaService(
         val now = Date()
         val record = UserQuotaAccountsRecord(
             userId = userId,
-            currentQuotaTokens = 0,
-            usedTokens = 0,
-            expiredTokens = 0,
-            transferredInTokens = 0,
-            transferredOutTokens = 0,
-            availableTokens = 0,
+            currentQuotaAmount = ZERO_AMOUNT,
+            usedAmount = ZERO_AMOUNT,
+            expiredAmount = ZERO_AMOUNT,
+            transferredInAmount = ZERO_AMOUNT,
+            transferredOutAmount = ZERO_AMOUNT,
+            availableAmount = ZERO_AMOUNT,
             allowTransferOut = true,
             earliestExpireAt = null,
             createdTime = now,
@@ -425,7 +427,7 @@ class UserQuotaService(
         sourceType: UserQuotaGrantSourceType,
         sourceUserId: Long?,
         sourceGrantId: Long?,
-        tokens: Long,
+        amount: BigDecimal,
         expiresAt: Date,
         operatorUserId: Long?,
         remark: String?,
@@ -436,10 +438,10 @@ class UserQuotaService(
             sourceType = sourceType.value,
             sourceUserId = sourceUserId,
             sourceGrantId = sourceGrantId,
-            grantedTokens = tokens,
-            remainingTokens = tokens,
-            consumedTokens = 0,
-            expiredTokens = 0,
+            grantedAmount = amount,
+            remainingAmount = amount,
+            consumedAmount = ZERO_AMOUNT,
+            expiredAmount = ZERO_AMOUNT,
             expiresAt = expiresAt,
             status = UserQuotaGrantStatus.ACTIVE.value,
             grantedBy = operatorUserId,
@@ -451,53 +453,51 @@ class UserQuotaService(
         return record
     }
 
-    private fun reclaimQuota(userId: Long, tokens: Long) {
-        if ((requireAccount(userId).availableTokens ?: 0L) < tokens) {
+    private fun reclaimQuota(userId: Long, amount: BigDecimal) {
+        if ((requireAccount(userId).availableAmount ?: ZERO_AMOUNT) < amount) {
             throw BizException(BizException.BUSINESS_FAILED, "剩余额度不足，无法回收")
         }
-        deductFromActiveGrants(userId, tokens)
+        deductFromActiveGrants(userId, amount)
     }
 
     /**
      * 按最早过期批次优先扣减用户剩余额度，单个批次使用条件更新避免并发转配超扣。
      */
-    private fun deductFromActiveGrants(userId: Long, tokens: Long): List<QuotaDeductSplit> {
-        var remainingToDeduct = tokens
+    private fun deductFromActiveGrants(userId: Long, amount: BigDecimal): List<QuotaDeductSplit> {
+        var remainingToDeduct = amount
         val splits = mutableListOf<QuotaDeductSplit>()
 
-        while (remainingToDeduct > 0) {
+        while (remainingToDeduct > ZERO_AMOUNT) {
             val grant = queryEarliestActiveGrant(userId)
                 ?: break
             val grantId = grant.id ?: throw BizException(BizException.BUSINESS_FAILED, "配额账户数据异常，请重试")
-            val grantRemaining = grant.remainingTokens ?: 0L
-            val deductTokens = minOf(grantRemaining, remainingToDeduct)
-            if (deductTokens <= 0) break
+            val grantRemaining = grant.remainingAmount ?: ZERO_AMOUNT
+            val deductAmount = grantRemaining.min(remainingToDeduct)
+            if (deductAmount <= ZERO_AMOUNT) break
 
-            // 通过数据库条件更新保证并发场景下只有一个请求能成功扣减该批次。
-            val updated = userQuotaGrantsMapper.deductRemainingTokens(
-                grantId = grantId,
-                userId = userId,
-                deductTokens = deductTokens,
-                activeStatus = UserQuotaGrantStatus.ACTIVE.value,
-                depletedStatus = UserQuotaGrantStatus.DEPLETED.value,
-                now = Date(),
-                updatedTime = Date(),
-            )
-            if (updated == 0) {
-                log.warn("用户配额批次扣减冲突 userId={}, grantId={}, deductTokens={}", userId, grantId, deductTokens)
-                continue
-            }
+            grant.remainingAmount = grantRemaining - deductAmount
+            grant.consumedAmount = (grant.consumedAmount ?: ZERO_AMOUNT) + deductAmount
+            grant.status =
+                if ((grant.remainingAmount ?: ZERO_AMOUNT).compareTo(ZERO_AMOUNT) == 0) {
+                    UserQuotaGrantStatus.DEPLETED.value
+                } else {
+                    UserQuotaGrantStatus.ACTIVE.value
+                }
+            grant.updatedTime = Date()
+            userQuotaGrantsMapper.updateByPrimaryKeySelective(grant)
 
-            splits += QuotaDeductSplit(
-                sourceGrantId = grantId,
-                tokens = deductTokens,
-                expiresAt = grant.expiresAt ?: throw BizException(BizException.BUSINESS_FAILED, "配额批次过期时间缺失"),
+            splits.add(
+                QuotaDeductSplit(
+                    sourceGrantId = grantId,
+                    amount = deductAmount,
+                    expiresAt = grant.expiresAt ?: throw BizException(BizException.BUSINESS_FAILED, "配额批次过期时间缺失"),
+                )
             )
-            remainingToDeduct -= deductTokens
+            remainingToDeduct = remainingToDeduct - deductAmount
         }
 
-        if (remainingToDeduct > 0) {
-            log.warn("用户配额扣减不足 userId={}, tokens={}, remainingToDeduct={}", userId, tokens, remainingToDeduct)
+        if (remainingToDeduct > ZERO_AMOUNT) {
+            log.warn("用户配额扣减不足 userId={}, amount={}, remainingToDeduct={}", userId, amount, remainingToDeduct)
             throw BizException(BizException.BUSINESS_FAILED, "剩余额度不足")
         }
         return splits
@@ -510,7 +510,7 @@ class UserQuotaService(
         return userQuotaGrantsMapper.select {
             where { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.userId isEqualTo userId }
             and { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.status isEqualTo UserQuotaGrantStatus.ACTIVE.value }
-            and { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.remainingTokens isGreaterThan 0L }
+            and { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.remainingAmount isGreaterThan ZERO_AMOUNT }
             and { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.expiresAt isGreaterThan Date() }
             orderBy(
                 UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.expiresAt,
@@ -532,45 +532,45 @@ class UserQuotaService(
         }
         val activeGrants = grants.filter {
             it.status == UserQuotaGrantStatus.ACTIVE.value &&
-                (it.remainingTokens ?: 0L) > 0 &&
+                (it.remainingAmount ?: ZERO_AMOUNT) > ZERO_AMOUNT &&
                 it.expiresAt?.after(now) == true
         }
-        val currentQuotaTokens = notExpiredGrants.sumOf { (it.remainingTokens ?: 0L) + (it.consumedTokens ?: 0L) }
-        val availableTokens = activeGrants.sumOf { it.remainingTokens ?: 0L }
-        val usedTokens = notExpiredGrants.sumOf { it.consumedTokens ?: 0L }
-        val expiredTokens = grants
+        val currentQuotaAmount = notExpiredGrants.fold(ZERO_AMOUNT) { total, it -> total + (it.remainingAmount ?: ZERO_AMOUNT) + (it.consumedAmount ?: ZERO_AMOUNT) }
+        val availableAmount = activeGrants.fold(ZERO_AMOUNT) { total, it -> total + (it.remainingAmount ?: ZERO_AMOUNT) }
+        val usedAmount = notExpiredGrants.fold(ZERO_AMOUNT) { total, it -> total + (it.consumedAmount ?: ZERO_AMOUNT) }
+        val expiredAmount = grants
             .filter { it.status == UserQuotaGrantStatus.EXPIRED.value || it.expiresAt?.after(Date()) == false }
-            .sumOf { (it.expiredTokens ?: 0L).takeIf { value -> value > 0 } ?: (it.remainingTokens ?: 0L) }
-        val transferredInTokens = grants
+            .fold(ZERO_AMOUNT) { total, it -> total + ((it.expiredAmount ?: ZERO_AMOUNT).takeIf { value -> value > ZERO_AMOUNT } ?: (it.remainingAmount ?: ZERO_AMOUNT)) }
+        val transferredInAmount = grants
             .filter { it.sourceType == UserQuotaGrantSourceType.TRANSFER_IN.value }
-            .sumOf { it.grantedTokens ?: 0L }
-        val transferredOutTokens = sumTransactionDelta(userId, UserQuotaTransactionChangeType.TRANSFER_OUT).let { -it }
+            .fold(ZERO_AMOUNT) { total, it -> total + (it.grantedAmount ?: ZERO_AMOUNT) }
+        val transferredOutAmount = sumTransactionDelta(userId, UserQuotaTransactionChangeType.TRANSFER_OUT).negate()
         val earliestExpireAt = activeGrants.mapNotNull { it.expiresAt }.minOrNull()
 
-        account.currentQuotaTokens = currentQuotaTokens
-        account.usedTokens = usedTokens
-        account.availableTokens = availableTokens
-        account.expiredTokens = expiredTokens
-        account.transferredInTokens = transferredInTokens
-        account.transferredOutTokens = transferredOutTokens
+        account.currentQuotaAmount = currentQuotaAmount
+        account.usedAmount = usedAmount
+        account.availableAmount = availableAmount
+        account.expiredAmount = expiredAmount
+        account.transferredInAmount = transferredInAmount
+        account.transferredOutAmount = transferredOutAmount
         account.earliestExpireAt = earliestExpireAt
         account.updatedTime = Date()
         userQuotaAccountsMapper.updateByPrimaryKeySelective(account)
         return account
     }
 
-    private fun sumTransactionDelta(userId: Long, changeType: UserQuotaTransactionChangeType): Long {
+    private fun sumTransactionDelta(userId: Long, changeType: UserQuotaTransactionChangeType): BigDecimal {
         return userQuotaTransactionsMapper.select {
             where { UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.userId isEqualTo userId }
             and { UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.changeType isEqualTo changeType.value }
-        }.sumOf { it.deltaTokens ?: 0L }
+        }.fold(ZERO_AMOUNT) { total, it -> total + (it.deltaAmount ?: ZERO_AMOUNT) }
     }
 
     private fun insertTransaction(
         userId: Long,
         grantId: Long?,
         changeType: UserQuotaTransactionChangeType,
-        deltaTokens: Long,
+        deltaAmount: BigDecimal,
         before: UserQuotaAccountsRecord,
         after: UserQuotaAccountsRecord,
         counterpartyUserId: Long?,
@@ -584,11 +584,11 @@ class UserQuotaService(
                 userId = userId,
                 grantId = grantId,
                 changeType = changeType.value,
-                deltaTokens = deltaTokens,
-                quotaBefore = before.currentQuotaTokens ?: 0L,
-                quotaAfter = after.currentQuotaTokens ?: 0L,
-                availableBefore = before.availableTokens ?: 0L,
-                availableAfter = after.availableTokens ?: 0L,
+                deltaAmount = deltaAmount,
+                quotaBeforeAmount = before.currentQuotaAmount ?: ZERO_AMOUNT,
+                quotaAfterAmount = after.currentQuotaAmount ?: ZERO_AMOUNT,
+                availableBeforeAmount = before.availableAmount ?: ZERO_AMOUNT,
+                availableAfterAmount = after.availableAmount ?: ZERO_AMOUNT,
                 counterpartyUserId = counterpartyUserId,
                 requestId = requestId,
                 operatorUserId = operatorUserId,
@@ -602,7 +602,7 @@ class UserQuotaService(
         return userQuotaGrantsMapper.select {
             where { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.userId isEqualTo userId }
             and { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.status isEqualTo UserQuotaGrantStatus.ACTIVE.value }
-            and { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.remainingTokens isGreaterThan 0L }
+            and { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.remainingAmount isGreaterThan ZERO_AMOUNT }
             and { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.expiresAt isGreaterThan Date() }
             orderBy(
                 UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.expiresAt,
@@ -616,12 +616,12 @@ class UserQuotaService(
         val userId = record.userId ?: 0L
         return UserQuotaAccountResult(
             userId = userId,
-            currentQuotaTokens = record.currentQuotaTokens ?: 0L,
-            usedTokens = record.usedTokens ?: 0L,
-            expiredTokens = record.expiredTokens ?: 0L,
-            transferredInTokens = record.transferredInTokens ?: 0L,
-            transferredOutTokens = record.transferredOutTokens ?: 0L,
-            availableTokens = record.availableTokens ?: 0L,
+            currentQuotaAmount = record.currentQuotaAmount ?: ZERO_AMOUNT,
+            usedAmount = record.usedAmount ?: ZERO_AMOUNT,
+            expiredAmount = record.expiredAmount ?: ZERO_AMOUNT,
+            transferredInAmount = record.transferredInAmount ?: ZERO_AMOUNT,
+            transferredOutAmount = record.transferredOutAmount ?: ZERO_AMOUNT,
+            availableAmount = record.availableAmount ?: ZERO_AMOUNT,
             allowTransferOut = record.allowTransferOut ?: false,
             earliestExpireAt = record.earliestExpireAt,
             updatedAt = record.updatedTime,
@@ -636,10 +636,10 @@ class UserQuotaService(
             sourceType = record.sourceType ?: "",
             sourceUserId = record.sourceUserId,
             sourceGrantId = record.sourceGrantId,
-            grantedTokens = record.grantedTokens ?: 0L,
-            remainingTokens = record.remainingTokens ?: 0L,
-            consumedTokens = record.consumedTokens ?: 0L,
-            expiredTokens = record.expiredTokens ?: 0L,
+            grantedAmount = record.grantedAmount ?: ZERO_AMOUNT,
+            remainingAmount = record.remainingAmount ?: ZERO_AMOUNT,
+            consumedAmount = record.consumedAmount ?: ZERO_AMOUNT,
+            expiredAmount = record.expiredAmount ?: ZERO_AMOUNT,
             expiresAt = record.expiresAt ?: Date(0),
             status = record.status ?: "",
             grantedBy = record.grantedBy,
@@ -656,11 +656,11 @@ class UserQuotaService(
             userId = record.userId ?: 0L,
             grantId = record.grantId,
             changeType = record.changeType ?: "",
-            deltaTokens = record.deltaTokens ?: 0L,
-            quotaBefore = record.quotaBefore ?: 0L,
-            quotaAfter = record.quotaAfter ?: 0L,
-            availableBefore = record.availableBefore ?: 0L,
-            availableAfter = record.availableAfter ?: 0L,
+            deltaAmount = record.deltaAmount ?: ZERO_AMOUNT,
+            quotaBeforeAmount = record.quotaBeforeAmount ?: ZERO_AMOUNT,
+            quotaAfterAmount = record.quotaAfterAmount ?: ZERO_AMOUNT,
+            availableBeforeAmount = record.availableBeforeAmount ?: ZERO_AMOUNT,
+            availableAfterAmount = record.availableAfterAmount ?: ZERO_AMOUNT,
             counterpartyUserId = record.counterpartyUserId,
             requestId = record.requestId,
             operatorUserId = record.operatorUserId,
@@ -671,7 +671,7 @@ class UserQuotaService(
 
     private data class QuotaDeductSplit(
         val sourceGrantId: Long,
-        val tokens: Long,
+        val amount: BigDecimal,
         val expiresAt: Date,
     )
 }

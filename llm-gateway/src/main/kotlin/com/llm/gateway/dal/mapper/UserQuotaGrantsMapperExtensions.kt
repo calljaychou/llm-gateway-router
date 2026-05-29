@@ -1,18 +1,18 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-21T18:47:35.938134+08:00
+ * Generation date: 2026-05-29T14:51:25.344652+08:00
  */
 package com.llm.gateway.dal.mapper
 
 import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants
-import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.consumedTokens
+import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.consumedAmount
 import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.createdTime
-import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.expiredTokens
+import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.expiredAmount
 import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.expiresAt
+import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.grantedAmount
 import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.grantedBy
-import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.grantedTokens
 import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.id
-import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.remainingTokens
+import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.remainingAmount
 import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.remark
 import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.sourceGrantId
 import com.llm.gateway.dal.mapper.UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.sourceType
@@ -46,10 +46,10 @@ fun UserQuotaGrantsMapper.insert(record: UserQuotaGrantsRecord) =
         map(sourceType).toProperty("sourceType")
         map(sourceUserId).toProperty("sourceUserId")
         map(sourceGrantId).toProperty("sourceGrantId")
-        map(grantedTokens).toProperty("grantedTokens")
-        map(remainingTokens).toProperty("remainingTokens")
-        map(consumedTokens).toProperty("consumedTokens")
-        map(expiredTokens).toProperty("expiredTokens")
+        map(grantedAmount).toProperty("grantedAmount")
+        map(remainingAmount).toProperty("remainingAmount")
+        map(consumedAmount).toProperty("consumedAmount")
+        map(expiredAmount).toProperty("expiredAmount")
         map(expiresAt).toProperty("expiresAt")
         map(status).toProperty("status")
         map(grantedBy).toProperty("grantedBy")
@@ -64,10 +64,10 @@ fun UserQuotaGrantsMapper.insertMultiple(records: Collection<UserQuotaGrantsReco
         map(sourceType).toProperty("sourceType")
         map(sourceUserId).toProperty("sourceUserId")
         map(sourceGrantId).toProperty("sourceGrantId")
-        map(grantedTokens).toProperty("grantedTokens")
-        map(remainingTokens).toProperty("remainingTokens")
-        map(consumedTokens).toProperty("consumedTokens")
-        map(expiredTokens).toProperty("expiredTokens")
+        map(grantedAmount).toProperty("grantedAmount")
+        map(remainingAmount).toProperty("remainingAmount")
+        map(consumedAmount).toProperty("consumedAmount")
+        map(expiredAmount).toProperty("expiredAmount")
         map(expiresAt).toProperty("expiresAt")
         map(status).toProperty("status")
         map(grantedBy).toProperty("grantedBy")
@@ -85,10 +85,10 @@ fun UserQuotaGrantsMapper.insertSelective(record: UserQuotaGrantsRecord) =
         map(sourceType).toPropertyWhenPresent("sourceType", record::sourceType)
         map(sourceUserId).toPropertyWhenPresent("sourceUserId", record::sourceUserId)
         map(sourceGrantId).toPropertyWhenPresent("sourceGrantId", record::sourceGrantId)
-        map(grantedTokens).toPropertyWhenPresent("grantedTokens", record::grantedTokens)
-        map(remainingTokens).toPropertyWhenPresent("remainingTokens", record::remainingTokens)
-        map(consumedTokens).toPropertyWhenPresent("consumedTokens", record::consumedTokens)
-        map(expiredTokens).toPropertyWhenPresent("expiredTokens", record::expiredTokens)
+        map(grantedAmount).toPropertyWhenPresent("grantedAmount", record::grantedAmount)
+        map(remainingAmount).toPropertyWhenPresent("remainingAmount", record::remainingAmount)
+        map(consumedAmount).toPropertyWhenPresent("consumedAmount", record::consumedAmount)
+        map(expiredAmount).toPropertyWhenPresent("expiredAmount", record::expiredAmount)
         map(expiresAt).toPropertyWhenPresent("expiresAt", record::expiresAt)
         map(status).toPropertyWhenPresent("status", record::status)
         map(grantedBy).toPropertyWhenPresent("grantedBy", record::grantedBy)
@@ -97,7 +97,7 @@ fun UserQuotaGrantsMapper.insertSelective(record: UserQuotaGrantsRecord) =
         map(updatedTime).toPropertyWhenPresent("updatedTime", record::updatedTime)
     }
 
-private val columnList = listOf(id, userId, sourceType, sourceUserId, sourceGrantId, grantedTokens, remainingTokens, consumedTokens, expiredTokens, expiresAt, status, grantedBy, remark, createdTime, updatedTime)
+private val columnList = listOf(id, userId, sourceType, sourceUserId, sourceGrantId, grantedAmount, remainingAmount, consumedAmount, expiredAmount, expiresAt, status, grantedBy, remark, createdTime, updatedTime)
 
 fun UserQuotaGrantsMapper.selectOne(completer: SelectCompleter) =
     selectOne(this::selectOne, columnList, UserQuotaGrants, completer)
@@ -122,10 +122,10 @@ fun KotlinUpdateBuilder.updateAllColumns(record: UserQuotaGrantsRecord) =
         set(sourceType).equalTo(record::sourceType)
         set(sourceUserId).equalTo(record::sourceUserId)
         set(sourceGrantId).equalTo(record::sourceGrantId)
-        set(grantedTokens).equalTo(record::grantedTokens)
-        set(remainingTokens).equalTo(record::remainingTokens)
-        set(consumedTokens).equalTo(record::consumedTokens)
-        set(expiredTokens).equalTo(record::expiredTokens)
+        set(grantedAmount).equalTo(record::grantedAmount)
+        set(remainingAmount).equalTo(record::remainingAmount)
+        set(consumedAmount).equalTo(record::consumedAmount)
+        set(expiredAmount).equalTo(record::expiredAmount)
         set(expiresAt).equalTo(record::expiresAt)
         set(status).equalTo(record::status)
         set(grantedBy).equalTo(record::grantedBy)
@@ -140,10 +140,10 @@ fun KotlinUpdateBuilder.updateSelectiveColumns(record: UserQuotaGrantsRecord) =
         set(sourceType).equalToWhenPresent(record::sourceType)
         set(sourceUserId).equalToWhenPresent(record::sourceUserId)
         set(sourceGrantId).equalToWhenPresent(record::sourceGrantId)
-        set(grantedTokens).equalToWhenPresent(record::grantedTokens)
-        set(remainingTokens).equalToWhenPresent(record::remainingTokens)
-        set(consumedTokens).equalToWhenPresent(record::consumedTokens)
-        set(expiredTokens).equalToWhenPresent(record::expiredTokens)
+        set(grantedAmount).equalToWhenPresent(record::grantedAmount)
+        set(remainingAmount).equalToWhenPresent(record::remainingAmount)
+        set(consumedAmount).equalToWhenPresent(record::consumedAmount)
+        set(expiredAmount).equalToWhenPresent(record::expiredAmount)
         set(expiresAt).equalToWhenPresent(record::expiresAt)
         set(status).equalToWhenPresent(record::status)
         set(grantedBy).equalToWhenPresent(record::grantedBy)
@@ -158,10 +158,10 @@ fun UserQuotaGrantsMapper.updateByPrimaryKey(record: UserQuotaGrantsRecord) =
         set(sourceType).equalTo(record::sourceType)
         set(sourceUserId).equalTo(record::sourceUserId)
         set(sourceGrantId).equalTo(record::sourceGrantId)
-        set(grantedTokens).equalTo(record::grantedTokens)
-        set(remainingTokens).equalTo(record::remainingTokens)
-        set(consumedTokens).equalTo(record::consumedTokens)
-        set(expiredTokens).equalTo(record::expiredTokens)
+        set(grantedAmount).equalTo(record::grantedAmount)
+        set(remainingAmount).equalTo(record::remainingAmount)
+        set(consumedAmount).equalTo(record::consumedAmount)
+        set(expiredAmount).equalTo(record::expiredAmount)
         set(expiresAt).equalTo(record::expiresAt)
         set(status).equalTo(record::status)
         set(grantedBy).equalTo(record::grantedBy)
@@ -177,10 +177,10 @@ fun UserQuotaGrantsMapper.updateByPrimaryKeySelective(record: UserQuotaGrantsRec
         set(sourceType).equalToWhenPresent(record::sourceType)
         set(sourceUserId).equalToWhenPresent(record::sourceUserId)
         set(sourceGrantId).equalToWhenPresent(record::sourceGrantId)
-        set(grantedTokens).equalToWhenPresent(record::grantedTokens)
-        set(remainingTokens).equalToWhenPresent(record::remainingTokens)
-        set(consumedTokens).equalToWhenPresent(record::consumedTokens)
-        set(expiredTokens).equalToWhenPresent(record::expiredTokens)
+        set(grantedAmount).equalToWhenPresent(record::grantedAmount)
+        set(remainingAmount).equalToWhenPresent(record::remainingAmount)
+        set(consumedAmount).equalToWhenPresent(record::consumedAmount)
+        set(expiredAmount).equalToWhenPresent(record::expiredAmount)
         set(expiresAt).equalToWhenPresent(record::expiresAt)
         set(status).equalToWhenPresent(record::status)
         set(grantedBy).equalToWhenPresent(record::grantedBy)

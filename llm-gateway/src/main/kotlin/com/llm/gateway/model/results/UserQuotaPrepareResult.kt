@@ -3,6 +3,7 @@ package com.llm.gateway.model.results
 import com.llm.gateway.common.enums.DepartmentQuotaPeriod
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
+import java.math.BigDecimal
 
 @ApiModel("用户配额预处理结果")
 data class UserQuotaPrepareResult(
@@ -16,14 +17,14 @@ data class UserQuotaPrepareResult(
     val period: DepartmentQuotaPeriod,
     @ApiModelProperty(value = "配额周期键", required = true)
     val periodKey: String,
-    @ApiModelProperty(value = "额度上限", required = true)
-    val quotaTokens: Long,
-    @ApiModelProperty(value = "本次预占token", required = true)
-    val reservedTokens: Int,
-    @ApiModelProperty(value = "当前已用token", required = true)
-    val usedTokens: Long,
-    @ApiModelProperty(value = "当前处理中预占token", required = true)
-    val reservedInFlightTokens: Long,
+    @ApiModelProperty(value = "额度上限金额，", required = true)
+    val quotaAmount: BigDecimal,
+    @ApiModelProperty(value = "本次预占金额，", required = true)
+    val reservedAmount: BigDecimal,
+    @ApiModelProperty(value = "当前已用金额，", required = true)
+    val usedAmount: BigDecimal,
+    @ApiModelProperty(value = "当前处理中预占金额，", required = true)
+    val reservedInFlightAmount: BigDecimal,
     @ApiModelProperty(value = "是否允许继续请求", required = true)
     val allowed: Boolean,
     @ApiModelProperty(value = "拒绝错误码", required = false)

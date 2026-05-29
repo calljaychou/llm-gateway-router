@@ -1,11 +1,13 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-21T18:47:35.940831+08:00
+ * Generation date: 2026-05-29T14:51:25.34651+08:00
  */
 package com.llm.gateway.dal.mapper
 
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.accountingStatus
+import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.amountCalcDetail
+import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.amountCny
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.apiKeyId
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.calcSource
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.completionTokens
@@ -13,6 +15,7 @@ import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.createdAt
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.deptId
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.endpoint
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.errorCode
+import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.estimatedAmountCny
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.id
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.latencyMs
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.modelId
@@ -57,9 +60,11 @@ fun UsageLogsMapper.insert(record: UsageLogsRecord) =
         map(endpoint).toProperty("endpoint")
         map(useStream).toProperty("useStream")
         map(reservedTokens).toProperty("reservedTokens")
+        map(estimatedAmountCny).toProperty("estimatedAmountCny")
         map(promptTokens).toProperty("promptTokens")
         map(completionTokens).toProperty("completionTokens")
         map(totalTokens).toProperty("totalTokens")
+        map(amountCny).toProperty("amountCny")
         map(latencyMs).toProperty("latencyMs")
         map(statusCode).toProperty("statusCode")
         map(errorCode).toProperty("errorCode")
@@ -68,6 +73,7 @@ fun UsageLogsMapper.insert(record: UsageLogsRecord) =
         map(retryCount).toProperty("retryCount")
         map(calcSource).toProperty("calcSource")
         map(createdAt).toProperty("createdAt")
+        map(amountCalcDetail).toProperty("amountCalcDetail")
     }
 
 fun UsageLogsMapper.insertMultiple(records: Collection<UsageLogsRecord>) =
@@ -81,9 +87,11 @@ fun UsageLogsMapper.insertMultiple(records: Collection<UsageLogsRecord>) =
         map(endpoint).toProperty("endpoint")
         map(useStream).toProperty("useStream")
         map(reservedTokens).toProperty("reservedTokens")
+        map(estimatedAmountCny).toProperty("estimatedAmountCny")
         map(promptTokens).toProperty("promptTokens")
         map(completionTokens).toProperty("completionTokens")
         map(totalTokens).toProperty("totalTokens")
+        map(amountCny).toProperty("amountCny")
         map(latencyMs).toProperty("latencyMs")
         map(statusCode).toProperty("statusCode")
         map(errorCode).toProperty("errorCode")
@@ -92,6 +100,7 @@ fun UsageLogsMapper.insertMultiple(records: Collection<UsageLogsRecord>) =
         map(retryCount).toProperty("retryCount")
         map(calcSource).toProperty("calcSource")
         map(createdAt).toProperty("createdAt")
+        map(amountCalcDetail).toProperty("amountCalcDetail")
     }
 
 fun UsageLogsMapper.insertMultiple(vararg records: UsageLogsRecord) =
@@ -108,9 +117,11 @@ fun UsageLogsMapper.insertSelective(record: UsageLogsRecord) =
         map(endpoint).toPropertyWhenPresent("endpoint", record::endpoint)
         map(useStream).toPropertyWhenPresent("useStream", record::useStream)
         map(reservedTokens).toPropertyWhenPresent("reservedTokens", record::reservedTokens)
+        map(estimatedAmountCny).toPropertyWhenPresent("estimatedAmountCny", record::estimatedAmountCny)
         map(promptTokens).toPropertyWhenPresent("promptTokens", record::promptTokens)
         map(completionTokens).toPropertyWhenPresent("completionTokens", record::completionTokens)
         map(totalTokens).toPropertyWhenPresent("totalTokens", record::totalTokens)
+        map(amountCny).toPropertyWhenPresent("amountCny", record::amountCny)
         map(latencyMs).toPropertyWhenPresent("latencyMs", record::latencyMs)
         map(statusCode).toPropertyWhenPresent("statusCode", record::statusCode)
         map(errorCode).toPropertyWhenPresent("errorCode", record::errorCode)
@@ -119,9 +130,10 @@ fun UsageLogsMapper.insertSelective(record: UsageLogsRecord) =
         map(retryCount).toPropertyWhenPresent("retryCount", record::retryCount)
         map(calcSource).toPropertyWhenPresent("calcSource", record::calcSource)
         map(createdAt).toPropertyWhenPresent("createdAt", record::createdAt)
+        map(amountCalcDetail).toPropertyWhenPresent("amountCalcDetail", record::amountCalcDetail)
     }
 
-private val columnList = listOf(id, requestId, userId, deptId, apiKeyId, vendorId, modelId, endpoint, useStream, reservedTokens, promptTokens, completionTokens, totalTokens, latencyMs, statusCode, errorCode, accountingStatus, settledAt, retryCount, calcSource, createdAt)
+private val columnList = listOf(id, requestId, userId, deptId, apiKeyId, vendorId, modelId, endpoint, useStream, reservedTokens, estimatedAmountCny, promptTokens, completionTokens, totalTokens, amountCny, latencyMs, statusCode, errorCode, accountingStatus, settledAt, retryCount, calcSource, createdAt, amountCalcDetail)
 
 fun UsageLogsMapper.selectOne(completer: SelectCompleter) =
     selectOne(this::selectOne, columnList, UsageLogs, completer)
@@ -151,9 +163,11 @@ fun KotlinUpdateBuilder.updateAllColumns(record: UsageLogsRecord) =
         set(endpoint).equalTo(record::endpoint)
         set(useStream).equalTo(record::useStream)
         set(reservedTokens).equalTo(record::reservedTokens)
+        set(estimatedAmountCny).equalTo(record::estimatedAmountCny)
         set(promptTokens).equalTo(record::promptTokens)
         set(completionTokens).equalTo(record::completionTokens)
         set(totalTokens).equalTo(record::totalTokens)
+        set(amountCny).equalTo(record::amountCny)
         set(latencyMs).equalTo(record::latencyMs)
         set(statusCode).equalTo(record::statusCode)
         set(errorCode).equalTo(record::errorCode)
@@ -162,6 +176,7 @@ fun KotlinUpdateBuilder.updateAllColumns(record: UsageLogsRecord) =
         set(retryCount).equalTo(record::retryCount)
         set(calcSource).equalTo(record::calcSource)
         set(createdAt).equalTo(record::createdAt)
+        set(amountCalcDetail).equalTo(record::amountCalcDetail)
     }
 
 fun KotlinUpdateBuilder.updateSelectiveColumns(record: UsageLogsRecord) =
@@ -175,9 +190,11 @@ fun KotlinUpdateBuilder.updateSelectiveColumns(record: UsageLogsRecord) =
         set(endpoint).equalToWhenPresent(record::endpoint)
         set(useStream).equalToWhenPresent(record::useStream)
         set(reservedTokens).equalToWhenPresent(record::reservedTokens)
+        set(estimatedAmountCny).equalToWhenPresent(record::estimatedAmountCny)
         set(promptTokens).equalToWhenPresent(record::promptTokens)
         set(completionTokens).equalToWhenPresent(record::completionTokens)
         set(totalTokens).equalToWhenPresent(record::totalTokens)
+        set(amountCny).equalToWhenPresent(record::amountCny)
         set(latencyMs).equalToWhenPresent(record::latencyMs)
         set(statusCode).equalToWhenPresent(record::statusCode)
         set(errorCode).equalToWhenPresent(record::errorCode)
@@ -186,6 +203,7 @@ fun KotlinUpdateBuilder.updateSelectiveColumns(record: UsageLogsRecord) =
         set(retryCount).equalToWhenPresent(record::retryCount)
         set(calcSource).equalToWhenPresent(record::calcSource)
         set(createdAt).equalToWhenPresent(record::createdAt)
+        set(amountCalcDetail).equalToWhenPresent(record::amountCalcDetail)
     }
 
 fun UsageLogsMapper.updateByPrimaryKey(record: UsageLogsRecord) =
@@ -199,9 +217,11 @@ fun UsageLogsMapper.updateByPrimaryKey(record: UsageLogsRecord) =
         set(endpoint).equalTo(record::endpoint)
         set(useStream).equalTo(record::useStream)
         set(reservedTokens).equalTo(record::reservedTokens)
+        set(estimatedAmountCny).equalTo(record::estimatedAmountCny)
         set(promptTokens).equalTo(record::promptTokens)
         set(completionTokens).equalTo(record::completionTokens)
         set(totalTokens).equalTo(record::totalTokens)
+        set(amountCny).equalTo(record::amountCny)
         set(latencyMs).equalTo(record::latencyMs)
         set(statusCode).equalTo(record::statusCode)
         set(errorCode).equalTo(record::errorCode)
@@ -210,6 +230,7 @@ fun UsageLogsMapper.updateByPrimaryKey(record: UsageLogsRecord) =
         set(retryCount).equalTo(record::retryCount)
         set(calcSource).equalTo(record::calcSource)
         set(createdAt).equalTo(record::createdAt)
+        set(amountCalcDetail).equalTo(record::amountCalcDetail)
         where(id, isEqualTo(record::id))
     }
 
@@ -224,9 +245,11 @@ fun UsageLogsMapper.updateByPrimaryKeySelective(record: UsageLogsRecord) =
         set(endpoint).equalToWhenPresent(record::endpoint)
         set(useStream).equalToWhenPresent(record::useStream)
         set(reservedTokens).equalToWhenPresent(record::reservedTokens)
+        set(estimatedAmountCny).equalToWhenPresent(record::estimatedAmountCny)
         set(promptTokens).equalToWhenPresent(record::promptTokens)
         set(completionTokens).equalToWhenPresent(record::completionTokens)
         set(totalTokens).equalToWhenPresent(record::totalTokens)
+        set(amountCny).equalToWhenPresent(record::amountCny)
         set(latencyMs).equalToWhenPresent(record::latencyMs)
         set(statusCode).equalToWhenPresent(record::statusCode)
         set(errorCode).equalToWhenPresent(record::errorCode)
@@ -235,5 +258,6 @@ fun UsageLogsMapper.updateByPrimaryKeySelective(record: UsageLogsRecord) =
         set(retryCount).equalToWhenPresent(record::retryCount)
         set(calcSource).equalToWhenPresent(record::calcSource)
         set(createdAt).equalToWhenPresent(record::createdAt)
+        set(amountCalcDetail).equalToWhenPresent(record::amountCalcDetail)
         where(id, isEqualTo(record::id))
     }

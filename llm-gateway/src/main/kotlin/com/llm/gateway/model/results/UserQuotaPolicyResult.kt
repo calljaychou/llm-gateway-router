@@ -3,6 +3,7 @@ package com.llm.gateway.model.results
 import com.llm.gateway.common.enums.DepartmentQuotaPeriod
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
+import java.math.BigDecimal
 
 @ApiModel("用户配额策略结果")
 data class UserQuotaPolicyResult(
@@ -12,8 +13,8 @@ data class UserQuotaPolicyResult(
     val deptId: Long,
     @ApiModelProperty(value = "部门配额策略主键", required = true)
     val quotaPolicyId: Long,
-    @ApiModelProperty(value = "每用户额度上限", required = true)
-    val quotaTokens: Long,
+    @ApiModelProperty(value = "每用户额度上限金额，", required = true)
+    val quotaAmount: BigDecimal,
     @ApiModelProperty(value = "配额周期", required = true)
     val period: DepartmentQuotaPeriod,
     @ApiModelProperty(value = "策略状态", required = true)

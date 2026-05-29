@@ -52,6 +52,8 @@ interface ModelsMapper {
         Result(column="real_model_name", property="realModelName", jdbcType=JdbcType.VARCHAR),
         Result(column="vendor_id", property="vendorId", jdbcType=JdbcType.BIGINT),
         Result(column="billing_type", property="billingType", jdbcType=JdbcType.CHAR),
+        Result(column="input_price_cny_per_million", property="inputPriceCnyPerMillion", jdbcType=JdbcType.DECIMAL),
+        Result(column="output_price_cny_per_million", property="outputPriceCnyPerMillion", jdbcType=JdbcType.DECIMAL),
         Result(column="active", property="active", jdbcType=JdbcType.BIT),
         Result(column="created_time", property="createdTime", jdbcType=JdbcType.TIMESTAMP),
         Result(column="updated_time", property="updatedTime", jdbcType=JdbcType.TIMESTAMP)

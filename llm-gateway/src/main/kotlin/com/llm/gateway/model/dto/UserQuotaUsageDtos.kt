@@ -2,13 +2,14 @@ package com.llm.gateway.model.dto
 
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
+import java.math.BigDecimal
 
 @ApiModel("用户配额预占拆分")
 data class UserQuotaReserveSplitDto(
     @field:ApiModelProperty("配额批次ID")
     val grantId: Long,
-    @field:ApiModelProperty("预占Token数")
-    val tokens: Long,
+    @field:ApiModelProperty("预占金额，")
+    val amount: BigDecimal,
 )
 
 @ApiModel("用户配额预占上下文")
@@ -17,8 +18,8 @@ data class UserQuotaReservationDto(
     val requestId: String,
     @field:ApiModelProperty("用户ID")
     val userId: Long,
-    @field:ApiModelProperty("预占Token数")
-    val reservedTokens: Long,
+    @field:ApiModelProperty("预占金额，")
+    val reservedAmount: BigDecimal,
     @field:ApiModelProperty("预占拆分")
     val splits: List<UserQuotaReserveSplitDto>,
 )
@@ -29,12 +30,12 @@ data class UserQuotaUsageSettleDto(
     val requestId: String,
     @field:ApiModelProperty("是否结算成功")
     val settled: Boolean,
-    @field:ApiModelProperty("实际Token数")
-    val actualTokens: Long,
-    @field:ApiModelProperty("退款Token数")
-    val refundedTokens: Long,
-    @field:ApiModelProperty("追加扣减Token数")
-    val extraDeductedTokens: Long,
+    @field:ApiModelProperty("实际金额，")
+    val actualAmount: BigDecimal,
+    @field:ApiModelProperty("退款金额，")
+    val refundedAmount: BigDecimal,
+    @field:ApiModelProperty("追加扣减金额，")
+    val extraDeductedAmount: BigDecimal,
 )
 
 @ApiModel("Token用量明细")
@@ -57,12 +58,20 @@ data class UsageLogRecordCommand(
     val vendorId: Long,
     @field:ApiModelProperty("模型别名")
     val modelAlias: String,
+    @field:ApiModelProperty("模型ID")
+    val modelId: Long?,
     @field:ApiModelProperty("接口语义")
     val endpoint: String,
     @field:ApiModelProperty("是否流式")
     val stream: Boolean,
     @field:ApiModelProperty("预占Token")
     val reservedTokens: Int,
+    @field:ApiModelProperty("预估金额，")
+    val estimatedAmountCny: BigDecimal,
+    @field:ApiModelProperty("结算金额，")
+    val amountCny: BigDecimal,
+    @field:ApiModelProperty("金额计算明细")
+    val amountCalcDetail: String?,
     @field:ApiModelProperty("Token用量")
     val usage: TokenUsageDto,
     @field:ApiModelProperty("耗时毫秒")

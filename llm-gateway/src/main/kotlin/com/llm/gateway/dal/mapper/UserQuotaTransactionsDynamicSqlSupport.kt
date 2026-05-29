@@ -1,9 +1,10 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-21T18:47:35.939453+08:00
+ * Generation date: 2026-05-29T14:51:25.345226+08:00
  */
 package com.llm.gateway.dal.mapper
 
+import java.math.BigDecimal
 import java.sql.JDBCType
 import java.util.Date
 import org.mybatis.dynamic.sql.SqlTable
@@ -20,15 +21,15 @@ object UserQuotaTransactionsDynamicSqlSupport {
 
         val changeType = column<String>("change_type", JDBCType.VARCHAR)
 
-        val deltaTokens = column<Long>("delta_tokens", JDBCType.BIGINT)
+        val deltaAmount = column<BigDecimal>("delta_amount", JDBCType.DECIMAL)
 
-        val quotaBefore = column<Long>("quota_before", JDBCType.BIGINT)
+        val quotaBeforeAmount = column<BigDecimal>("quota_before_amount", JDBCType.DECIMAL)
 
-        val quotaAfter = column<Long>("quota_after", JDBCType.BIGINT)
+        val quotaAfterAmount = column<BigDecimal>("quota_after_amount", JDBCType.DECIMAL)
 
-        val availableBefore = column<Long>("available_before", JDBCType.BIGINT)
+        val availableBeforeAmount = column<BigDecimal>("available_before_amount", JDBCType.DECIMAL)
 
-        val availableAfter = column<Long>("available_after", JDBCType.BIGINT)
+        val availableAfterAmount = column<BigDecimal>("available_after_amount", JDBCType.DECIMAL)
 
         val counterpartyUserId = column<Long>("counterparty_user_id", JDBCType.BIGINT)
 

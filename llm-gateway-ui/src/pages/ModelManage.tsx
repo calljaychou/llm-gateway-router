@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Table, Button, Space, Tag, Modal, Form, Input, Select, Switch, App, Typography } from 'antd';
+import { Card, Table, Button, Space, Tag, Modal, Form, Input, Select, Switch, App, Typography, InputNumber } from 'antd';
 import { AppstoreAddOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { adminGatewayApi, ModelVendorListItem, VendorListItem } from '../api/llmGatewayApi';
 
@@ -50,6 +50,8 @@ export const ModelManage: React.FC = () => {
                 modelAlias: record.modelAlias,
                 realModelName: record.realModelName,
                 billingType: record.billingType,
+                inputPriceCnyPerMillion: record.inputPriceCnyPerMillion,
+                outputPriceCnyPerMillion: record.outputPriceCnyPerMillion,
                 active: record.active,
             });
         } else {
@@ -132,6 +134,18 @@ export const ModelManage: React.FC = () => {
             render: (t: string) => <Tag color={t === 'PAID' ? 'gold' : 'green'} style={{ border: 'none' }}>{t}</Tag>
         },
         {
+            title: '输入单价/百万Token',
+            dataIndex: 'inputPriceCnyPerMillion',
+            key: 'inputPriceCnyPerMillion',
+            render: (value: number) => `¥${Number(value || 0).toFixed(6)}`
+        },
+        {
+            title: '输出单价/百万Token',
+            dataIndex: 'outputPriceCnyPerMillion',
+            key: 'outputPriceCnyPerMillion',
+            render: (value: number) => `¥${Number(value || 0).toFixed(6)}`
+        },
+        {
             title: '路由管控状态',
             dataIndex: 'active',
             key: 'active',
@@ -200,6 +214,12 @@ export const ModelManage: React.FC = () => {
                                 <Option value="FREE">免费配额池 (FREE)</Option>
                                 <Option value="PAID">计费配额池 (PAID)</Option>
                             </Select>
+                        </Form.Item>
+                        <Form.Item name="inputPriceCnyPerMillion" label="输入单价（元/百万Token）" initialValue={0}>
+                            <InputNumber min={0} precision={6} style={{ width: '100%' }} placeholder="例如: 18.000000" />
+                        </Form.Item>
+                        <Form.Item name="outputPriceCnyPerMillion" label="输出单价（元/百万Token）" initialValue={0}>
+                            <InputNumber min={0} precision={6} style={{ width: '100%' }} placeholder="例如: 72.000000" />
                         </Form.Item>
                         <Form.Item name="active" label="模型初始状态" valuePropName="checked" initialValue={true}>
                             <Switch checkedChildren="立即启用" unCheckedChildren="暂存/封禁" />

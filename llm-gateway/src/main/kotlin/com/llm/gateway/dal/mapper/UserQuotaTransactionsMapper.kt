@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-21T18:47:35.939659+08:00
+ * Generation date: 2026-05-29T14:51:25.345428+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -38,8 +38,8 @@ interface UserQuotaTransactionsMapper {
     @Insert(
         "\${insertStatement}"
     )
-    @Options(useGeneratedKeys=true,keyProperty="list.id")
-    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("list") records: List<UserQuotaTransactionsRecord>): Int
+    @Options(useGeneratedKeys=true,keyProperty="records.id")
+    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("records") records: List<UserQuotaTransactionsRecord>): Int
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
     @ResultMap("UserQuotaTransactionsRecordResult")
@@ -52,11 +52,11 @@ interface UserQuotaTransactionsMapper {
         Result(column="user_id", property="userId", jdbcType=JdbcType.BIGINT),
         Result(column="grant_id", property="grantId", jdbcType=JdbcType.BIGINT),
         Result(column="change_type", property="changeType", jdbcType=JdbcType.VARCHAR),
-        Result(column="delta_tokens", property="deltaTokens", jdbcType=JdbcType.BIGINT),
-        Result(column="quota_before", property="quotaBefore", jdbcType=JdbcType.BIGINT),
-        Result(column="quota_after", property="quotaAfter", jdbcType=JdbcType.BIGINT),
-        Result(column="available_before", property="availableBefore", jdbcType=JdbcType.BIGINT),
-        Result(column="available_after", property="availableAfter", jdbcType=JdbcType.BIGINT),
+        Result(column="delta_amount", property="deltaAmount", jdbcType=JdbcType.DECIMAL),
+        Result(column="quota_before_amount", property="quotaBeforeAmount", jdbcType=JdbcType.DECIMAL),
+        Result(column="quota_after_amount", property="quotaAfterAmount", jdbcType=JdbcType.DECIMAL),
+        Result(column="available_before_amount", property="availableBeforeAmount", jdbcType=JdbcType.DECIMAL),
+        Result(column="available_after_amount", property="availableAfterAmount", jdbcType=JdbcType.DECIMAL),
         Result(column="counterparty_user_id", property="counterpartyUserId", jdbcType=JdbcType.BIGINT),
         Result(column="request_id", property="requestId", jdbcType=JdbcType.VARCHAR),
         Result(column="operator_user_id", property="operatorUserId", jdbcType=JdbcType.BIGINT),

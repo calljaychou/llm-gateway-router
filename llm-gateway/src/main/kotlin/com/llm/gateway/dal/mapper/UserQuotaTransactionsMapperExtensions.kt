@@ -1,22 +1,22 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-21T18:47:35.939833+08:00
+ * Generation date: 2026-05-29T14:51:25.345572+08:00
  */
 package com.llm.gateway.dal.mapper
 
 import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions
-import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.availableAfter
-import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.availableBefore
+import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.availableAfterAmount
+import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.availableBeforeAmount
 import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.bizNo
 import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.changeType
 import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.counterpartyUserId
 import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.createdTime
-import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.deltaTokens
+import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.deltaAmount
 import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.grantId
 import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.id
 import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.operatorUserId
-import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.quotaAfter
-import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.quotaBefore
+import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.quotaAfterAmount
+import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.quotaBeforeAmount
 import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.remark
 import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.requestId
 import com.llm.gateway.dal.mapper.UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.userId
@@ -46,11 +46,11 @@ fun UserQuotaTransactionsMapper.insert(record: UserQuotaTransactionsRecord) =
         map(userId).toProperty("userId")
         map(grantId).toProperty("grantId")
         map(changeType).toProperty("changeType")
-        map(deltaTokens).toProperty("deltaTokens")
-        map(quotaBefore).toProperty("quotaBefore")
-        map(quotaAfter).toProperty("quotaAfter")
-        map(availableBefore).toProperty("availableBefore")
-        map(availableAfter).toProperty("availableAfter")
+        map(deltaAmount).toProperty("deltaAmount")
+        map(quotaBeforeAmount).toProperty("quotaBeforeAmount")
+        map(quotaAfterAmount).toProperty("quotaAfterAmount")
+        map(availableBeforeAmount).toProperty("availableBeforeAmount")
+        map(availableAfterAmount).toProperty("availableAfterAmount")
         map(counterpartyUserId).toProperty("counterpartyUserId")
         map(requestId).toProperty("requestId")
         map(operatorUserId).toProperty("operatorUserId")
@@ -64,11 +64,11 @@ fun UserQuotaTransactionsMapper.insertMultiple(records: Collection<UserQuotaTran
         map(userId).toProperty("userId")
         map(grantId).toProperty("grantId")
         map(changeType).toProperty("changeType")
-        map(deltaTokens).toProperty("deltaTokens")
-        map(quotaBefore).toProperty("quotaBefore")
-        map(quotaAfter).toProperty("quotaAfter")
-        map(availableBefore).toProperty("availableBefore")
-        map(availableAfter).toProperty("availableAfter")
+        map(deltaAmount).toProperty("deltaAmount")
+        map(quotaBeforeAmount).toProperty("quotaBeforeAmount")
+        map(quotaAfterAmount).toProperty("quotaAfterAmount")
+        map(availableBeforeAmount).toProperty("availableBeforeAmount")
+        map(availableAfterAmount).toProperty("availableAfterAmount")
         map(counterpartyUserId).toProperty("counterpartyUserId")
         map(requestId).toProperty("requestId")
         map(operatorUserId).toProperty("operatorUserId")
@@ -85,11 +85,11 @@ fun UserQuotaTransactionsMapper.insertSelective(record: UserQuotaTransactionsRec
         map(userId).toPropertyWhenPresent("userId", record::userId)
         map(grantId).toPropertyWhenPresent("grantId", record::grantId)
         map(changeType).toPropertyWhenPresent("changeType", record::changeType)
-        map(deltaTokens).toPropertyWhenPresent("deltaTokens", record::deltaTokens)
-        map(quotaBefore).toPropertyWhenPresent("quotaBefore", record::quotaBefore)
-        map(quotaAfter).toPropertyWhenPresent("quotaAfter", record::quotaAfter)
-        map(availableBefore).toPropertyWhenPresent("availableBefore", record::availableBefore)
-        map(availableAfter).toPropertyWhenPresent("availableAfter", record::availableAfter)
+        map(deltaAmount).toPropertyWhenPresent("deltaAmount", record::deltaAmount)
+        map(quotaBeforeAmount).toPropertyWhenPresent("quotaBeforeAmount", record::quotaBeforeAmount)
+        map(quotaAfterAmount).toPropertyWhenPresent("quotaAfterAmount", record::quotaAfterAmount)
+        map(availableBeforeAmount).toPropertyWhenPresent("availableBeforeAmount", record::availableBeforeAmount)
+        map(availableAfterAmount).toPropertyWhenPresent("availableAfterAmount", record::availableAfterAmount)
         map(counterpartyUserId).toPropertyWhenPresent("counterpartyUserId", record::counterpartyUserId)
         map(requestId).toPropertyWhenPresent("requestId", record::requestId)
         map(operatorUserId).toPropertyWhenPresent("operatorUserId", record::operatorUserId)
@@ -97,7 +97,7 @@ fun UserQuotaTransactionsMapper.insertSelective(record: UserQuotaTransactionsRec
         map(createdTime).toPropertyWhenPresent("createdTime", record::createdTime)
     }
 
-private val columnList = listOf(id, bizNo, userId, grantId, changeType, deltaTokens, quotaBefore, quotaAfter, availableBefore, availableAfter, counterpartyUserId, requestId, operatorUserId, remark, createdTime)
+private val columnList = listOf(id, bizNo, userId, grantId, changeType, deltaAmount, quotaBeforeAmount, quotaAfterAmount, availableBeforeAmount, availableAfterAmount, counterpartyUserId, requestId, operatorUserId, remark, createdTime)
 
 fun UserQuotaTransactionsMapper.selectOne(completer: SelectCompleter) =
     selectOne(this::selectOne, columnList, UserQuotaTransactions, completer)
@@ -122,11 +122,11 @@ fun KotlinUpdateBuilder.updateAllColumns(record: UserQuotaTransactionsRecord) =
         set(userId).equalTo(record::userId)
         set(grantId).equalTo(record::grantId)
         set(changeType).equalTo(record::changeType)
-        set(deltaTokens).equalTo(record::deltaTokens)
-        set(quotaBefore).equalTo(record::quotaBefore)
-        set(quotaAfter).equalTo(record::quotaAfter)
-        set(availableBefore).equalTo(record::availableBefore)
-        set(availableAfter).equalTo(record::availableAfter)
+        set(deltaAmount).equalTo(record::deltaAmount)
+        set(quotaBeforeAmount).equalTo(record::quotaBeforeAmount)
+        set(quotaAfterAmount).equalTo(record::quotaAfterAmount)
+        set(availableBeforeAmount).equalTo(record::availableBeforeAmount)
+        set(availableAfterAmount).equalTo(record::availableAfterAmount)
         set(counterpartyUserId).equalTo(record::counterpartyUserId)
         set(requestId).equalTo(record::requestId)
         set(operatorUserId).equalTo(record::operatorUserId)
@@ -140,11 +140,11 @@ fun KotlinUpdateBuilder.updateSelectiveColumns(record: UserQuotaTransactionsReco
         set(userId).equalToWhenPresent(record::userId)
         set(grantId).equalToWhenPresent(record::grantId)
         set(changeType).equalToWhenPresent(record::changeType)
-        set(deltaTokens).equalToWhenPresent(record::deltaTokens)
-        set(quotaBefore).equalToWhenPresent(record::quotaBefore)
-        set(quotaAfter).equalToWhenPresent(record::quotaAfter)
-        set(availableBefore).equalToWhenPresent(record::availableBefore)
-        set(availableAfter).equalToWhenPresent(record::availableAfter)
+        set(deltaAmount).equalToWhenPresent(record::deltaAmount)
+        set(quotaBeforeAmount).equalToWhenPresent(record::quotaBeforeAmount)
+        set(quotaAfterAmount).equalToWhenPresent(record::quotaAfterAmount)
+        set(availableBeforeAmount).equalToWhenPresent(record::availableBeforeAmount)
+        set(availableAfterAmount).equalToWhenPresent(record::availableAfterAmount)
         set(counterpartyUserId).equalToWhenPresent(record::counterpartyUserId)
         set(requestId).equalToWhenPresent(record::requestId)
         set(operatorUserId).equalToWhenPresent(record::operatorUserId)
@@ -158,11 +158,11 @@ fun UserQuotaTransactionsMapper.updateByPrimaryKey(record: UserQuotaTransactions
         set(userId).equalTo(record::userId)
         set(grantId).equalTo(record::grantId)
         set(changeType).equalTo(record::changeType)
-        set(deltaTokens).equalTo(record::deltaTokens)
-        set(quotaBefore).equalTo(record::quotaBefore)
-        set(quotaAfter).equalTo(record::quotaAfter)
-        set(availableBefore).equalTo(record::availableBefore)
-        set(availableAfter).equalTo(record::availableAfter)
+        set(deltaAmount).equalTo(record::deltaAmount)
+        set(quotaBeforeAmount).equalTo(record::quotaBeforeAmount)
+        set(quotaAfterAmount).equalTo(record::quotaAfterAmount)
+        set(availableBeforeAmount).equalTo(record::availableBeforeAmount)
+        set(availableAfterAmount).equalTo(record::availableAfterAmount)
         set(counterpartyUserId).equalTo(record::counterpartyUserId)
         set(requestId).equalTo(record::requestId)
         set(operatorUserId).equalTo(record::operatorUserId)
@@ -177,11 +177,11 @@ fun UserQuotaTransactionsMapper.updateByPrimaryKeySelective(record: UserQuotaTra
         set(userId).equalToWhenPresent(record::userId)
         set(grantId).equalToWhenPresent(record::grantId)
         set(changeType).equalToWhenPresent(record::changeType)
-        set(deltaTokens).equalToWhenPresent(record::deltaTokens)
-        set(quotaBefore).equalToWhenPresent(record::quotaBefore)
-        set(quotaAfter).equalToWhenPresent(record::quotaAfter)
-        set(availableBefore).equalToWhenPresent(record::availableBefore)
-        set(availableAfter).equalToWhenPresent(record::availableAfter)
+        set(deltaAmount).equalToWhenPresent(record::deltaAmount)
+        set(quotaBeforeAmount).equalToWhenPresent(record::quotaBeforeAmount)
+        set(quotaAfterAmount).equalToWhenPresent(record::quotaAfterAmount)
+        set(availableBeforeAmount).equalToWhenPresent(record::availableBeforeAmount)
+        set(availableAfterAmount).equalToWhenPresent(record::availableAfterAmount)
         set(counterpartyUserId).equalToWhenPresent(record::counterpartyUserId)
         set(requestId).equalToWhenPresent(record::requestId)
         set(operatorUserId).equalToWhenPresent(record::operatorUserId)

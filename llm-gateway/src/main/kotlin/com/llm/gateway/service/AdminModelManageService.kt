@@ -40,6 +40,7 @@ import com.llm.gateway.model.results.ModelVendorListItemResult
 import com.llm.gateway.model.results.VendorCreateResult
 import com.llm.gateway.model.results.VendorListItemResult
 import java.net.URI
+import java.math.BigDecimal
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -63,6 +64,10 @@ class AdminModelManageService(
     @Value("\${gateway.aes-secret}") private val aesSecret: String,
 ) {
     private val log = logger()
+
+    companion object {
+        private val ZERO_AMOUNT = BigDecimal.ZERO
+    }
 
     @PostConstruct
     fun validateAesSecret() {
@@ -231,6 +236,8 @@ class AdminModelManageService(
             realModelName = params.realModelName.trim(),
             vendorId = vendorId,
             billingType = billingType,
+            inputPriceCnyPerMillion = params.inputPriceCnyPerMillion ?: ZERO_AMOUNT,
+            outputPriceCnyPerMillion = params.outputPriceCnyPerMillion ?: ZERO_AMOUNT,
             active = params.active ?: true,
             createdTime = now,
             updatedTime = now,
@@ -248,6 +255,8 @@ class AdminModelManageService(
             realModelName = record.realModelName!!,
             vendorId = record.vendorId!!,
             billingType = record.billingType!!,
+            inputPriceCnyPerMillion = record.inputPriceCnyPerMillion ?: ZERO_AMOUNT,
+            outputPriceCnyPerMillion = record.outputPriceCnyPerMillion ?: ZERO_AMOUNT,
             active = record.active ?: true,
         )
     }
@@ -280,6 +289,8 @@ class AdminModelManageService(
             realModelName = targetRealModelName,
             vendorId = targetVendorId,
             billingType = params.billingType?.value ?: existedModel.billingType,
+            inputPriceCnyPerMillion = params.inputPriceCnyPerMillion ?: existedModel.inputPriceCnyPerMillion,
+            outputPriceCnyPerMillion = params.outputPriceCnyPerMillion ?: existedModel.outputPriceCnyPerMillion,
             active = params.active ?: existedModel.active,
             updatedTime = Date(),
         )
@@ -297,6 +308,8 @@ class AdminModelManageService(
             realModelName = updatedModel.realModelName.orEmpty(),
             vendorId = updatedModel.vendorId ?: throw BizException(BizException.SYSTEM_FAILED, "模型供应商ID异常"),
             billingType = updatedModel.billingType.orEmpty(),
+            inputPriceCnyPerMillion = updatedModel.inputPriceCnyPerMillion ?: ZERO_AMOUNT,
+            outputPriceCnyPerMillion = updatedModel.outputPriceCnyPerMillion ?: ZERO_AMOUNT,
             active = updatedModel.active ?: false,
         )
     }
@@ -351,6 +364,8 @@ class AdminModelManageService(
             vendorId = vendorId,
             vendorName = vendorName,
             billingType = record.billingType.orEmpty(),
+            inputPriceCnyPerMillion = record.inputPriceCnyPerMillion ?: ZERO_AMOUNT,
+            outputPriceCnyPerMillion = record.outputPriceCnyPerMillion ?: ZERO_AMOUNT,
             active = record.active ?: false,
             createdTime = record.createdTime,
         )

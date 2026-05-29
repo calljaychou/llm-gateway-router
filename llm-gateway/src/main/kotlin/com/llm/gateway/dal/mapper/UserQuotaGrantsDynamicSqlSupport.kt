@@ -1,9 +1,10 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-21T18:47:35.937726+08:00
+ * Generation date: 2026-05-29T14:51:25.344284+08:00
  */
 package com.llm.gateway.dal.mapper
 
+import java.math.BigDecimal
 import java.sql.JDBCType
 import java.util.Date
 import org.mybatis.dynamic.sql.SqlTable
@@ -20,13 +21,13 @@ object UserQuotaGrantsDynamicSqlSupport {
 
         val sourceGrantId = column<Long>("source_grant_id", JDBCType.BIGINT)
 
-        val grantedTokens = column<Long>("granted_tokens", JDBCType.BIGINT)
+        val grantedAmount = column<BigDecimal>("granted_amount", JDBCType.DECIMAL)
 
-        val remainingTokens = column<Long>("remaining_tokens", JDBCType.BIGINT)
+        val remainingAmount = column<BigDecimal>("remaining_amount", JDBCType.DECIMAL)
 
-        val consumedTokens = column<Long>("consumed_tokens", JDBCType.BIGINT)
+        val consumedAmount = column<BigDecimal>("consumed_amount", JDBCType.DECIMAL)
 
-        val expiredTokens = column<Long>("expired_tokens", JDBCType.BIGINT)
+        val expiredAmount = column<BigDecimal>("expired_amount", JDBCType.DECIMAL)
 
         val expiresAt = column<Date>("expires_at", JDBCType.TIMESTAMP)
 

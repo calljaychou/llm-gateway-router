@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-21T18:47:35.931595+08:00
+ * Generation date: 2026-05-29T14:51:25.33661+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -38,8 +38,8 @@ interface UserQuotaAccountsMapper {
     @Insert(
         "\${insertStatement}"
     )
-    @Options(useGeneratedKeys=true,keyProperty="list.id")
-    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("list") records: List<UserQuotaAccountsRecord>): Int
+    @Options(useGeneratedKeys=true,keyProperty="records.id")
+    fun insertMultiple(@Param("insertStatement") insertStatement: String, @Param("records") records: List<UserQuotaAccountsRecord>): Int
 
     @SelectProvider(type=SqlProviderAdapter::class, method="select")
     @ResultMap("UserQuotaAccountsRecordResult")
@@ -49,12 +49,12 @@ interface UserQuotaAccountsMapper {
     @Results(id="UserQuotaAccountsRecordResult", value = [
         Result(column="id", property="id", jdbcType=JdbcType.BIGINT, id=true),
         Result(column="user_id", property="userId", jdbcType=JdbcType.BIGINT),
-        Result(column="current_quota_tokens", property="currentQuotaTokens", jdbcType=JdbcType.BIGINT),
-        Result(column="used_tokens", property="usedTokens", jdbcType=JdbcType.BIGINT),
-        Result(column="expired_tokens", property="expiredTokens", jdbcType=JdbcType.BIGINT),
-        Result(column="transferred_in_tokens", property="transferredInTokens", jdbcType=JdbcType.BIGINT),
-        Result(column="transferred_out_tokens", property="transferredOutTokens", jdbcType=JdbcType.BIGINT),
-        Result(column="available_tokens", property="availableTokens", jdbcType=JdbcType.BIGINT),
+        Result(column="current_quota_amount", property="currentQuotaAmount", jdbcType=JdbcType.DECIMAL),
+        Result(column="used_amount", property="usedAmount", jdbcType=JdbcType.DECIMAL),
+        Result(column="expired_amount", property="expiredAmount", jdbcType=JdbcType.DECIMAL),
+        Result(column="transferred_in_amount", property="transferredInAmount", jdbcType=JdbcType.DECIMAL),
+        Result(column="transferred_out_amount", property="transferredOutAmount", jdbcType=JdbcType.DECIMAL),
+        Result(column="available_amount", property="availableAmount", jdbcType=JdbcType.DECIMAL),
         Result(column="allow_transfer_out", property="allowTransferOut", jdbcType=JdbcType.BIT),
         Result(column="earliest_expire_at", property="earliestExpireAt", jdbcType=JdbcType.TIMESTAMP),
         Result(column="updated_time", property="updatedTime", jdbcType=JdbcType.TIMESTAMP),

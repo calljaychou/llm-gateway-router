@@ -1,21 +1,21 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-21T18:47:35.933976+08:00
+ * Generation date: 2026-05-29T14:51:25.339196+08:00
  */
 package com.llm.gateway.dal.mapper
 
 import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts
 import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.allowTransferOut
-import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.availableTokens
+import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.availableAmount
 import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.createdTime
-import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.currentQuotaTokens
+import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.currentQuotaAmount
 import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.earliestExpireAt
-import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.expiredTokens
+import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.expiredAmount
 import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.id
-import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.transferredInTokens
-import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.transferredOutTokens
+import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.transferredInAmount
+import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.transferredOutAmount
 import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.updatedTime
-import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.usedTokens
+import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.usedAmount
 import com.llm.gateway.dal.mapper.UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.userId
 import com.llm.gateway.dal.model.UserQuotaAccountsRecord
 import org.mybatis.dynamic.sql.SqlBuilder.isEqualTo
@@ -40,12 +40,12 @@ fun UserQuotaAccountsMapper.insertMultipleHelper(multipleInsertStatement: MultiR
 fun UserQuotaAccountsMapper.insert(record: UserQuotaAccountsRecord) =
     insert(this::insert, record, UserQuotaAccounts) {
         map(userId).toProperty("userId")
-        map(currentQuotaTokens).toProperty("currentQuotaTokens")
-        map(usedTokens).toProperty("usedTokens")
-        map(expiredTokens).toProperty("expiredTokens")
-        map(transferredInTokens).toProperty("transferredInTokens")
-        map(transferredOutTokens).toProperty("transferredOutTokens")
-        map(availableTokens).toProperty("availableTokens")
+        map(currentQuotaAmount).toProperty("currentQuotaAmount")
+        map(usedAmount).toProperty("usedAmount")
+        map(expiredAmount).toProperty("expiredAmount")
+        map(transferredInAmount).toProperty("transferredInAmount")
+        map(transferredOutAmount).toProperty("transferredOutAmount")
+        map(availableAmount).toProperty("availableAmount")
         map(allowTransferOut).toProperty("allowTransferOut")
         map(earliestExpireAt).toProperty("earliestExpireAt")
         map(updatedTime).toProperty("updatedTime")
@@ -55,12 +55,12 @@ fun UserQuotaAccountsMapper.insert(record: UserQuotaAccountsRecord) =
 fun UserQuotaAccountsMapper.insertMultiple(records: Collection<UserQuotaAccountsRecord>) =
     insertMultiple(this::insertMultipleHelper, records, UserQuotaAccounts) {
         map(userId).toProperty("userId")
-        map(currentQuotaTokens).toProperty("currentQuotaTokens")
-        map(usedTokens).toProperty("usedTokens")
-        map(expiredTokens).toProperty("expiredTokens")
-        map(transferredInTokens).toProperty("transferredInTokens")
-        map(transferredOutTokens).toProperty("transferredOutTokens")
-        map(availableTokens).toProperty("availableTokens")
+        map(currentQuotaAmount).toProperty("currentQuotaAmount")
+        map(usedAmount).toProperty("usedAmount")
+        map(expiredAmount).toProperty("expiredAmount")
+        map(transferredInAmount).toProperty("transferredInAmount")
+        map(transferredOutAmount).toProperty("transferredOutAmount")
+        map(availableAmount).toProperty("availableAmount")
         map(allowTransferOut).toProperty("allowTransferOut")
         map(earliestExpireAt).toProperty("earliestExpireAt")
         map(updatedTime).toProperty("updatedTime")
@@ -73,19 +73,19 @@ fun UserQuotaAccountsMapper.insertMultiple(vararg records: UserQuotaAccountsReco
 fun UserQuotaAccountsMapper.insertSelective(record: UserQuotaAccountsRecord) =
     insert(this::insert, record, UserQuotaAccounts) {
         map(userId).toPropertyWhenPresent("userId", record::userId)
-        map(currentQuotaTokens).toPropertyWhenPresent("currentQuotaTokens", record::currentQuotaTokens)
-        map(usedTokens).toPropertyWhenPresent("usedTokens", record::usedTokens)
-        map(expiredTokens).toPropertyWhenPresent("expiredTokens", record::expiredTokens)
-        map(transferredInTokens).toPropertyWhenPresent("transferredInTokens", record::transferredInTokens)
-        map(transferredOutTokens).toPropertyWhenPresent("transferredOutTokens", record::transferredOutTokens)
-        map(availableTokens).toPropertyWhenPresent("availableTokens", record::availableTokens)
+        map(currentQuotaAmount).toPropertyWhenPresent("currentQuotaAmount", record::currentQuotaAmount)
+        map(usedAmount).toPropertyWhenPresent("usedAmount", record::usedAmount)
+        map(expiredAmount).toPropertyWhenPresent("expiredAmount", record::expiredAmount)
+        map(transferredInAmount).toPropertyWhenPresent("transferredInAmount", record::transferredInAmount)
+        map(transferredOutAmount).toPropertyWhenPresent("transferredOutAmount", record::transferredOutAmount)
+        map(availableAmount).toPropertyWhenPresent("availableAmount", record::availableAmount)
         map(allowTransferOut).toPropertyWhenPresent("allowTransferOut", record::allowTransferOut)
         map(earliestExpireAt).toPropertyWhenPresent("earliestExpireAt", record::earliestExpireAt)
         map(updatedTime).toPropertyWhenPresent("updatedTime", record::updatedTime)
         map(createdTime).toPropertyWhenPresent("createdTime", record::createdTime)
     }
 
-private val columnList = listOf(id, userId, currentQuotaTokens, usedTokens, expiredTokens, transferredInTokens, transferredOutTokens, availableTokens, allowTransferOut, earliestExpireAt, updatedTime, createdTime)
+private val columnList = listOf(id, userId, currentQuotaAmount, usedAmount, expiredAmount, transferredInAmount, transferredOutAmount, availableAmount, allowTransferOut, earliestExpireAt, updatedTime, createdTime)
 
 fun UserQuotaAccountsMapper.selectOne(completer: SelectCompleter) =
     selectOne(this::selectOne, columnList, UserQuotaAccounts, completer)
@@ -107,12 +107,12 @@ fun UserQuotaAccountsMapper.update(completer: UpdateCompleter) =
 fun KotlinUpdateBuilder.updateAllColumns(record: UserQuotaAccountsRecord) =
     apply {
         set(userId).equalTo(record::userId)
-        set(currentQuotaTokens).equalTo(record::currentQuotaTokens)
-        set(usedTokens).equalTo(record::usedTokens)
-        set(expiredTokens).equalTo(record::expiredTokens)
-        set(transferredInTokens).equalTo(record::transferredInTokens)
-        set(transferredOutTokens).equalTo(record::transferredOutTokens)
-        set(availableTokens).equalTo(record::availableTokens)
+        set(currentQuotaAmount).equalTo(record::currentQuotaAmount)
+        set(usedAmount).equalTo(record::usedAmount)
+        set(expiredAmount).equalTo(record::expiredAmount)
+        set(transferredInAmount).equalTo(record::transferredInAmount)
+        set(transferredOutAmount).equalTo(record::transferredOutAmount)
+        set(availableAmount).equalTo(record::availableAmount)
         set(allowTransferOut).equalTo(record::allowTransferOut)
         set(earliestExpireAt).equalTo(record::earliestExpireAt)
         set(updatedTime).equalTo(record::updatedTime)
@@ -122,12 +122,12 @@ fun KotlinUpdateBuilder.updateAllColumns(record: UserQuotaAccountsRecord) =
 fun KotlinUpdateBuilder.updateSelectiveColumns(record: UserQuotaAccountsRecord) =
     apply {
         set(userId).equalToWhenPresent(record::userId)
-        set(currentQuotaTokens).equalToWhenPresent(record::currentQuotaTokens)
-        set(usedTokens).equalToWhenPresent(record::usedTokens)
-        set(expiredTokens).equalToWhenPresent(record::expiredTokens)
-        set(transferredInTokens).equalToWhenPresent(record::transferredInTokens)
-        set(transferredOutTokens).equalToWhenPresent(record::transferredOutTokens)
-        set(availableTokens).equalToWhenPresent(record::availableTokens)
+        set(currentQuotaAmount).equalToWhenPresent(record::currentQuotaAmount)
+        set(usedAmount).equalToWhenPresent(record::usedAmount)
+        set(expiredAmount).equalToWhenPresent(record::expiredAmount)
+        set(transferredInAmount).equalToWhenPresent(record::transferredInAmount)
+        set(transferredOutAmount).equalToWhenPresent(record::transferredOutAmount)
+        set(availableAmount).equalToWhenPresent(record::availableAmount)
         set(allowTransferOut).equalToWhenPresent(record::allowTransferOut)
         set(earliestExpireAt).equalToWhenPresent(record::earliestExpireAt)
         set(updatedTime).equalToWhenPresent(record::updatedTime)
@@ -137,12 +137,12 @@ fun KotlinUpdateBuilder.updateSelectiveColumns(record: UserQuotaAccountsRecord) 
 fun UserQuotaAccountsMapper.updateByPrimaryKey(record: UserQuotaAccountsRecord) =
     update {
         set(userId).equalTo(record::userId)
-        set(currentQuotaTokens).equalTo(record::currentQuotaTokens)
-        set(usedTokens).equalTo(record::usedTokens)
-        set(expiredTokens).equalTo(record::expiredTokens)
-        set(transferredInTokens).equalTo(record::transferredInTokens)
-        set(transferredOutTokens).equalTo(record::transferredOutTokens)
-        set(availableTokens).equalTo(record::availableTokens)
+        set(currentQuotaAmount).equalTo(record::currentQuotaAmount)
+        set(usedAmount).equalTo(record::usedAmount)
+        set(expiredAmount).equalTo(record::expiredAmount)
+        set(transferredInAmount).equalTo(record::transferredInAmount)
+        set(transferredOutAmount).equalTo(record::transferredOutAmount)
+        set(availableAmount).equalTo(record::availableAmount)
         set(allowTransferOut).equalTo(record::allowTransferOut)
         set(earliestExpireAt).equalTo(record::earliestExpireAt)
         set(updatedTime).equalTo(record::updatedTime)
@@ -153,12 +153,12 @@ fun UserQuotaAccountsMapper.updateByPrimaryKey(record: UserQuotaAccountsRecord) 
 fun UserQuotaAccountsMapper.updateByPrimaryKeySelective(record: UserQuotaAccountsRecord) =
     update {
         set(userId).equalToWhenPresent(record::userId)
-        set(currentQuotaTokens).equalToWhenPresent(record::currentQuotaTokens)
-        set(usedTokens).equalToWhenPresent(record::usedTokens)
-        set(expiredTokens).equalToWhenPresent(record::expiredTokens)
-        set(transferredInTokens).equalToWhenPresent(record::transferredInTokens)
-        set(transferredOutTokens).equalToWhenPresent(record::transferredOutTokens)
-        set(availableTokens).equalToWhenPresent(record::availableTokens)
+        set(currentQuotaAmount).equalToWhenPresent(record::currentQuotaAmount)
+        set(usedAmount).equalToWhenPresent(record::usedAmount)
+        set(expiredAmount).equalToWhenPresent(record::expiredAmount)
+        set(transferredInAmount).equalToWhenPresent(record::transferredInAmount)
+        set(transferredOutAmount).equalToWhenPresent(record::transferredOutAmount)
+        set(availableAmount).equalToWhenPresent(record::availableAmount)
         set(allowTransferOut).equalToWhenPresent(record::allowTransferOut)
         set(earliestExpireAt).equalToWhenPresent(record::earliestExpireAt)
         set(updatedTime).equalToWhenPresent(record::updatedTime)

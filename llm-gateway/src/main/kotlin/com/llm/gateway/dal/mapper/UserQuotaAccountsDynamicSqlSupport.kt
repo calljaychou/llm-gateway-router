@@ -1,9 +1,10 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-21T18:47:35.930903+08:00
+ * Generation date: 2026-05-29T14:51:25.335813+08:00
  */
 package com.llm.gateway.dal.mapper
 
+import java.math.BigDecimal
 import java.sql.JDBCType
 import java.util.Date
 import org.mybatis.dynamic.sql.SqlTable
@@ -14,17 +15,17 @@ object UserQuotaAccountsDynamicSqlSupport {
 
         val userId = column<Long>("user_id", JDBCType.BIGINT)
 
-        val currentQuotaTokens = column<Long>("current_quota_tokens", JDBCType.BIGINT)
+        val currentQuotaAmount = column<BigDecimal>("current_quota_amount", JDBCType.DECIMAL)
 
-        val usedTokens = column<Long>("used_tokens", JDBCType.BIGINT)
+        val usedAmount = column<BigDecimal>("used_amount", JDBCType.DECIMAL)
 
-        val expiredTokens = column<Long>("expired_tokens", JDBCType.BIGINT)
+        val expiredAmount = column<BigDecimal>("expired_amount", JDBCType.DECIMAL)
 
-        val transferredInTokens = column<Long>("transferred_in_tokens", JDBCType.BIGINT)
+        val transferredInAmount = column<BigDecimal>("transferred_in_amount", JDBCType.DECIMAL)
 
-        val transferredOutTokens = column<Long>("transferred_out_tokens", JDBCType.BIGINT)
+        val transferredOutAmount = column<BigDecimal>("transferred_out_amount", JDBCType.DECIMAL)
 
-        val availableTokens = column<Long>("available_tokens", JDBCType.BIGINT)
+        val availableAmount = column<BigDecimal>("available_amount", JDBCType.DECIMAL)
 
         val allowTransferOut = column<Boolean>("allow_transfer_out", JDBCType.BIT)
 

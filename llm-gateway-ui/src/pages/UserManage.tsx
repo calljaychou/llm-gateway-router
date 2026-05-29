@@ -623,7 +623,7 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
 
     const handleAdjustUserQuota = async (values: {
         direction: QuotaAdjustmentDirection;
-        tokens: number;
+        amount: number;
         expiresAt?: { format: (template: string) => string };
         remark?: string;
     }) => {
@@ -631,7 +631,7 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
         if (!userId) return;
 
         const params: AdminUserQuotaAdjustmentParams = {
-            adjustTokens: values.direction === 'increase' ? values.tokens : -values.tokens,
+            adjustAmount: values.direction === 'increase' ? values.amount : -values.amount,
             expiresAt: values.direction === 'increase' ? values.expiresAt?.format('YYYY-MM-DD HH:mm:ss') : undefined,
             remark: values.remark?.trim() || undefined,
         };
@@ -841,7 +841,7 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
                     <>
                         <Row gutter={16}>
                             <Col span={6}>
-                                <Statistic title="总配额" value={detail.quota.currentQuotaTokens}/>
+                                <Statistic title="总配额" value={detail.quota.currentQuotaAmount}/>
                             </Col>
                             <Col span={6}>
                                 <div
@@ -851,21 +851,21 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
                                 >
                                     <Statistic
                                         title="当前可用配额"
-                                        value={detail.quota.availableTokens}
+                                        value={detail.quota.availableAmount}
                                         valueStyle={{color: '#0969da', textDecoration: 'underline'}}
                                     />
                                 </div>
                             </Col>
                             <Col span={6}>
-                                <Statistic title="已使用配额" value={detail.quota.usedTokens}/>
+                                <Statistic title="已使用配额" value={detail.quota.usedAmount}/>
                             </Col>
                             <Col span={6}>
-                                <Statistic title="已过期配额" value={detail.quota.expiredTokens}/>
+                                <Statistic title="已过期配额" value={detail.quota.expiredAmount}/>
                             </Col>
                         </Row>
                         <Descriptions column={3} size="small" bordered style={{marginTop: 16}}>
-                            <Descriptions.Item label="累计转入">{detail.quota.transferredInTokens}</Descriptions.Item>
-                            <Descriptions.Item label="累计转出">{detail.quota.transferredOutTokens}</Descriptions.Item>
+                            <Descriptions.Item label="累计转入">{detail.quota.transferredInAmount}</Descriptions.Item>
+                            <Descriptions.Item label="累计转出">{detail.quota.transferredOutAmount}</Descriptions.Item>
                             <Descriptions.Item label="允许转配">
                                 <Switch
                                     checked={detail.quota.allowTransferOut}
@@ -927,11 +927,11 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
                         </Select>
                     </Form.Item>
                     <Form.Item
-                        name="tokens"
-                        label="调整Token数量"
-                        rules={[{required: true, message: '请输入调整Token数量'}]}
+                        name="amount"
+                        label="调整金额"
+                        rules={[{required: true, message: '请输入调整金额'}]}
                     >
-                        <InputNumber min={1} precision={0} style={{width: '100%'}} placeholder="例如：100000"/>
+                        <InputNumber min={0.000001} precision={6} style={{width: '100%'}} placeholder="例如：100.000000"/>
                     </Form.Item>
                     <Form.Item
                         name="expiresAt"

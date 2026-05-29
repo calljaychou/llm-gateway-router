@@ -4,6 +4,7 @@
  */
 package com.llm.gateway.dal.model
 
+import java.math.BigDecimal
 import java.util.Date
 
 data class ModelsRecord(
@@ -12,6 +13,8 @@ data class ModelsRecord(
     var realModelName: String? = null,
     var vendorId: Long? = null,
     var billingType: String? = null,
+    var inputPriceCnyPerMillion: BigDecimal? = null,
+    var outputPriceCnyPerMillion: BigDecimal? = null,
     var active: Boolean? = null,
     var createdTime: Date? = null,
     var updatedTime: Date? = null

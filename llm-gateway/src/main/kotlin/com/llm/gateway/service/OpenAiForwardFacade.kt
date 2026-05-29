@@ -2,6 +2,8 @@ package com.llm.gateway.service
 
 import com.alibaba.fastjson2.JSONObject
 import com.alibaba.fastjson2.toJSONString
+import com.llm.gateway.billing.AmountCalcResult
+import com.llm.gateway.billing.AmountCalculatorRegistry
 import com.llm.gateway.common.enums.TokenCalcSource
 import com.llm.gateway.common.enums.UsageAccountingStatus
 import com.llm.gateway.common.exceptions.BizException
@@ -13,6 +15,7 @@ import com.llm.gateway.model.dto.TokenUsageDto
 import com.llm.gateway.model.dto.UsageLogRecordCommand
 import com.llm.gateway.model.dto.UserQuotaReservationDto
 import com.llm.gateway.ratelimit.RateLimitService
+import java.math.BigDecimal
 import java.util.UUID
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -27,6 +30,7 @@ class OpenAiForwardFacade(
     private val rateLimitService: RateLimitService,
     private val userQuotaUsageService: UserQuotaUsageService,
     private val usageLogService: UsageLogService,
+    private val amountCalculatorRegistry: AmountCalculatorRegistry,
 ) {
 
     fun chatCompletions(userId: Long, payload: Map<String, Any?>, virtualApiKey: String): Any {
@@ -89,9 +93,10 @@ class OpenAiForwardFacade(
             logger().warn("限流评估,decision:{}", decision.toJSONString())
             return Mono.just(openAiErrorResponseWithRateLimit(decision))
         }
-        // 预估token 进行预占用
         val estimatedTokens = estimateReserveTokens(payload)
-        val reservation = tryReserveQuota(userId, requestId, context, estimatedTokens, startedAt)
+        val estimatedUsage = buildEstimatedUsage(payload, estimatedTokens)
+        val estimatedAmount = calculateAmount(context, estimatedUsage)
+        val reservation = tryReserveQuota(userId, requestId, context, estimatedTokens, estimatedAmount, startedAt)
 
         return openAiForwardService.forwardJson(context)
             .flatMap { upstreamResponse ->
@@ -102,6 +107,7 @@ class OpenAiForwardFacade(
                         requestId = requestId,
                         context = context,
                         reservation = reservation,
+                        estimatedTokens = estimatedTokens,
                         upstreamResponse = upstreamResponse,
                         startedAt = startedAt,
                     ) else refundAndRecordFailure(
@@ -109,6 +115,7 @@ class OpenAiForwardFacade(
                         requestId = requestId,
                         context = context,
                         reservation = reservation,
+                        estimatedTokens = estimatedTokens,
                         status = upstreamResponse.statusCode,
                         errorCode = "UPSTREAM_${upstreamResponse.statusCodeValue}",
                         startedAt = startedAt,
@@ -123,6 +130,7 @@ class OpenAiForwardFacade(
                         requestId = requestId,
                         context = context,
                         reservation = reservation,
+                        estimatedTokens = estimatedTokens,
                         status = HttpStatus.INTERNAL_SERVER_ERROR,
                         errorCode = "FORWARD_FAILED",
                         startedAt = startedAt,
@@ -141,11 +149,12 @@ class OpenAiForwardFacade(
         requestId: String,
         context: ForwardContextDto,
         estimatedTokens: Long,
+        estimatedAmount: AmountCalcResult,
         startedAt: Long,
     ): UserQuotaReservationDto {
         return try {
             logger().info("reserveQuota,userId:$userId, requestId:$requestId, startedAt:$startedAt")
-            val reserve = userQuotaUsageService.reserve(userId, requestId, estimatedTokens)
+            val reserve = userQuotaUsageService.reserve(userId, requestId, estimatedAmount.amountCny)
             logger().info(
                 "reserveQuota,userId:$userId, requestId:$requestId, startedAt:$startedAt \nreserve:{}",
                 reserve.toJSONString()
@@ -160,6 +169,7 @@ class OpenAiForwardFacade(
                 requestId = requestId,
                 context = context,
                 estimatedTokens = estimatedTokens,
+                estimatedAmount = estimatedAmount,
                 status = mapBizCodeToHttpStatus(bizCode),
                 errorCode = mapBizCodeToErrorCode(bizCode),
                 startedAt = startedAt,
@@ -173,6 +183,7 @@ class OpenAiForwardFacade(
         requestId: String,
         context: ForwardContextDto,
         reservation: UserQuotaReservationDto,
+        estimatedTokens: Long,
         upstreamResponse: ResponseEntity<Any>,
         startedAt: Long,
     ) {
@@ -180,10 +191,10 @@ class OpenAiForwardFacade(
         val usage = upstreamUsage ?: TokenUsageDto(
             promptTokens = 0,
             completionTokens = 0,
-            totalTokens = reservation.reservedTokens.toInt(),
+            totalTokens = 0,
         )
-        // 结算
-        val settleResult = userQuotaUsageService.settle(reservation, usage.totalTokens.toLong())
+        val actualAmount = calculateAmount(context, usage)
+        val settleResult = userQuotaUsageService.settle(reservation, actualAmount.amountCny)
         // 记录使用日志
         usageLogService.record(
             UsageLogRecordCommand(
@@ -191,9 +202,13 @@ class OpenAiForwardFacade(
                 userId = userId,
                 vendorId = context.vendorId,
                 modelAlias = context.modelAlias,
+                modelId = context.modelId,
                 endpoint = "chat.completions",
                 stream = false,
-                reservedTokens = reservation.reservedTokens.toInt(),
+                reservedTokens = normalizeTokens(estimatedTokens),
+                estimatedAmountCny = reservation.reservedAmount,
+                amountCny = actualAmount.amountCny,
+                amountCalcDetail = actualAmount.detail,
                 usage = usage,
                 latencyMs = elapsedMs(startedAt),
                 statusCode = upstreamResponse.statusCodeValue,
@@ -209,6 +224,7 @@ class OpenAiForwardFacade(
         requestId: String,
         context: ForwardContextDto,
         reservation: UserQuotaReservationDto,
+        estimatedTokens: Long,
         status: HttpStatus,
         errorCode: String,
         startedAt: Long,
@@ -220,9 +236,13 @@ class OpenAiForwardFacade(
                 userId = userId,
                 vendorId = context.vendorId,
                 modelAlias = context.modelAlias,
+                modelId = context.modelId,
                 endpoint = "chat.completions",
                 stream = false,
-                reservedTokens = reservation.reservedTokens.toInt(),
+                reservedTokens = normalizeTokens(estimatedTokens),
+                estimatedAmountCny = reservation.reservedAmount,
+                amountCny = BigDecimal.ZERO,
+                amountCalcDetail = null,
                 usage = TokenUsageDto(promptTokens = 0, completionTokens = 0, totalTokens = 0),
                 latencyMs = elapsedMs(startedAt),
                 statusCode = status.value(),
@@ -238,6 +258,7 @@ class OpenAiForwardFacade(
         requestId: String,
         context: ForwardContextDto,
         estimatedTokens: Long,
+        estimatedAmount: AmountCalcResult,
         status: HttpStatus,
         errorCode: String,
         startedAt: Long,
@@ -248,9 +269,13 @@ class OpenAiForwardFacade(
                 userId = userId,
                 vendorId = context.vendorId,
                 modelAlias = context.modelAlias,
+                modelId = context.modelId,
                 endpoint = "chat.completions",
                 stream = false,
-                reservedTokens = estimatedTokens.toInt(),
+                reservedTokens = normalizeTokens(estimatedTokens),
+                estimatedAmountCny = estimatedAmount.amountCny,
+                amountCny = BigDecimal.ZERO,
+                amountCalcDetail = estimatedAmount.detail,
                 usage = TokenUsageDto(promptTokens = 0, completionTokens = 0, totalTokens = 0),
                 latencyMs = elapsedMs(startedAt),
                 statusCode = status.value(),
@@ -264,6 +289,25 @@ class OpenAiForwardFacade(
     private fun estimateReserveTokens(payload: Map<String, Any?>): Long {
         val maxTokens = payload["max_tokens"]?.toString()?.toLongOrNull()
         return maxTokens?.coerceAtLeast(1L) ?: 1024L
+    }
+
+    private fun buildEstimatedUsage(payload: Map<String, Any?>, estimatedTokens: Long): TokenUsageDto {
+        return TokenUsageDto(
+            promptTokens = 0,
+            completionTokens = estimatedTokens.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+            totalTokens = estimatedTokens.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+        )
+    }
+
+    private fun calculateAmount(context: ForwardContextDto, usage: TokenUsageDto): AmountCalcResult {
+        return amountCalculatorRegistry.getCalculator(context).calculate(context, usage)
+    }
+
+    /**
+     * 兼容 usage_logs.reserved_tokens 历史统计字段，防止超大 max_tokens 溢出 Int。
+     */
+    private fun normalizeTokens(tokens: Long): Int {
+        return tokens.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
     }
 
     /**

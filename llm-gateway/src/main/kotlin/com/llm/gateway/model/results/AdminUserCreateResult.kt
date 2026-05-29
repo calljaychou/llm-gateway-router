@@ -3,6 +3,7 @@ package com.llm.gateway.model.results
 import com.fasterxml.jackson.annotation.JsonFormat
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
+import java.math.BigDecimal
 import java.util.Date
 
 @ApiModel("管理端-创建用户结果")
@@ -124,18 +125,18 @@ data class AdminUserDepartmentResult(
 data class AdminUserQuotaConfigResult(
     @ApiModelProperty(value = "用户ID", required = true)
     val userId: Long,
-    @ApiModelProperty(value = "当前仍在有效期内的总配额", required = true)
-    val currentQuotaTokens: Long,
-    @ApiModelProperty(value = "当前可用配额", required = true)
-    val availableTokens: Long,
-    @ApiModelProperty(value = "当前已消耗Token", required = true)
-    val usedTokens: Long,
-    @ApiModelProperty(value = "当前已过期Token累计", required = true)
-    val expiredTokens: Long,
-    @ApiModelProperty(value = "累计转入Token", required = true)
-    val transferredInTokens: Long,
-    @ApiModelProperty(value = "累计转出Token", required = true)
-    val transferredOutTokens: Long,
+    @ApiModelProperty(value = "当前仍在有效期内的总配额金额，", required = true)
+    val currentQuotaAmount: BigDecimal,
+    @ApiModelProperty(value = "当前可用金额，", required = true)
+    val availableAmount: BigDecimal,
+    @ApiModelProperty(value = "当前已消耗金额，", required = true)
+    val usedAmount: BigDecimal,
+    @ApiModelProperty(value = "当前已过期金额累计，", required = true)
+    val expiredAmount: BigDecimal,
+    @ApiModelProperty(value = "累计转入金额，", required = true)
+    val transferredInAmount: BigDecimal,
+    @ApiModelProperty(value = "累计转出金额，", required = true)
+    val transferredOutAmount: BigDecimal,
     @ApiModelProperty(value = "是否允许向外转配", required = true)
     val allowTransferOut: Boolean,
     @ApiModelProperty(value = "当前有效配额中的最早过期时间")

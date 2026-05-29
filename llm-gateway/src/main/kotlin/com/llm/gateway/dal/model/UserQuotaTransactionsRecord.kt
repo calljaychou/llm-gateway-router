@@ -1,9 +1,10 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-21T18:47:35.938532+08:00
+ * Generation date: 2026-05-29T14:51:25.345095+08:00
  */
 package com.llm.gateway.dal.model
 
+import java.math.BigDecimal
 import java.util.Date
 
 data class UserQuotaTransactionsRecord(
@@ -12,11 +13,11 @@ data class UserQuotaTransactionsRecord(
     var userId: Long? = null,
     var grantId: Long? = null,
     var changeType: String? = null,
-    var deltaTokens: Long? = null,
-    var quotaBefore: Long? = null,
-    var quotaAfter: Long? = null,
-    var availableBefore: Long? = null,
-    var availableAfter: Long? = null,
+    var deltaAmount: BigDecimal? = null,
+    var quotaBeforeAmount: BigDecimal? = null,
+    var quotaAfterAmount: BigDecimal? = null,
+    var availableBeforeAmount: BigDecimal? = null,
+    var availableAfterAmount: BigDecimal? = null,
     var counterpartyUserId: Long? = null,
     var requestId: String? = null,
     var operatorUserId: Long? = null,

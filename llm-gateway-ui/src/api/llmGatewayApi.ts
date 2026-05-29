@@ -124,14 +124,14 @@ export const virtualKeyApi = {
 
 /** ==================== 2. 用户端-配额仪表盘与流水类型 ==================== */
 export interface UserQuotaBatch {
-    consumedTokens: number;
+    consumedAmount: number;
     createdAt?: string;
-    expiredTokens: number;
+    expiredAmount: number;
     expiresAt: string;
     grantId: number;
     grantedBy?: number;
-    grantedTokens: number;
-    remainingTokens: number;
+    grantedAmount: number;
+    remainingAmount: number;
     remark?: string;
     sourceGrantId?: number;
     sourceType: string;
@@ -144,29 +144,29 @@ export interface UserQuotaBatch {
 export interface UserQuotaAccountSnapshot {
     activeGrants: UserQuotaBatch[];
     allowTransferOut: boolean;
-    availableTokens: number;
-    currentQuotaTokens: number;
+    availableAmount: number;
+    currentQuotaAmount: number;
     earliestExpireAt?: string;
-    expiredTokens: number;
-    transferredInTokens: number;
-    transferredOutTokens: number;
+    expiredAmount: number;
+    transferredInAmount: number;
+    transferredOutAmount: number;
     updatedAt?: string;
-    usedTokens: number;
+    usedAmount: number;
     userId: number;
 }
 
 export interface QuotaTransactionItem {
-    availableAfter: number;
-    availableBefore: number;
+    availableAfterAmount: number;
+    availableBeforeAmount: number;
     bizNo: string;
     changeType: string;
     counterpartyUserId?: number;
     createdAt: string;
-    deltaTokens: number;
+    deltaAmount: number;
     grantId?: number;
     operatorUserId?: number;
-    quotaAfter: number;
-    quotaBefore: number;
+    quotaAfterAmount: number;
+    quotaBeforeAmount: number;
     remark?: string;
     requestId?: string;
     transactionId: number;
@@ -175,7 +175,7 @@ export interface QuotaTransactionItem {
 
 export interface QuotaTransferParams {
     targetUser: string;
-    transferTokens: number;
+    transferAmount: number;
     remark?: string;
 }
 
@@ -184,7 +184,7 @@ export interface QuotaTransferResult {
     fromUserId: number;
     targetAccount: UserQuotaAccountSnapshot;
     targetUserId: number;
-    transferTokens: number;
+    transferAmount: number;
 }
 
 export const quotaApi = {
@@ -302,7 +302,7 @@ export interface AdminUserPasswordChangeResult {
 }
 
 export interface AdminUserQuotaAdjustmentParams {
-    adjustTokens: number;
+    adjustAmount: number;
     expiresAt?: string;
     remark?: string;
 }
@@ -373,12 +373,12 @@ export interface AdminUserModelPermission {
 
 export interface AdminUserQuotaConfig {
     userId: number;
-    currentQuotaTokens: number;
-    availableTokens: number;
-    usedTokens: number;
-    expiredTokens: number;
-    transferredInTokens: number;
-    transferredOutTokens: number;
+    currentQuotaAmount: number;
+    availableAmount: number;
+    usedAmount: number;
+    expiredAmount: number;
+    transferredInAmount: number;
+    transferredOutAmount: number;
     allowTransferOut: boolean;
     earliestExpireAt?: string;
     updatedAt?: string;
@@ -519,6 +519,8 @@ export interface CreateModelParams {
     modelAlias: string;
     realModelName: string;
     vendorId: number;
+    inputPriceCnyPerMillion?: number;
+    outputPriceCnyPerMillion?: number;
 }
 
 export interface ModelVendorListItem {
@@ -529,6 +531,8 @@ export interface ModelVendorListItem {
     active: boolean;
     vendorId: number;
     vendorName: string; // 关联的供应商名称
+    inputPriceCnyPerMillion: number;
+    outputPriceCnyPerMillion: number;
 }
 
 export interface CreateMasterKeyParams {
@@ -561,6 +565,8 @@ export interface UpdateModelParams {
     modelAlias: string;
     realModelName: string;
     vendorId: number;
+    inputPriceCnyPerMillion?: number;
+    outputPriceCnyPerMillion?: number;
 }
 
 export const adminGatewayApi = {

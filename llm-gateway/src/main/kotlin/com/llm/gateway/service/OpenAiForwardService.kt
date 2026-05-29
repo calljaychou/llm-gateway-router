@@ -12,7 +12,6 @@ import com.llm.gateway.dal.mapper.VendorsDynamicSqlSupport
 import com.llm.gateway.dal.mapper.VendorsMapper
 import com.llm.gateway.dal.mapper.selectOne
 import com.llm.gateway.model.dto.ForwardContextDto
-import io.reactivex.rxjava3.internal.util.NotificationLite.subscription
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.time.Duration
@@ -87,6 +86,9 @@ class OpenAiForwardService(
             stream = stream,
             modelAlias = modelAlias,
             vendorId = vendorId,
+            modelId = modelRecord.id ?: throw BizException(BizException.SYSTEM_FAILED, "模型ID异常"),
+            inputPriceCnyPerMillion = modelRecord.inputPriceCnyPerMillion ?: java.math.BigDecimal.ZERO,
+            outputPriceCnyPerMillion = modelRecord.outputPriceCnyPerMillion ?: java.math.BigDecimal.ZERO,
         )
     }
 

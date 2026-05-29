@@ -19,6 +19,7 @@ import com.llm.gateway.dal.model.UserQuotaTransactionsRecord
 import com.llm.gateway.model.dto.UserQuotaReservationDto
 import com.llm.gateway.model.dto.UserQuotaReserveSplitDto
 import com.llm.gateway.model.dto.UserQuotaUsageSettleDto
+import java.math.BigDecimal
 import java.util.Date
 import java.util.UUID
 import org.springframework.stereotype.Service
@@ -31,26 +32,27 @@ class UserQuotaUsageService(
     private val userQuotaTransactionsMapper: UserQuotaTransactionsMapper,
 ) {
     companion object {
-        private const val MIN_RESERVE_TOKENS = 1L
+        private val MIN_RESERVE_AMOUNT = BigDecimal("0.000001")
+        private val ZERO_AMOUNT = BigDecimal.ZERO
         private const val QUOTA_HTTP_CODE = 402
     }
 
     @Transactional(rollbackFor = [Exception::class])
-    fun reserve(userId: Long, requestId: String, estimatedTokens: Long): UserQuotaReservationDto {
-        val reserveTokens = estimatedTokens.coerceAtLeast(MIN_RESERVE_TOKENS)
+    fun reserve(userId: Long, requestId: String, estimatedAmount: BigDecimal): UserQuotaReservationDto {
+        val reserveAmount = estimatedAmount.max(MIN_RESERVE_AMOUNT)
         val accountBefore = requireAccount(userId)
-        if ((accountBefore.availableTokens ?: 0L) < reserveTokens) {
+        if ((accountBefore.availableAmount ?: ZERO_AMOUNT) < reserveAmount) {
             throw BizException(QUOTA_HTTP_CODE, "用户剩余额度不足")
         }
 
-        val splits = deductFromActiveGrants(userId, reserveTokens)
+        val splits = deductFromActiveGrants(userId, reserveAmount)
         val accountAfter = rebuildAccount(userId)
         splits.forEach { split ->
             insertTransaction(
                 userId = userId,
                 grantId = split.grantId,
                 changeType = UserQuotaTransactionChangeType.USAGE_RESERVE,
-                deltaTokens = -split.tokens,
+                deltaAmount = split.amount.negate(),
                 before = accountBefore,
                 after = accountAfter,
                 requestId = requestId,
@@ -60,38 +62,38 @@ class UserQuotaUsageService(
         return UserQuotaReservationDto(
             requestId = requestId,
             userId = userId,
-            reservedTokens = reserveTokens,
+            reservedAmount = reserveAmount,
             splits = splits,
         )
     }
 
     @Transactional(rollbackFor = [Exception::class])
-    fun settle(reservation: UserQuotaReservationDto, actualTokens: Long): UserQuotaUsageSettleDto {
-        val normalizedActualTokens = actualTokens.coerceAtLeast(0L)
+    fun settle(reservation: UserQuotaReservationDto, actualAmount: BigDecimal): UserQuotaUsageSettleDto {
+        val normalizedActualAmount = actualAmount.max(ZERO_AMOUNT)
         return when {
             // 多退
-            normalizedActualTokens < reservation.reservedTokens -> {
-                val refundTokens = reservation.reservedTokens - normalizedActualTokens
-                refund(reservation, refundTokens)
+            normalizedActualAmount < reservation.reservedAmount -> {
+                val refundAmount = reservation.reservedAmount - normalizedActualAmount
+                refund(reservation, refundAmount)
                 UserQuotaUsageSettleDto(
                     requestId = reservation.requestId,
                     settled = true,
-                    actualTokens = normalizedActualTokens,
-                    refundedTokens = refundTokens,
-                    extraDeductedTokens = 0,
+                    actualAmount = normalizedActualAmount,
+                    refundedAmount = refundAmount,
+                    extraDeductedAmount = ZERO_AMOUNT,
                 )
             }
             // 少补
-            normalizedActualTokens > reservation.reservedTokens -> {
-                val extraTokens = normalizedActualTokens - reservation.reservedTokens
+            normalizedActualAmount > reservation.reservedAmount -> {
+                val extraAmount = normalizedActualAmount - reservation.reservedAmount
                 val before = requireAccount(reservation.userId)
                 // 不够扣减了
-                if ((before.availableTokens ?: 0L) < extraTokens) {
+                if ((before.availableAmount ?: ZERO_AMOUNT) < extraAmount) {
                     insertTransaction(
                         userId = reservation.userId,
                         grantId = null,
                         changeType = UserQuotaTransactionChangeType.USAGE_SETTLE,
-                        deltaTokens = 0,
+                        deltaAmount = ZERO_AMOUNT,
                         before = before,
                         after = before,
                         requestId = reservation.requestId,
@@ -100,19 +102,19 @@ class UserQuotaUsageService(
                     return UserQuotaUsageSettleDto(
                         requestId = reservation.requestId,
                         settled = false,
-                        actualTokens = normalizedActualTokens,
-                        refundedTokens = 0,
-                        extraDeductedTokens = 0,
+                        actualAmount = normalizedActualAmount,
+                        refundedAmount = ZERO_AMOUNT,
+                        extraDeductedAmount = ZERO_AMOUNT,
                     )
                 }
-                val splits = deductFromActiveGrants(reservation.userId, extraTokens)
+                val splits = deductFromActiveGrants(reservation.userId, extraAmount)
                 val after = rebuildAccount(reservation.userId)
                 splits.forEach { split ->
                     insertTransaction(
                         userId = reservation.userId,
                         grantId = split.grantId,
                         changeType = UserQuotaTransactionChangeType.USAGE_SETTLE,
-                        deltaTokens = -split.tokens,
+                        deltaAmount = split.amount.negate(),
                         before = before,
                         after = after,
                         requestId = reservation.requestId,
@@ -122,9 +124,9 @@ class UserQuotaUsageService(
                 UserQuotaUsageSettleDto(
                     requestId = reservation.requestId,
                     settled = true,
-                    actualTokens = normalizedActualTokens,
-                    refundedTokens = 0,
-                    extraDeductedTokens = extraTokens,
+                    actualAmount = normalizedActualAmount,
+                    refundedAmount = ZERO_AMOUNT,
+                    extraDeductedAmount = extraAmount,
                 )
             }
 
@@ -134,7 +136,7 @@ class UserQuotaUsageService(
                     userId = reservation.userId,
                     grantId = null,
                     changeType = UserQuotaTransactionChangeType.USAGE_SETTLE,
-                    deltaTokens = 0,
+                    deltaAmount = ZERO_AMOUNT,
                     before = account,
                     after = account,
                     requestId = reservation.requestId,
@@ -143,9 +145,9 @@ class UserQuotaUsageService(
                 UserQuotaUsageSettleDto(
                     requestId = reservation.requestId,
                     settled = true,
-                    actualTokens = normalizedActualTokens,
-                    refundedTokens = 0,
-                    extraDeductedTokens = 0,
+                    actualAmount = normalizedActualAmount,
+                    refundedAmount = ZERO_AMOUNT,
+                    extraDeductedAmount = ZERO_AMOUNT,
                 )
             }
         }
@@ -153,25 +155,25 @@ class UserQuotaUsageService(
 
     @Transactional(rollbackFor = [Exception::class])
     fun refundAll(reservation: UserQuotaReservationDto, remark: String = "请求失败退回预占额度") {
-        refund(reservation, reservation.reservedTokens, remark)
+        refund(reservation, reservation.reservedAmount, remark)
     }
 
     private fun refund(
         reservation: UserQuotaReservationDto,
-        refundTokens: Long,
+        refundAmount: BigDecimal,
         remark: String = "实际用量小于预占额度，退回差额",
     ) {
-        if (refundTokens <= 0) return
-        var remaining = refundTokens
+        if (refundAmount <= ZERO_AMOUNT) return
+        var remaining = refundAmount
         reservation.splits.asReversed().forEach { split ->
-            if (remaining <= 0) return@forEach
-            val refund = minOf(split.tokens, remaining)
+            if (remaining <= ZERO_AMOUNT) return@forEach
+            val refund = split.amount.min(remaining)
             val before = requireAccount(reservation.userId)
             val grant = userQuotaGrantsMapper.selectOne {
                 where { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.id isEqualTo split.grantId }
             } ?: throw BizException(BizException.BUSINESS_FAILED, "配额批次不存在")
-            grant.remainingTokens = (grant.remainingTokens ?: 0L) + refund
-            grant.consumedTokens = ((grant.consumedTokens ?: 0L) - refund).coerceAtLeast(0L)
+            grant.remainingAmount = (grant.remainingAmount ?: ZERO_AMOUNT) + refund
+            grant.consumedAmount = ((grant.consumedAmount ?: ZERO_AMOUNT) - refund).max(ZERO_AMOUNT)
             if (grant.expiresAt?.after(Date()) == true) {
                 grant.status = UserQuotaGrantStatus.ACTIVE.value
             }
@@ -182,13 +184,13 @@ class UserQuotaUsageService(
                 userId = reservation.userId,
                 grantId = split.grantId,
                 changeType = UserQuotaTransactionChangeType.USAGE_REFUND,
-                deltaTokens = refund,
+                deltaAmount = refund,
                 before = before,
                 after = after,
                 requestId = reservation.requestId,
                 remark = remark,
             )
-            remaining -= refund
+            remaining = remaining - refund
         }
     }
 
@@ -198,43 +200,47 @@ class UserQuotaUsageService(
         } ?: throw BizException(BizException.BUSINESS_FAILED, "用户未配置额度账户")
     }
 
-    private fun deductFromActiveGrants(userId: Long, tokens: Long): List<UserQuotaReserveSplitDto> {
+    private fun deductFromActiveGrants(userId: Long, amount: BigDecimal): List<UserQuotaReserveSplitDto> {
         val grants = userQuotaGrantsMapper.select {
             where { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.userId isEqualTo userId }
             and { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.status isEqualTo UserQuotaGrantStatus.ACTIVE.value }
-            and { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.remainingTokens isGreaterThan 0L }
+            and { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.remainingAmount isGreaterThan ZERO_AMOUNT }
             and { UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.expiresAt isGreaterThan Date() }
             orderBy(
                 UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.expiresAt,
                 UserQuotaGrantsDynamicSqlSupport.UserQuotaGrants.id
             )
         }
-        var remaining = tokens
+        var remaining = amount
         val splits = mutableListOf<UserQuotaReserveSplitDto>()
         // 按过期时间排序依次扣减
         grants.forEach { grant ->
-            if (remaining <= 0) return@forEach
+            if (remaining <= ZERO_AMOUNT) return@forEach
             val grantId = grant.id ?: throw BizException(BizException.BUSINESS_FAILED, "配额批次数据异常")
-            val deduct = minOf(grant.remainingTokens ?: 0L, remaining)
-            if (deduct <= 0) return@forEach
+            val deduct = (grant.remainingAmount ?: ZERO_AMOUNT).min(remaining)
+            if (deduct <= ZERO_AMOUNT) return@forEach
             logger().info(
-                "用户配额扣减,before,remainingTokens:{},consumedTokens:{},status:{}",
-                grant.remainingTokens, grant.consumedTokens, grant.status
+                "用户配额扣减,before,remainingAmount:{},consumedAmount:{},status:{}",
+                grant.remainingAmount, grant.consumedAmount, grant.status
             )
-            grant.remainingTokens = (grant.remainingTokens ?: 0L) - deduct
-            grant.consumedTokens = (grant.consumedTokens ?: 0L) + deduct
+            grant.remainingAmount = (grant.remainingAmount ?: ZERO_AMOUNT) - deduct
+            grant.consumedAmount = (grant.consumedAmount ?: ZERO_AMOUNT) + deduct
             grant.status =
-                if (grant.remainingTokens == 0L) UserQuotaGrantStatus.DEPLETED.value else UserQuotaGrantStatus.ACTIVE.value
+                if ((grant.remainingAmount ?: ZERO_AMOUNT).compareTo(ZERO_AMOUNT) == 0) {
+                    UserQuotaGrantStatus.DEPLETED.value
+                } else {
+                    UserQuotaGrantStatus.ACTIVE.value
+                }
             grant.updatedTime = Date()
             logger().info(
-                "用户配额扣减,after,remainingTokens:{},consumedTokens:{},status:{}",
-                grant.remainingTokens, grant.consumedTokens, grant.status
+                "用户配额扣减,after,remainingAmount:{},consumedAmount:{},status:{}",
+                grant.remainingAmount, grant.consumedAmount, grant.status
             )
             userQuotaGrantsMapper.updateByPrimaryKeySelective(grant)
-            splits += UserQuotaReserveSplitDto(grantId = grantId, tokens = deduct)
-            remaining -= deduct
+            splits.add(UserQuotaReserveSplitDto(grantId = grantId, amount = deduct))
+            remaining = remaining - deduct
         }
-        if (remaining > 0) {
+        if (remaining > ZERO_AMOUNT) {
             throw BizException(QUOTA_HTTP_CODE, "用户剩余额度不足")
         }
         return splits
@@ -253,12 +259,11 @@ class UserQuotaUsageService(
             )
         }
         val activeGrants = grants.filter {
-            it.status == UserQuotaGrantStatus.ACTIVE.value && (it.remainingTokens
-                ?: 0L) > 0 && it.expiresAt?.after(now) == true
+            it.status == UserQuotaGrantStatus.ACTIVE.value && (it.remainingAmount ?: ZERO_AMOUNT) > ZERO_AMOUNT && it.expiresAt?.after(now) == true
         }
-        account.availableTokens = activeGrants.sumOf { it.remainingTokens ?: 0L }
-        account.currentQuotaTokens = notExpiredGrants.sumOf { (it.remainingTokens ?: 0L) + (it.consumedTokens ?: 0L) }
-        account.usedTokens = notExpiredGrants.sumOf { it.consumedTokens ?: 0L }
+        account.availableAmount = activeGrants.fold(ZERO_AMOUNT) { total, it -> total + (it.remainingAmount ?: ZERO_AMOUNT) }
+        account.currentQuotaAmount = notExpiredGrants.fold(ZERO_AMOUNT) { total, it -> total + (it.remainingAmount ?: ZERO_AMOUNT) + (it.consumedAmount ?: ZERO_AMOUNT) }
+        account.usedAmount = notExpiredGrants.fold(ZERO_AMOUNT) { total, it -> total + (it.consumedAmount ?: ZERO_AMOUNT) }
         account.earliestExpireAt = activeGrants.mapNotNull { it.expiresAt }.minOrNull()
         account.updatedTime = Date()
         userQuotaAccountsMapper.updateByPrimaryKeySelective(account)
@@ -269,7 +274,7 @@ class UserQuotaUsageService(
         userId: Long,
         grantId: Long?,
         changeType: UserQuotaTransactionChangeType,
-        deltaTokens: Long,
+        deltaAmount: BigDecimal,
         before: UserQuotaAccountsRecord,
         after: UserQuotaAccountsRecord,
         requestId: String,
@@ -281,11 +286,11 @@ class UserQuotaUsageService(
                 userId = userId,
                 grantId = grantId,
                 changeType = changeType.value,
-                deltaTokens = deltaTokens,
-                quotaBefore = before.currentQuotaTokens ?: 0L,
-                quotaAfter = after.currentQuotaTokens ?: 0L,
-                availableBefore = before.availableTokens ?: 0L,
-                availableAfter = after.availableTokens ?: 0L,
+                deltaAmount = deltaAmount,
+                quotaBeforeAmount = before.currentQuotaAmount ?: ZERO_AMOUNT,
+                quotaAfterAmount = after.currentQuotaAmount ?: ZERO_AMOUNT,
+                availableBeforeAmount = before.availableAmount ?: ZERO_AMOUNT,
+                availableAfterAmount = after.availableAmount ?: ZERO_AMOUNT,
                 requestId = requestId,
                 remark = remark,
                 createdTime = Date(),
