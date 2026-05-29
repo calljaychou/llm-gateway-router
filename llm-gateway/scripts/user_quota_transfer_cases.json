@@ -1,0 +1,27 @@
+{
+  "variables": {
+    "base_url": "http://127.0.0.1:8080",
+    "username": "admin",
+    "password": "123456",
+    "target_user_id": 101,
+    "transfer_tokens": 100,
+    "remark": "quota transfer regression",
+    "concurrent_requests": 2
+  },
+  "default_headers": {
+    "Content-Type": "application/json"
+  },
+  "cases": [
+    {
+      "name": "normal_transfer",
+      "mode": "single",
+      "expected_status": 200,
+      "expected_success": true
+    },
+    {
+      "name": "concurrent_transfer_should_not_overdraw",
+      "mode": "concurrent",
+      "expected_status": 200
+    }
+  ]
+}
