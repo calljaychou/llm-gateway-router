@@ -307,6 +307,10 @@ export interface AdminUserQuotaAdjustmentParams {
     remark?: string;
 }
 
+export interface AdminUserQuotaTransferPermissionParams {
+    allowTransferOut: boolean;
+}
+
 export interface AdminUserPageParams {
     deptId?: number;
     mobile?: string;
@@ -438,6 +442,10 @@ export const adminUserApi = {
     },
     adjustUserQuota: async (id: number, params: AdminUserQuotaAdjustmentParams) => {
         const res = await api.post<ApiResult<UserQuotaAccountSnapshot>>(`/admin/users/${id}/quota/adjustments`, params);
+        return res.data;
+    },
+    updateUserQuotaTransferPermission: async (id: number, params: AdminUserQuotaTransferPermissionParams) => {
+        const res = await api.put<ApiResult<UserQuotaAccountSnapshot>>(`/admin/users/${id}/quota/transfer-permission`, params);
         return res.data;
     }
 };

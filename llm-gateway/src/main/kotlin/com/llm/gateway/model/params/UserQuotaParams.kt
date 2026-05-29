@@ -23,6 +23,13 @@ data class AdminUserQuotaAdjustmentParams(
     val remark: String? = null,
 )
 
+@ApiModel("管理端-用户配额转配权限参数")
+data class AdminUserQuotaTransferPermissionParams(
+    @ApiModelProperty(value = "是否允许用户向外转配额度", required = true)
+    @field:NotNull(message = "是否允许转配不能为空")
+    val allowTransferOut: Boolean?,
+)
+
 @ApiModel("用户端-配额转配参数")
 data class UserQuotaTransferParams(
     @ApiModelProperty(value = "转入用户账号", required = true)

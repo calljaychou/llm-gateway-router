@@ -17,6 +17,7 @@ import {
     Skeleton,
     Space,
     Statistic,
+    Switch,
     Table,
     Tag,
     TreeSelect,
@@ -539,6 +540,7 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
     const [isUserModalOpen, setIsUserModalOpen] = useState<boolean>(false);
     const [isQuotaModalOpen, setIsQuotaModalOpen] = useState<boolean>(false);
     const [quotaAdjusting, setQuotaAdjusting] = useState<boolean>(false);
+    const [transferPermissionUpdating, setTransferPermissionUpdating] = useState<boolean>(false);
     const quotaAdjustmentDirection = Form.useWatch('direction', quotaForm);
     const departmentTreeData = useMemo(() => buildDepartmentTreeSelectData(departments), [departments]);
 
@@ -649,6 +651,26 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
             message.error(errorMessage);
         } finally {
             setQuotaAdjusting(false);
+        }
+    };
+
+    const handleUpdateTransferPermission = async (allowTransferOut: boolean) => {
+        const userId = detail?.user.userId;
+        if (!userId) return;
+
+        setTransferPermissionUpdating(true);
+        try {
+            const res = await adminUserApi.updateUserQuotaTransferPermission(userId, {allowTransferOut});
+            if (!res.success) {
+                throw new Error(res.message || '更新转配开关失败');
+            }
+            message.success(allowTransferOut ? '已允许用户转配额度' : '已禁止用户转配额度');
+            onReload(userId);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : '更新转配开关失败';
+            message.error(errorMessage);
+        } finally {
+            setTransferPermissionUpdating(false);
         }
     };
 
@@ -844,8 +866,15 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
                         <Descriptions column={3} size="small" bordered style={{marginTop: 16}}>
                             <Descriptions.Item label="累计转入">{detail.quota.transferredInTokens}</Descriptions.Item>
                             <Descriptions.Item label="累计转出">{detail.quota.transferredOutTokens}</Descriptions.Item>
-                            <Descriptions.Item
-                                label="允许转配">{detail.quota.allowTransferOut ? '是' : '否'}</Descriptions.Item>
+                            <Descriptions.Item label="允许转配">
+                                <Switch
+                                    checked={detail.quota.allowTransferOut}
+                                    checkedChildren="允许"
+                                    unCheckedChildren="禁止"
+                                    loading={transferPermissionUpdating}
+                                    onChange={handleUpdateTransferPermission}
+                                />
+                            </Descriptions.Item>
                             <Descriptions.Item
                                 label="最早过期时间">{detail.quota.earliestExpireAt || '-'}</Descriptions.Item>
                             <Descriptions.Item label="更新时间"

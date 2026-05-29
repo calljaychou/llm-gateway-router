@@ -27,6 +27,7 @@ import com.llm.gateway.dal.model.UserQuotaTransactionsRecord
 import com.llm.gateway.dal.model.UsersRecord
 import com.llm.gateway.model.PageParams
 import com.llm.gateway.model.params.AdminUserQuotaAdjustmentParams
+import com.llm.gateway.model.params.AdminUserQuotaTransferPermissionParams
 import com.llm.gateway.model.params.UserQuotaTransactionsPageParams
 import com.llm.gateway.model.params.UserQuotaTransferParams
 import com.llm.gateway.model.PageResult
@@ -169,8 +170,28 @@ class UserQuotaService(
         return mapAccountResult(after, includeActiveGrants = true)
     }
 
+    /**
+     * 更新用户是否允许向外转配额度。
+     */
+    fun updateTransferPermission(
+        userId: Long,
+        params: AdminUserQuotaTransferPermissionParams,
+        operatorUserId: Long?,
+    ): UserQuotaAccountResult {
+        ensureActiveUser(userId)
+        val allowTransferOut = params.allowTransferOut
+            ?: throw BizException(BizException.BUSINESS_FAILED, "是否允许转配不能为空")
+        val account = findAccount(userId) ?: createZeroAccount(userId)
+        account.allowTransferOut = allowTransferOut
+        account.updatedTime = Date()
+        userQuotaAccountsMapper.updateByPrimaryKeySelective(account)
+        log.info("管理员更新用户配额转配开关 userId={}, allowTransferOut={}, operatorUserId={}", userId, allowTransferOut, operatorUserId)
+        return mapAccountResult(account, includeActiveGrants = true)
+    }
+
     fun transferQuota(fromUserId: Long, params: UserQuotaTransferParams): UserQuotaTransferResult {
         ensureActiveUser(fromUserId)
+        validateTransferPermission(fromUserId)
         val targetUserId = resolveTransferTargetUserId(params.targetUser)
         val transferTokens = params.transferTokens ?: throw BizException(BizException.BUSINESS_FAILED, "转配额度不能为空")
         if (targetUserId == fromUserId) {
@@ -185,6 +206,16 @@ class UserQuotaService(
             transactionTemplate.execute {
                 transferQuotaCore(fromUserId, targetUserId, transferTokens, params.remark?.trim())
             } ?: throw BizException(BizException.BUSINESS_FAILED, "配额转配失败")
+        }
+    }
+
+    /**
+     * 校验当前用户是否已开启配额转配权限。
+     */
+    private fun validateTransferPermission(userId: Long) {
+        val account = requireAccount(userId)
+        if (account.allowTransferOut != true) {
+            throw BizException(BizException.BUSINESS_FAILED, "当前用户未开启额度转配权限")
         }
     }
 

@@ -5,6 +5,7 @@ import com.llm.gateway.model.ApiResult
 import com.llm.gateway.model.PageParams
 import com.llm.gateway.model.PageResult
 import com.llm.gateway.model.params.AdminUserQuotaAdjustmentParams
+import com.llm.gateway.model.params.AdminUserQuotaTransferPermissionParams
 import com.llm.gateway.model.results.UserQuotaAccountResult
 import com.llm.gateway.model.results.UserQuotaGrantResult
 import com.llm.gateway.security.CustomUserDetails
@@ -18,6 +19,7 @@ import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -56,6 +58,22 @@ class AdminUserQuotaManageController(
     ): ApiResult<UserQuotaAccountResult> {
         return ApiResult.success(
             userQuotaService.adjustQuota(
+                userId = userId,
+                params = params,
+                operatorUserId = currentUserId(authentication),
+            )
+        )
+    }
+
+    @ApiOperation("管理员更新用户配额转配开关")
+    @PutMapping("/users/{id}/quota/transfer-permission")
+    fun updateUserQuotaTransferPermission(
+        @ApiParam(value = "用户ID", required = true) @PathVariable("id") userId: Long,
+        @RequestBody @Valid params: AdminUserQuotaTransferPermissionParams,
+        authentication: Authentication,
+    ): ApiResult<UserQuotaAccountResult> {
+        return ApiResult.success(
+            userQuotaService.updateTransferPermission(
                 userId = userId,
                 params = params,
                 operatorUserId = currentUserId(authentication),
