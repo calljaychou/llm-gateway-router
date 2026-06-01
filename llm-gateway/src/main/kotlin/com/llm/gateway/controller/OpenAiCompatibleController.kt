@@ -41,11 +41,12 @@ class OpenAiCompatibleController(
         }
         val principal = authentication.principal as? CustomUserDetails
             ?: return openAiError("未认证", "UNAUTHORIZED")
-        val userId = principal.getUser().id
+        val user = principal.getUser()
+        val userId = user.id
             ?: return openAiError("用户ID缺失", "UNAUTHORIZED")
         val virtualApiKey = authorization.removePrefix("Bearer ").trim()
 
-        val result = openAiForwardFacade.chatCompletions(userId, payload, virtualApiKey)
+        val result = openAiForwardFacade.chatCompletions(userId, user.deptId, payload, virtualApiKey)
         if (result is SseEmitter) {
             response.contentType = MediaType.TEXT_EVENT_STREAM_VALUE
             response.characterEncoding = Charsets.UTF_8.name()

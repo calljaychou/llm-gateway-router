@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-29T14:51:25.345958+08:00
+ * Generation date: 2026-05-31T14:53:40.597334+08:00
  */
 package com.llm.gateway.dal.model
 
@@ -20,7 +20,14 @@ data class UsageLogsRecord(
     var reservedTokens: Int? = null,
     var estimatedAmountCny: BigDecimal? = null,
     var promptTokens: Int? = null,
+    var promptCachedTokens: Int? = null,
+    var promptCacheMissTokens: Int? = null,
+    var promptAudioTokens: Int? = null,
     var completionTokens: Int? = null,
+    var completionReasoningTokens: Int? = null,
+    var completionAudioTokens: Int? = null,
+    var completionAcceptedPredictionTokens: Int? = null,
+    var completionRejectedPredictionTokens: Int? = null,
     var totalTokens: Int? = null,
     var amountCny: BigDecimal? = null,
     var latencyMs: Int? = null,

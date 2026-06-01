@@ -42,8 +42,22 @@ data class UserQuotaUsageSettleDto(
 data class TokenUsageDto(
     @field:ApiModelProperty("输入Token")
     val promptTokens: Int,
+    @field:ApiModelProperty("输入缓存命中Token")
+    val promptCachedTokens: Int = 0,
+    @field:ApiModelProperty("输入缓存未命中Token")
+    val promptCacheMissTokens: Int = 0,
+    @field:ApiModelProperty("输入音频Token")
+    val promptAudioTokens: Int = 0,
     @field:ApiModelProperty("输出Token")
     val completionTokens: Int,
+    @field:ApiModelProperty("输出推理Token")
+    val completionReasoningTokens: Int = 0,
+    @field:ApiModelProperty("输出音频Token")
+    val completionAudioTokens: Int = 0,
+    @field:ApiModelProperty("输出命中预测Token")
+    val completionAcceptedPredictionTokens: Int = 0,
+    @field:ApiModelProperty("输出拒绝预测Token")
+    val completionRejectedPredictionTokens: Int = 0,
     @field:ApiModelProperty("总Token")
     val totalTokens: Int,
 )

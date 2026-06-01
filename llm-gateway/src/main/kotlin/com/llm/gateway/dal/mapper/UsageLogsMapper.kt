@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-29T14:51:25.346364+08:00
+ * Generation date: 2026-05-31T14:53:40.601448+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -59,7 +59,14 @@ interface UsageLogsMapper {
         Result(column="reserved_tokens", property="reservedTokens", jdbcType=JdbcType.INTEGER),
         Result(column="estimated_amount_cny", property="estimatedAmountCny", jdbcType=JdbcType.DECIMAL),
         Result(column="prompt_tokens", property="promptTokens", jdbcType=JdbcType.INTEGER),
+        Result(column="prompt_cached_tokens", property="promptCachedTokens", jdbcType=JdbcType.INTEGER),
+        Result(column="prompt_cache_miss_tokens", property="promptCacheMissTokens", jdbcType=JdbcType.INTEGER),
+        Result(column="prompt_audio_tokens", property="promptAudioTokens", jdbcType=JdbcType.INTEGER),
         Result(column="completion_tokens", property="completionTokens", jdbcType=JdbcType.INTEGER),
+        Result(column="completion_reasoning_tokens", property="completionReasoningTokens", jdbcType=JdbcType.INTEGER),
+        Result(column="completion_audio_tokens", property="completionAudioTokens", jdbcType=JdbcType.INTEGER),
+        Result(column="completion_accepted_prediction_tokens", property="completionAcceptedPredictionTokens", jdbcType=JdbcType.INTEGER),
+        Result(column="completion_rejected_prediction_tokens", property="completionRejectedPredictionTokens", jdbcType=JdbcType.INTEGER),
         Result(column="total_tokens", property="totalTokens", jdbcType=JdbcType.INTEGER),
         Result(column="amount_cny", property="amountCny", jdbcType=JdbcType.DECIMAL),
         Result(column="latency_ms", property="latencyMs", jdbcType=JdbcType.INTEGER),

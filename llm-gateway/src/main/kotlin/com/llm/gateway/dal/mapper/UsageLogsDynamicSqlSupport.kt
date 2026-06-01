@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-29T14:51:25.346083+08:00
+ * Generation date: 2026-05-31T14:53:40.59962+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -35,7 +35,21 @@ object UsageLogsDynamicSqlSupport {
 
         val promptTokens = column<Int>("prompt_tokens", JDBCType.INTEGER)
 
+        val promptCachedTokens = column<Int>("prompt_cached_tokens", JDBCType.INTEGER)
+
+        val promptCacheMissTokens = column<Int>("prompt_cache_miss_tokens", JDBCType.INTEGER)
+
+        val promptAudioTokens = column<Int>("prompt_audio_tokens", JDBCType.INTEGER)
+
         val completionTokens = column<Int>("completion_tokens", JDBCType.INTEGER)
+
+        val completionReasoningTokens = column<Int>("completion_reasoning_tokens", JDBCType.INTEGER)
+
+        val completionAudioTokens = column<Int>("completion_audio_tokens", JDBCType.INTEGER)
+
+        val completionAcceptedPredictionTokens = column<Int>("completion_accepted_prediction_tokens", JDBCType.INTEGER)
+
+        val completionRejectedPredictionTokens = column<Int>("completion_rejected_prediction_tokens", JDBCType.INTEGER)
 
         val totalTokens = column<Int>("total_tokens", JDBCType.INTEGER)
 

@@ -1,21 +1,36 @@
 package com.llm.gateway.service
 
-import com.alibaba.fastjson2.JSONObject
 import com.alibaba.fastjson2.toJSONString
-import com.llm.gateway.billing.AmountCalcResult
-import com.llm.gateway.billing.AmountCalculatorRegistry
-import com.llm.gateway.common.enums.TokenCalcSource
+import com.llm.gateway.billing.TokenBillingParams
+import com.llm.gateway.billing.TokenBillingResult
+import com.llm.gateway.billing.TokenBillingService
+import com.llm.gateway.common.enums.NormalStatus
 import com.llm.gateway.common.enums.UsageAccountingStatus
 import com.llm.gateway.common.exceptions.BizException
 import com.llm.gateway.common.logger
+import com.llm.gateway.dal.mapper.ApiKeysDynamicSqlSupport
+import com.llm.gateway.dal.mapper.ApiKeysMapper
+import com.llm.gateway.dal.mapper.selectOne
+import com.llm.gateway.dal.model.ApiKeysRecord
 import com.llm.gateway.model.dto.ForwardContextDto
+import com.llm.gateway.model.dto.LlmUsageLogRecordCommand
 import com.llm.gateway.model.dto.RateLimitContextDto
 import com.llm.gateway.model.dto.RateLimitDecisionDto
-import com.llm.gateway.model.dto.TokenUsageDto
-import com.llm.gateway.model.dto.UsageLogRecordCommand
 import com.llm.gateway.model.dto.UserQuotaReservationDto
 import com.llm.gateway.ratelimit.RateLimitService
+import com.llm.gateway.tokencalc.TokenCalcService
+import com.llm.gateway.tokencalc.model.TokenCacheType
+import com.llm.gateway.tokencalc.model.TokenDetailDto
+import com.llm.gateway.tokencalc.model.TokenDetailSource
+import com.llm.gateway.tokencalc.model.TokenDirection
+import com.llm.gateway.tokencalc.model.TokenEstimateParams
+import com.llm.gateway.tokencalc.model.TokenEstimateResult
+import com.llm.gateway.tokencalc.model.TokenProtocol
+import com.llm.gateway.tokencalc.model.TokenType
+import com.llm.gateway.tokencalc.model.TokenUsageSummaryDto
 import java.math.BigDecimal
+import java.security.MessageDigest
+import java.util.Date
 import java.util.UUID
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -29,22 +44,29 @@ class OpenAiForwardFacade(
     private val openAiForwardService: OpenAiForwardService,
     private val rateLimitService: RateLimitService,
     private val userQuotaUsageService: UserQuotaUsageService,
-    private val usageLogService: UsageLogService,
-    private val amountCalculatorRegistry: AmountCalculatorRegistry,
+    private val tokenCalcService: TokenCalcService,
+    private val tokenBillingService: TokenBillingService,
+    private val usageLogWriteService: UsageLogWriteService,
+    private val apiKeysMapper: ApiKeysMapper,
 ) {
 
-    fun chatCompletions(userId: Long, payload: Map<String, Any?>, virtualApiKey: String): Any {
+    companion object {
+        private const val DEFAULT_RESERVED_OUTPUT_TOKENS = 1024
+    }
+
+    fun chatCompletions(userId: Long, deptId: Long?, payload: Map<String, Any?>, virtualApiKey: String): Any {
         val stream = payload["stream"]?.toString()?.equals("true", ignoreCase = true) ?: false
         return if (stream) {
             chatCompletionsStream(userId, payload, virtualApiKey)
         } else {
-            chatCompletionsJson(userId, payload, virtualApiKey)
+            chatCompletionsJson(userId, deptId, payload, virtualApiKey)
         }
     }
 
     /** 处理非流式请求：构建上下文、限流决策、上游转发与异常映射。 */
     private fun chatCompletionsJson(
         userId: Long,
+        deptId: Long?,
         payload: Map<String, Any?>,
         virtualApiKey: String,
     ): Mono<ResponseEntity<*>> {
@@ -55,7 +77,7 @@ class OpenAiForwardFacade(
             .subscribeOn(Schedulers.boundedElastic())
             .flatMap { context ->
                 // 发送请求核心逻辑
-                chatCompletionsJsonCore(userId, payload, virtualApiKey, requestId, startedAt, context)
+                chatCompletionsJsonCore(userId, deptId, virtualApiKey, requestId, startedAt, context)
             }
             .onErrorResume(BizException::class.java) { e ->
                 Mono.just(
@@ -81,7 +103,7 @@ class OpenAiForwardFacade(
 
     private fun chatCompletionsJsonCore(
         userId: Long,
-        payload: Map<String, Any?>,
+        deptId: Long?,
         virtualApiKey: String,
         requestId: String,
         startedAt: Long,
@@ -93,10 +115,21 @@ class OpenAiForwardFacade(
             logger().warn("限流评估,decision:{}", decision.toJSONString())
             return Mono.just(openAiErrorResponseWithRateLimit(decision))
         }
-        val estimatedTokens = estimateReserveTokens(payload)
-        val estimatedUsage = buildEstimatedUsage(payload, estimatedTokens)
-        val estimatedAmount = calculateAmount(context, estimatedUsage)
-        val reservation = tryReserveQuota(userId, requestId, context, estimatedTokens, estimatedAmount, startedAt)
+        val requestStartedAt = Date(startedAt)
+        val apiKey = findApiKeyByVirtualKey(userId, virtualApiKey)
+        val estimatedTokenResult = estimateOpenAiChatTokens(context, null).withReservedOutputTokens(context)
+        val estimatedBilling = calculateTokenBilling(context, estimatedTokenResult)
+        val reservation = tryReserveQuota(
+            userId = userId,
+            deptId = deptId,
+            requestId = requestId,
+            context = context,
+            apiKey = apiKey,
+            estimatedTokenResult = estimatedTokenResult,
+            estimatedBilling = estimatedBilling,
+            startedAt = startedAt,
+            requestStartedAt = requestStartedAt,
+        )
 
         return openAiForwardService.forwardJson(context)
             .flatMap { upstreamResponse ->
@@ -104,21 +137,27 @@ class OpenAiForwardFacade(
                     // 请求成功 进行结算
                     if (upstreamResponse.statusCode.is2xxSuccessful) settleAndRecordSuccess(
                         userId = userId,
+                        deptId = deptId,
                         requestId = requestId,
                         context = context,
+                        apiKey = apiKey,
                         reservation = reservation,
-                        estimatedTokens = estimatedTokens,
                         upstreamResponse = upstreamResponse,
                         startedAt = startedAt,
+                        requestStartedAt = requestStartedAt,
                     ) else refundAndRecordFailure(
                         userId = userId,
+                        deptId = deptId,
                         requestId = requestId,
                         context = context,
+                        apiKey = apiKey,
                         reservation = reservation,
-                        estimatedTokens = estimatedTokens,
+                        tokenEstimate = estimatedTokenResult,
+                        billing = estimatedBilling,
                         status = upstreamResponse.statusCode,
                         errorCode = "UPSTREAM_${upstreamResponse.statusCodeValue}",
                         startedAt = startedAt,
+                        requestStartedAt = requestStartedAt,
                     )
                     upstreamResponse
                 }.subscribeOn(Schedulers.boundedElastic())
@@ -127,13 +166,17 @@ class OpenAiForwardFacade(
                 Mono.fromRunnable<ResponseEntity<*>> {
                     refundAndRecordFailure(
                         userId = userId,
+                        deptId = deptId,
                         requestId = requestId,
                         context = context,
+                        apiKey = apiKey,
                         reservation = reservation,
-                        estimatedTokens = estimatedTokens,
+                        tokenEstimate = estimatedTokenResult,
+                        billing = estimatedBilling,
                         status = HttpStatus.INTERNAL_SERVER_ERROR,
                         errorCode = "FORWARD_FAILED",
                         startedAt = startedAt,
+                        requestStartedAt = requestStartedAt,
                     )
                 }
                     .subscribeOn(Schedulers.boundedElastic()).doOnError { compensateError ->
@@ -146,15 +189,18 @@ class OpenAiForwardFacade(
 
     private fun tryReserveQuota(
         userId: Long,
+        deptId: Long?,
         requestId: String,
         context: ForwardContextDto,
-        estimatedTokens: Long,
-        estimatedAmount: AmountCalcResult,
+        apiKey: ApiKeysRecord?,
+        estimatedTokenResult: TokenEstimateResult,
+        estimatedBilling: TokenBillingResult,
         startedAt: Long,
+        requestStartedAt: Date,
     ): UserQuotaReservationDto {
         return try {
             logger().info("reserveQuota,userId:$userId, requestId:$requestId, startedAt:$startedAt")
-            val reserve = userQuotaUsageService.reserve(userId, requestId, estimatedAmount.amountCny)
+            val reserve = userQuotaUsageService.reserve(userId, requestId, estimatedBilling.amountCny)
             logger().info(
                 "reserveQuota,userId:$userId, requestId:$requestId, startedAt:$startedAt \nreserve:{}",
                 reserve.toJSONString()
@@ -166,13 +212,16 @@ class OpenAiForwardFacade(
             // 记录失败的  usageLog
             recordQuotaRejected(
                 userId = userId,
+                deptId = deptId,
                 requestId = requestId,
                 context = context,
-                estimatedTokens = estimatedTokens,
-                estimatedAmount = estimatedAmount,
+                apiKey = apiKey,
+                tokenEstimate = estimatedTokenResult,
+                billing = estimatedBilling,
                 status = mapBizCodeToHttpStatus(bizCode),
                 errorCode = mapBizCodeToErrorCode(bizCode),
                 startedAt = startedAt,
+                requestStartedAt = requestStartedAt,
             )
             throw e
         }
@@ -180,154 +229,200 @@ class OpenAiForwardFacade(
 
     private fun settleAndRecordSuccess(
         userId: Long,
+        deptId: Long?,
         requestId: String,
         context: ForwardContextDto,
+        apiKey: ApiKeysRecord?,
         reservation: UserQuotaReservationDto,
-        estimatedTokens: Long,
         upstreamResponse: ResponseEntity<Any>,
         startedAt: Long,
+        requestStartedAt: Date,
     ) {
-        val upstreamUsage = extractTokenUsage(upstreamResponse.body)
-        val usage = upstreamUsage ?: TokenUsageDto(
-            promptTokens = 0,
-            completionTokens = 0,
-            totalTokens = 0,
-        )
-        val actualAmount = calculateAmount(context, usage)
-        val settleResult = userQuotaUsageService.settle(reservation, actualAmount.amountCny)
+        val tokenEstimate = estimateOpenAiChatTokens(context, upstreamResponse.body)
+        val billing = calculateTokenBilling(context, tokenEstimate)
+        val settleResult = userQuotaUsageService.settle(reservation, billing.amountCny)
         // 记录使用日志
-        usageLogService.record(
-            UsageLogRecordCommand(
+        usageLogWriteService.record(
+            LlmUsageLogRecordCommand(
                 requestId = requestId,
                 userId = userId,
+                deptId = deptId,
+                apiKeyId = apiKey?.id,
                 vendorId = context.vendorId,
-                modelAlias = context.modelAlias,
                 modelId = context.modelId,
                 endpoint = "chat.completions",
+                tokenProtocol = TokenProtocol.OPENAI_CHAT,
                 stream = false,
-                reservedTokens = normalizeTokens(estimatedTokens),
-                estimatedAmountCny = reservation.reservedAmount,
-                amountCny = actualAmount.amountCny,
-                amountCalcDetail = actualAmount.detail,
-                usage = usage,
+                requestModel = context.modelAlias,
+                upstreamModel = context.payload["model"]?.toString(),
+                reservedAmountCny = reservation.reservedAmount,
+                tokenEstimate = tokenEstimate,
+                billing = billing,
                 latencyMs = elapsedMs(startedAt),
                 statusCode = upstreamResponse.statusCodeValue,
                 errorCode = null,
-                accountingStatus = if (settleResult.settled) UsageAccountingStatus.SUCCEEDED.value else UsageAccountingStatus.FAILED.value,
-                calcSource = if (upstreamUsage != null) TokenCalcSource.UPSTREAM.value else TokenCalcSource.LOCAL_ESTIMATE.value,
+                accountingStatus = if (settleResult.settled) UsageAccountingStatus.SUCCEEDED else UsageAccountingStatus.FAILED,
+                requestStartedAt = requestStartedAt,
+                settledAt = Date(),
             )
         )
     }
 
     private fun refundAndRecordFailure(
         userId: Long,
+        deptId: Long?,
         requestId: String,
         context: ForwardContextDto,
+        apiKey: ApiKeysRecord?,
         reservation: UserQuotaReservationDto,
-        estimatedTokens: Long,
+        tokenEstimate: TokenEstimateResult,
+        billing: TokenBillingResult,
         status: HttpStatus,
         errorCode: String,
         startedAt: Long,
+        requestStartedAt: Date,
     ) {
         userQuotaUsageService.refundAll(reservation)
-        usageLogService.record(
-            UsageLogRecordCommand(
+        usageLogWriteService.record(
+            LlmUsageLogRecordCommand(
                 requestId = requestId,
                 userId = userId,
+                deptId = deptId,
+                apiKeyId = apiKey?.id,
                 vendorId = context.vendorId,
-                modelAlias = context.modelAlias,
                 modelId = context.modelId,
                 endpoint = "chat.completions",
+                tokenProtocol = TokenProtocol.OPENAI_CHAT,
                 stream = false,
-                reservedTokens = normalizeTokens(estimatedTokens),
-                estimatedAmountCny = reservation.reservedAmount,
-                amountCny = BigDecimal.ZERO,
-                amountCalcDetail = null,
-                usage = TokenUsageDto(promptTokens = 0, completionTokens = 0, totalTokens = 0),
+                requestModel = context.modelAlias,
+                upstreamModel = context.payload["model"]?.toString(),
+                reservedAmountCny = reservation.reservedAmount,
+                tokenEstimate = tokenEstimate,
+                billing = billing.copy(amountCny = BigDecimal.ZERO),
                 latencyMs = elapsedMs(startedAt),
                 statusCode = status.value(),
                 errorCode = errorCode,
-                accountingStatus = UsageAccountingStatus.COMPENSATED.value,
-                calcSource = null,
+                accountingStatus = UsageAccountingStatus.COMPENSATED,
+                requestStartedAt = requestStartedAt,
+                settledAt = Date(),
             )
         )
     }
 
     private fun recordQuotaRejected(
         userId: Long,
+        deptId: Long?,
         requestId: String,
         context: ForwardContextDto,
-        estimatedTokens: Long,
-        estimatedAmount: AmountCalcResult,
+        apiKey: ApiKeysRecord?,
+        tokenEstimate: TokenEstimateResult,
+        billing: TokenBillingResult,
         status: HttpStatus,
         errorCode: String,
         startedAt: Long,
+        requestStartedAt: Date,
     ) {
-        usageLogService.record(
-            UsageLogRecordCommand(
+        usageLogWriteService.record(
+            LlmUsageLogRecordCommand(
                 requestId = requestId,
                 userId = userId,
+                deptId = deptId,
+                apiKeyId = apiKey?.id,
                 vendorId = context.vendorId,
-                modelAlias = context.modelAlias,
                 modelId = context.modelId,
                 endpoint = "chat.completions",
+                tokenProtocol = TokenProtocol.OPENAI_CHAT,
                 stream = false,
-                reservedTokens = normalizeTokens(estimatedTokens),
-                estimatedAmountCny = estimatedAmount.amountCny,
-                amountCny = BigDecimal.ZERO,
-                amountCalcDetail = estimatedAmount.detail,
-                usage = TokenUsageDto(promptTokens = 0, completionTokens = 0, totalTokens = 0),
+                requestModel = context.modelAlias,
+                upstreamModel = context.payload["model"]?.toString(),
+                reservedAmountCny = billing.amountCny,
+                tokenEstimate = tokenEstimate,
+                billing = billing.copy(amountCny = BigDecimal.ZERO),
                 latencyMs = elapsedMs(startedAt),
                 statusCode = status.value(),
                 errorCode = errorCode,
-                accountingStatus = UsageAccountingStatus.FAILED.value,
-                calcSource = null,
+                accountingStatus = UsageAccountingStatus.FAILED,
+                requestStartedAt = requestStartedAt,
+                settledAt = Date(),
             )
         )
     }
 
-    private fun estimateReserveTokens(payload: Map<String, Any?>): Long {
-        val maxTokens = payload["max_tokens"]?.toString()?.toLongOrNull()
-        return maxTokens?.coerceAtLeast(1L) ?: 1024L
-    }
-
-    private fun buildEstimatedUsage(payload: Map<String, Any?>, estimatedTokens: Long): TokenUsageDto {
-        return TokenUsageDto(
-            promptTokens = 0,
-            completionTokens = estimatedTokens.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
-            totalTokens = estimatedTokens.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+    /** 执行 OpenAI Chat Token 计算，成功响应会携带 responseBody 用于读取上游 usage。 */
+    private fun estimateOpenAiChatTokens(context: ForwardContextDto, responseBody: Any?): TokenEstimateResult {
+        return tokenCalcService.estimate(
+            TokenEstimateParams(
+                protocol = TokenProtocol.OPENAI_CHAT,
+                requestModel = context.modelAlias,
+                upstreamModel = context.payload["model"]?.toString(),
+                stream = context.stream,
+                requestBody = context.payload.toJSONString(),
+                responseBody = responseBody?.toJSONString(),
+            )
         )
     }
 
-    private fun calculateAmount(context: ForwardContextDto, usage: TokenUsageDto): AmountCalcResult {
-        return amountCalculatorRegistry.getCalculator(context).calculate(context, usage)
-    }
-
-    /**
-     * 兼容 usage_logs.reserved_tokens 历史统计字段，防止超大 max_tokens 溢出 Int。
-     */
-    private fun normalizeTokens(tokens: Long): Int {
-        return tokens.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
-    }
-
-    /**
-     * 提取令牌使用情况
-     * @param [body] 内容
-     * @return [TokenUsageDto?]
-     */
-    private fun extractTokenUsage(body: Any?): TokenUsageDto? {
-        // as JSONObject 是因为在 response使用 JSONObject进行处理过
-        val root = body as? JSONObject ?: return null
-        val usage = root.getJSONObject("usage") ?: return null
-
-        val promptTokens = usage.getInteger("prompt_tokens") ?: 0
-        val completionTokens = usage.getInteger("completion_tokens") ?: 0
-        val totalTokens = usage.getInteger("total_tokens") ?: (promptTokens + completionTokens)
-        return TokenUsageDto(
-            promptTokens = promptTokens,
-            completionTokens = completionTokens,
-            totalTokens = totalTokens,
+    /** 预占阶段按请求 max_tokens 补入输出 Token 上限，避免只估 prompt 导致额度预占过低。 */
+    private fun TokenEstimateResult.withReservedOutputTokens(context: ForwardContextDto): TokenEstimateResult {
+        val reservedOutputTokens = resolveReservedOutputTokens(context)
+        if (reservedOutputTokens <= usage.outputTokens) return this
+        val reservedUsage = TokenUsageSummaryDto(
+            inputTokens = usage.inputTokens,
+            outputTokens = reservedOutputTokens,
+            totalTokens = usage.inputTokens + reservedOutputTokens,
         )
+        val reservedDetails = tokenDetails
+            .filterNot { it.direction == TokenDirection.OUTPUT }
+            .plus(
+                TokenDetailDto(
+                    direction = TokenDirection.OUTPUT,
+                    tokenType = TokenType.TEXT,
+                    cacheType = TokenCacheType.NONE,
+                    tokens = reservedOutputTokens,
+                    billableTokens = reservedOutputTokens,
+                    source = TokenDetailSource.LOCAL,
+                    note = "reserve:max_tokens",
+                )
+            )
+        return copy(
+            usage = reservedUsage,
+            tokenDetails = reservedDetails,
+            note = "${note.ifBlank { "预占阶段Token估算" }}，按max_tokens预占输出Token",
+            calcDetail = "",
+        )
+    }
+
+    /** 解析请求声明的最大输出 Token，缺省时沿用网关历史默认预占 1024。 */
+    private fun resolveReservedOutputTokens(context: ForwardContextDto): Int {
+        return context.payload["max_tokens"]?.toString()?.toIntOrNull()?.coerceAtLeast(0)
+            ?: context.payload["max_completion_tokens"]?.toString()?.toIntOrNull()?.coerceAtLeast(0)
+            ?: DEFAULT_RESERVED_OUTPUT_TOKENS
+    }
+
+    /** 基于 Token 明细计算金额，金额结果同时用于配额和新日志落库。 */
+    private fun calculateTokenBilling(context: ForwardContextDto, tokenEstimate: TokenEstimateResult): TokenBillingResult {
+        return tokenBillingService.calculate(
+            TokenBillingParams(
+                vendorId = context.vendorId,
+                modelId = context.modelId,
+                tokenDetails = tokenEstimate.tokenDetails,
+            )
+        )
+    }
+
+    /** 根据虚拟 Key 原文查询 keyId，用于写入 llm_usage_log.api_key_id。 */
+    private fun findApiKeyByVirtualKey(userId: Long, virtualApiKey: String): ApiKeysRecord? {
+        return apiKeysMapper.selectOne {
+            where { ApiKeysDynamicSqlSupport.ApiKeys.apiKeyHash isEqualTo hashApiKey(virtualApiKey) }
+            and { ApiKeysDynamicSqlSupport.ApiKeys.userId isEqualTo userId }
+            and { ApiKeysDynamicSqlSupport.ApiKeys.status isEqualTo NormalStatus }
+        }
+    }
+
+    /** 计算虚拟 API Key 的 SHA-256 摘要，与 VirtualApiKeyService 保持一致。 */
+    private fun hashApiKey(apiKey: String): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(apiKey.toByteArray())
+        return digest.joinToString(separator = "") { "%02x".format(it) }
     }
 
     private fun elapsedMs(startedAt: Long): Int {

@@ -61,19 +61,35 @@
 <!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
 <!--        </table>-->
 
-        <table tableName="user_quota_accounts">
+<!--        <table tableName="user_quota_accounts">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
+
+<!--        <table tableName="user_quota_grants">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
+
+<!--        <table tableName="user_quota_transactions">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
+
+<!--        <table tableName="usage_logs">-->
+<!--            <generatedKey column="id" sqlStatement="JDBC" identity="true"/>-->
+<!--        </table>-->
+
+        <table tableName="llm_usage_log">
             <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
         </table>
 
-        <table tableName="user_quota_grants">
+        <table tableName="llm_usage_token_detail">
             <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
         </table>
 
-        <table tableName="user_quota_transactions">
+        <table tableName="llm_usage_billing_detail">
             <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
         </table>
 
-        <table tableName="usage_logs">
+        <table tableName="model_price_rule">
             <generatedKey column="id" sqlStatement="JDBC" identity="true"/>
         </table>
 

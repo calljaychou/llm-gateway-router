@@ -1,6 +1,6 @@
 /*
  * Auto-generated file. Created by MyBatis Generator
- * Generation date: 2026-05-29T14:51:25.34651+08:00
+ * Generation date: 2026-05-31T14:53:40.60359+08:00
  */
 package com.llm.gateway.dal.mapper
 
@@ -10,6 +10,10 @@ import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.amountCal
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.amountCny
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.apiKeyId
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.calcSource
+import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.completionAcceptedPredictionTokens
+import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.completionAudioTokens
+import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.completionReasoningTokens
+import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.completionRejectedPredictionTokens
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.completionTokens
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.createdAt
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.deptId
@@ -19,6 +23,9 @@ import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.estimated
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.id
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.latencyMs
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.modelId
+import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.promptAudioTokens
+import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.promptCacheMissTokens
+import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.promptCachedTokens
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.promptTokens
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.requestId
 import com.llm.gateway.dal.mapper.UsageLogsDynamicSqlSupport.UsageLogs.reservedTokens
@@ -62,7 +69,14 @@ fun UsageLogsMapper.insert(record: UsageLogsRecord) =
         map(reservedTokens).toProperty("reservedTokens")
         map(estimatedAmountCny).toProperty("estimatedAmountCny")
         map(promptTokens).toProperty("promptTokens")
+        map(promptCachedTokens).toProperty("promptCachedTokens")
+        map(promptCacheMissTokens).toProperty("promptCacheMissTokens")
+        map(promptAudioTokens).toProperty("promptAudioTokens")
         map(completionTokens).toProperty("completionTokens")
+        map(completionReasoningTokens).toProperty("completionReasoningTokens")
+        map(completionAudioTokens).toProperty("completionAudioTokens")
+        map(completionAcceptedPredictionTokens).toProperty("completionAcceptedPredictionTokens")
+        map(completionRejectedPredictionTokens).toProperty("completionRejectedPredictionTokens")
         map(totalTokens).toProperty("totalTokens")
         map(amountCny).toProperty("amountCny")
         map(latencyMs).toProperty("latencyMs")
@@ -89,7 +103,14 @@ fun UsageLogsMapper.insertMultiple(records: Collection<UsageLogsRecord>) =
         map(reservedTokens).toProperty("reservedTokens")
         map(estimatedAmountCny).toProperty("estimatedAmountCny")
         map(promptTokens).toProperty("promptTokens")
+        map(promptCachedTokens).toProperty("promptCachedTokens")
+        map(promptCacheMissTokens).toProperty("promptCacheMissTokens")
+        map(promptAudioTokens).toProperty("promptAudioTokens")
         map(completionTokens).toProperty("completionTokens")
+        map(completionReasoningTokens).toProperty("completionReasoningTokens")
+        map(completionAudioTokens).toProperty("completionAudioTokens")
+        map(completionAcceptedPredictionTokens).toProperty("completionAcceptedPredictionTokens")
+        map(completionRejectedPredictionTokens).toProperty("completionRejectedPredictionTokens")
         map(totalTokens).toProperty("totalTokens")
         map(amountCny).toProperty("amountCny")
         map(latencyMs).toProperty("latencyMs")
@@ -119,7 +140,14 @@ fun UsageLogsMapper.insertSelective(record: UsageLogsRecord) =
         map(reservedTokens).toPropertyWhenPresent("reservedTokens", record::reservedTokens)
         map(estimatedAmountCny).toPropertyWhenPresent("estimatedAmountCny", record::estimatedAmountCny)
         map(promptTokens).toPropertyWhenPresent("promptTokens", record::promptTokens)
+        map(promptCachedTokens).toPropertyWhenPresent("promptCachedTokens", record::promptCachedTokens)
+        map(promptCacheMissTokens).toPropertyWhenPresent("promptCacheMissTokens", record::promptCacheMissTokens)
+        map(promptAudioTokens).toPropertyWhenPresent("promptAudioTokens", record::promptAudioTokens)
         map(completionTokens).toPropertyWhenPresent("completionTokens", record::completionTokens)
+        map(completionReasoningTokens).toPropertyWhenPresent("completionReasoningTokens", record::completionReasoningTokens)
+        map(completionAudioTokens).toPropertyWhenPresent("completionAudioTokens", record::completionAudioTokens)
+        map(completionAcceptedPredictionTokens).toPropertyWhenPresent("completionAcceptedPredictionTokens", record::completionAcceptedPredictionTokens)
+        map(completionRejectedPredictionTokens).toPropertyWhenPresent("completionRejectedPredictionTokens", record::completionRejectedPredictionTokens)
         map(totalTokens).toPropertyWhenPresent("totalTokens", record::totalTokens)
         map(amountCny).toPropertyWhenPresent("amountCny", record::amountCny)
         map(latencyMs).toPropertyWhenPresent("latencyMs", record::latencyMs)
@@ -133,7 +161,7 @@ fun UsageLogsMapper.insertSelective(record: UsageLogsRecord) =
         map(amountCalcDetail).toPropertyWhenPresent("amountCalcDetail", record::amountCalcDetail)
     }
 
-private val columnList = listOf(id, requestId, userId, deptId, apiKeyId, vendorId, modelId, endpoint, useStream, reservedTokens, estimatedAmountCny, promptTokens, completionTokens, totalTokens, amountCny, latencyMs, statusCode, errorCode, accountingStatus, settledAt, retryCount, calcSource, createdAt, amountCalcDetail)
+private val columnList = listOf(id, requestId, userId, deptId, apiKeyId, vendorId, modelId, endpoint, useStream, reservedTokens, estimatedAmountCny, promptTokens, promptCachedTokens, promptCacheMissTokens, promptAudioTokens, completionTokens, completionReasoningTokens, completionAudioTokens, completionAcceptedPredictionTokens, completionRejectedPredictionTokens, totalTokens, amountCny, latencyMs, statusCode, errorCode, accountingStatus, settledAt, retryCount, calcSource, createdAt, amountCalcDetail)
 
 fun UsageLogsMapper.selectOne(completer: SelectCompleter) =
     selectOne(this::selectOne, columnList, UsageLogs, completer)
@@ -165,7 +193,14 @@ fun KotlinUpdateBuilder.updateAllColumns(record: UsageLogsRecord) =
         set(reservedTokens).equalTo(record::reservedTokens)
         set(estimatedAmountCny).equalTo(record::estimatedAmountCny)
         set(promptTokens).equalTo(record::promptTokens)
+        set(promptCachedTokens).equalTo(record::promptCachedTokens)
+        set(promptCacheMissTokens).equalTo(record::promptCacheMissTokens)
+        set(promptAudioTokens).equalTo(record::promptAudioTokens)
         set(completionTokens).equalTo(record::completionTokens)
+        set(completionReasoningTokens).equalTo(record::completionReasoningTokens)
+        set(completionAudioTokens).equalTo(record::completionAudioTokens)
+        set(completionAcceptedPredictionTokens).equalTo(record::completionAcceptedPredictionTokens)
+        set(completionRejectedPredictionTokens).equalTo(record::completionRejectedPredictionTokens)
         set(totalTokens).equalTo(record::totalTokens)
         set(amountCny).equalTo(record::amountCny)
         set(latencyMs).equalTo(record::latencyMs)
@@ -192,7 +227,14 @@ fun KotlinUpdateBuilder.updateSelectiveColumns(record: UsageLogsRecord) =
         set(reservedTokens).equalToWhenPresent(record::reservedTokens)
         set(estimatedAmountCny).equalToWhenPresent(record::estimatedAmountCny)
         set(promptTokens).equalToWhenPresent(record::promptTokens)
+        set(promptCachedTokens).equalToWhenPresent(record::promptCachedTokens)
+        set(promptCacheMissTokens).equalToWhenPresent(record::promptCacheMissTokens)
+        set(promptAudioTokens).equalToWhenPresent(record::promptAudioTokens)
         set(completionTokens).equalToWhenPresent(record::completionTokens)
+        set(completionReasoningTokens).equalToWhenPresent(record::completionReasoningTokens)
+        set(completionAudioTokens).equalToWhenPresent(record::completionAudioTokens)
+        set(completionAcceptedPredictionTokens).equalToWhenPresent(record::completionAcceptedPredictionTokens)
+        set(completionRejectedPredictionTokens).equalToWhenPresent(record::completionRejectedPredictionTokens)
         set(totalTokens).equalToWhenPresent(record::totalTokens)
         set(amountCny).equalToWhenPresent(record::amountCny)
         set(latencyMs).equalToWhenPresent(record::latencyMs)
@@ -219,7 +261,14 @@ fun UsageLogsMapper.updateByPrimaryKey(record: UsageLogsRecord) =
         set(reservedTokens).equalTo(record::reservedTokens)
         set(estimatedAmountCny).equalTo(record::estimatedAmountCny)
         set(promptTokens).equalTo(record::promptTokens)
+        set(promptCachedTokens).equalTo(record::promptCachedTokens)
+        set(promptCacheMissTokens).equalTo(record::promptCacheMissTokens)
+        set(promptAudioTokens).equalTo(record::promptAudioTokens)
         set(completionTokens).equalTo(record::completionTokens)
+        set(completionReasoningTokens).equalTo(record::completionReasoningTokens)
+        set(completionAudioTokens).equalTo(record::completionAudioTokens)
+        set(completionAcceptedPredictionTokens).equalTo(record::completionAcceptedPredictionTokens)
+        set(completionRejectedPredictionTokens).equalTo(record::completionRejectedPredictionTokens)
         set(totalTokens).equalTo(record::totalTokens)
         set(amountCny).equalTo(record::amountCny)
         set(latencyMs).equalTo(record::latencyMs)
@@ -247,7 +296,14 @@ fun UsageLogsMapper.updateByPrimaryKeySelective(record: UsageLogsRecord) =
         set(reservedTokens).equalToWhenPresent(record::reservedTokens)
         set(estimatedAmountCny).equalToWhenPresent(record::estimatedAmountCny)
         set(promptTokens).equalToWhenPresent(record::promptTokens)
+        set(promptCachedTokens).equalToWhenPresent(record::promptCachedTokens)
+        set(promptCacheMissTokens).equalToWhenPresent(record::promptCacheMissTokens)
+        set(promptAudioTokens).equalToWhenPresent(record::promptAudioTokens)
         set(completionTokens).equalToWhenPresent(record::completionTokens)
+        set(completionReasoningTokens).equalToWhenPresent(record::completionReasoningTokens)
+        set(completionAudioTokens).equalToWhenPresent(record::completionAudioTokens)
+        set(completionAcceptedPredictionTokens).equalToWhenPresent(record::completionAcceptedPredictionTokens)
+        set(completionRejectedPredictionTokens).equalToWhenPresent(record::completionRejectedPredictionTokens)
         set(totalTokens).equalToWhenPresent(record::totalTokens)
         set(amountCny).equalToWhenPresent(record::amountCny)
         set(latencyMs).equalToWhenPresent(record::latencyMs)
