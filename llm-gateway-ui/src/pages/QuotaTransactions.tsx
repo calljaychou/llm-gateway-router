@@ -20,6 +20,7 @@ import {
 } from 'antd';
 import { AuditOutlined, ArrowRightOutlined, SearchOutlined } from '@ant-design/icons';
 import { quotaApi, QuotaTransactionItem, UserQuotaAccountSnapshot } from '../api/llmGatewayApi';
+import { formatAmount } from '../utils/format';
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -29,17 +30,15 @@ const quotaChangeTypeTextMap: Record<string, string> = {
     ADMIN_RECLAIM: '管理员回收',
     TRANSFER_OUT: '转出',
     TRANSFER_IN: '转入',
-    USAGE_RESERVE: 'LLM消费',
-    USAGE_SETTLE: 'LLM结算',
-    USAGE_REFUND: 'LLM退回',
+    USAGE_SETTLE: '用量结算',
     QUOTA_EXPIRE: '配额过期',
 };
 
 function getQuotaChangeTypeColor(type: string): string {
-    if (type === 'ADMIN_RECLAIM' || type === 'TRANSFER_OUT' || type === 'USAGE_RESERVE' || type === 'QUOTA_EXPIRE') {
+    if (type === 'ADMIN_RECLAIM' || type === 'TRANSFER_OUT' || type === 'QUOTA_EXPIRE') {
         return 'orange';
     }
-    if (type === 'USAGE_REFUND' || type === 'TRANSFER_IN' || type === 'ADMIN_GRANT') {
+    if (type === 'TRANSFER_IN' || type === 'ADMIN_GRANT') {
         return 'green';
     }
     return 'blue';
@@ -109,7 +108,7 @@ export const QuotaTransactions: React.FC = () => {
                 remark: values.remark
             });
             if (res.success) {
-                message.success(`划转成功！顺利向目标用户 [${values.targetUser}] 共享划配 ${values.transferAmount.toLocaleString()} 元`);
+                message.success(`划转成功！顺利向目标用户 [${values.targetUser}] 共享划配 ${formatAmount(values.transferAmount)} 元`);
                 form.resetFields();
                 setActiveTab('ledger');
                 fetchQuotaSnapshot();
@@ -140,7 +139,7 @@ export const QuotaTransactions: React.FC = () => {
                 const isNegative = delta < 0;
                 return (
                     <Text strong style={{ color: isNegative ? '#ff4d4f' : '#52c41a' }}>
-                        {isNegative ? '' : '+'}{delta.toLocaleString()}
+                        {isNegative ? '' : '+'}{formatAmount(delta)}
                     </Text>
                 );
             }
@@ -149,7 +148,7 @@ export const QuotaTransactions: React.FC = () => {
             title: '变动额度',
             key: 'availableBalance',
             render: (_: any, record: QuotaTransactionItem) => (
-                <span>{record.availableBeforeAmount.toLocaleString()} <ArrowRightOutlined style={{ fontSize: 11 }} /> {record.availableAfterAmount.toLocaleString()}</span>
+                <span>{formatAmount(record.availableBeforeAmount)} <ArrowRightOutlined style={{ fontSize: 11 }} /> {formatAmount(record.availableAfterAmount)}</span>
             )
         },
         { title: '流水备注', dataIndex: 'remark', key: 'remark', ellipsis: true }
@@ -162,21 +161,21 @@ export const QuotaTransactions: React.FC = () => {
                     <>
                         <Row gutter={16}>
                             <Col span={6}>
-                                <Statistic title="总配额" value={quotaSnapshot.currentQuotaAmount} />
+                                <Statistic title="总配额" value={quotaSnapshot.currentQuotaAmount} formatter={(value) => formatAmount(value)} />
                             </Col>
                             <Col span={6}>
-                                <Statistic title="当前可用配额" value={quotaSnapshot.availableAmount} valueStyle={{ color: '#0969da' }} />
+                                <Statistic title="当前可用配额" value={quotaSnapshot.availableAmount} formatter={(value) => formatAmount(value)} valueStyle={{ color: '#0969da' }} />
                             </Col>
                             <Col span={6}>
-                                <Statistic title="已使用配额" value={quotaSnapshot.usedAmount} />
+                                <Statistic title="已使用配额" value={quotaSnapshot.usedAmount} formatter={(value) => formatAmount(value)} />
                             </Col>
                             <Col span={6}>
-                                <Statistic title="已过期配额" value={quotaSnapshot.expiredAmount} />
+                                <Statistic title="已过期配额" value={quotaSnapshot.expiredAmount} formatter={(value) => formatAmount(value)} />
                             </Col>
                         </Row>
                         <Descriptions column={3} size="small" bordered style={{ marginTop: 16 }}>
-                            <Descriptions.Item label="累计转入">{quotaSnapshot.transferredInAmount}</Descriptions.Item>
-                            <Descriptions.Item label="累计转出">{quotaSnapshot.transferredOutAmount}</Descriptions.Item>
+                            <Descriptions.Item label="累计转入">{formatAmount(quotaSnapshot.transferredInAmount)}</Descriptions.Item>
+                            <Descriptions.Item label="累计转出">{formatAmount(quotaSnapshot.transferredOutAmount)}</Descriptions.Item>
                             <Descriptions.Item label="允许转配">{quotaSnapshot.allowTransferOut ? '是' : '否'}</Descriptions.Item>
                             <Descriptions.Item label="最早过期时间">{quotaSnapshot.earliestExpireAt || '-'}</Descriptions.Item>
                             <Descriptions.Item label="更新时间" span={2}>{quotaSnapshot.updatedAt || '-'}</Descriptions.Item>

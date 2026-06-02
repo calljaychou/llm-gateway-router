@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Table, Button, Space, Tag, Modal, Form, Input, Select, Switch, App, Typography, InputNumber } from 'antd';
-import { AppstoreAddOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { adminGatewayApi, ModelVendorListItem, VendorListItem } from '../api/llmGatewayApi';
+import { AppstoreAddOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ProfileOutlined } from '@ant-design/icons';
+import { adminGatewayApi, ModelPriceRuleListItem, ModelVendorListItem, VendorListItem } from '../api/llmGatewayApi';
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -15,6 +15,13 @@ export const ModelManage: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     const [currentModelId, setCurrentModelId] = useState<number | null>(null); // 区分新建与编辑
     const [form] = Form.useForm();
+    const [isRuleModalOpen, setIsRuleModalOpen] = useState<boolean>(false);
+    const [ruleLoading, setRuleLoading] = useState<boolean>(false);
+    const [priceRules, setPriceRules] = useState<ModelPriceRuleListItem[]>([]);
+    const [selectedModel, setSelectedModel] = useState<ModelVendorListItem | null>(null);
+    const [isRuleEditModalOpen, setIsRuleEditModalOpen] = useState<boolean>(false);
+    const [currentRuleId, setCurrentRuleId] = useState<number | null>(null);
+    const [ruleForm] = Form.useForm();
 
     const cardStyle = { backgroundColor: '#ffffff', borderRadius: 12, border: '1px solid #d0d7de' };
     const textPrimary = '#1f2328';
@@ -50,8 +57,6 @@ export const ModelManage: React.FC = () => {
                 modelAlias: record.modelAlias,
                 realModelName: record.realModelName,
                 billingType: record.billingType,
-                inputPriceCnyPerMillion: record.inputPriceCnyPerMillion,
-                outputPriceCnyPerMillion: record.outputPriceCnyPerMillion,
                 active: record.active,
             });
         } else {
@@ -77,6 +82,54 @@ export const ModelManage: React.FC = () => {
             fetchData(); // 刷新列表
         } catch {
             message.error(currentModelId ? '更新模型路由失败' : '创建模型路由失败');
+        }
+    };
+
+    const fetchModelPriceRules = async (record: ModelVendorListItem) => {
+        setRuleLoading(true);
+        try {
+            const res = await adminGatewayApi.listModelPriceRules({ modelId: record.id, vendorId: record.vendorId });
+            if (res.success && res.data) setPriceRules(res.data);
+            else message.error(res.message || '加载模型计费规则失败');
+        } catch (error: any) {
+            message.error(error.response?.data?.message || '加载模型计费规则失败');
+        } finally {
+            setRuleLoading(false);
+        }
+    };
+
+    const handleOpenRuleModal = async (record: ModelVendorListItem) => {
+        setSelectedModel(record);
+        setPriceRules([]);
+        setIsRuleModalOpen(true);
+        await fetchModelPriceRules(record);
+    };
+
+    const handleOpenRuleEditModal = (record: ModelPriceRuleListItem) => {
+        setCurrentRuleId(record.id);
+        ruleForm.setFieldsValue({
+            priceCnyPerMillion: record.priceCnyPerMillion,
+            currency: record.currency,
+            active: record.active,
+        });
+        setIsRuleEditModalOpen(true);
+    };
+
+    const handleUpdateModelPriceRule = async (values: any) => {
+        if (!currentRuleId || !selectedModel) return;
+        try {
+            const res = await adminGatewayApi.updateModelPriceRule(currentRuleId, values);
+            if (!res.success) {
+                message.error(res.message || '保存模型计费规则失败');
+                return;
+            }
+            message.success('模型计费规则已保存');
+            setIsRuleEditModalOpen(false);
+            setCurrentRuleId(null);
+            ruleForm.resetFields();
+            await fetchModelPriceRules(selectedModel);
+        } catch (error: any) {
+            message.error(error.response?.data?.message || '保存模型计费规则失败');
         }
     };
 
@@ -112,7 +165,7 @@ export const ModelManage: React.FC = () => {
             render: (t: string) => <Text style={{ color: '#0969da', fontWeight: 600 }}>{t}</Text>
         },
         {
-            title: '厂商真实底层模型名',
+            title: '厂商真实模型名',
             dataIndex: 'realModelName',
             key: 'realModelName',
             render: (t: string) => <Text code style={{ backgroundColor: '#f6f8fa' }}>{t}</Text>
@@ -134,28 +187,19 @@ export const ModelManage: React.FC = () => {
             render: (t: string) => <Tag color={t === 'PAID' ? 'gold' : 'green'} style={{ border: 'none' }}>{t}</Tag>
         },
         {
-            title: '输入单价/百万Token',
-            dataIndex: 'inputPriceCnyPerMillion',
-            key: 'inputPriceCnyPerMillion',
-            render: (value: number) => `¥${Number(value || 0).toFixed(6)}`
-        },
-        {
-            title: '输出单价/百万Token',
-            dataIndex: 'outputPriceCnyPerMillion',
-            key: 'outputPriceCnyPerMillion',
-            render: (value: number) => `¥${Number(value || 0).toFixed(6)}`
-        },
-        {
-            title: '路由管控状态',
+            title: '状态',
             dataIndex: 'active',
             key: 'active',
             render: (a: boolean) => a ? <Tag color="success" style={{ border: 'none' }}>已激活</Tag> : <Tag color="error" style={{ border: 'none' }}>停用</Tag>
         },
         {
-            title: '管控操作',
+            title: '操作',
             key: 'action',
             render: (_: any, record: ModelVendorListItem) => (
                 <Space size="small">
+                    <Button type="text" size="small" icon={<ProfileOutlined />} onClick={() => handleOpenRuleModal(record)} style={{ color: '#1f6feb' }}>
+                        计费规则
+                    </Button>
                     <Button type="text" size="small" icon={<EditOutlined />} onClick={() => handleOpenModal(record)} style={{ color: '#0969da' }}>
                         编辑
                     </Button>
@@ -164,6 +208,48 @@ export const ModelManage: React.FC = () => {
                     </Button>
                 </Space>
             ),
+        }
+    ];
+
+    const ruleColumns = [
+        {
+            title: '计费项',
+            dataIndex: 'chargeItem',
+            key: 'chargeItem',
+            render: (value: string) => <Text code style={{ backgroundColor: '#f6f8fa' }}>{value}</Text>
+        },
+        {
+            title: '单价/百万Token',
+            dataIndex: 'priceCnyPerMillion',
+            key: 'priceCnyPerMillion',
+            render: (value: number) => `¥${Number(value || 0).toFixed(8)}`
+        },
+        {
+            title: '币种',
+            dataIndex: 'currency',
+            key: 'currency',
+            render: (value: string) => <Tag style={{ border: 'none' }}>{value || 'CNY'}</Tag>
+        },
+        {
+            title: '状态',
+            dataIndex: 'active',
+            key: 'active',
+            render: (value: boolean) => value ? <Tag color="success" style={{ border: 'none' }}>启用</Tag> : <Tag color="error" style={{ border: 'none' }}>停用</Tag>
+        },
+        {
+            title: '更新时间',
+            dataIndex: 'updatedAt',
+            key: 'updatedAt',
+            render: (value: string) => value || '-'
+        },
+        {
+            title: '操作',
+            key: 'action',
+            render: (_: any, record: ModelPriceRuleListItem) => (
+                <Button type="text" size="small" icon={<EditOutlined />} onClick={() => handleOpenRuleEditModal(record)} style={{ color: '#0969da' }}>
+                    编辑
+                </Button>
+            )
         }
     ];
 
@@ -215,14 +301,53 @@ export const ModelManage: React.FC = () => {
                                 <Option value="PAID">计费配额池 (PAID)</Option>
                             </Select>
                         </Form.Item>
-                        <Form.Item name="inputPriceCnyPerMillion" label="输入单价（元/百万Token）" initialValue={0}>
-                            <InputNumber min={0} precision={6} style={{ width: '100%' }} placeholder="例如: 18.000000" />
-                        </Form.Item>
-                        <Form.Item name="outputPriceCnyPerMillion" label="输出单价（元/百万Token）" initialValue={0}>
-                            <InputNumber min={0} precision={6} style={{ width: '100%' }} placeholder="例如: 72.000000" />
-                        </Form.Item>
                         <Form.Item name="active" label="模型初始状态" valuePropName="checked" initialValue={true}>
                             <Switch checkedChildren="立即启用" unCheckedChildren="暂存/封禁" />
+                        </Form.Item>
+                    </Form>
+                </Modal>
+
+                <Modal
+                    title={<span style={{ color: textPrimary, fontWeight: 600 }}>{selectedModel ? `${selectedModel.modelAlias} 计费规则` : '模型计费规则'}</span>}
+                    open={isRuleModalOpen}
+                    onCancel={() => { setIsRuleModalOpen(false); setSelectedModel(null); setPriceRules([]); }}
+                    footer={null}
+                    width={820}
+                    destroyOnClose
+                >
+                    <Table
+                        columns={ruleColumns}
+                        dataSource={priceRules}
+                        rowKey="id"
+                        loading={ruleLoading}
+                        size="small"
+                        pagination={false}
+                    />
+                </Modal>
+
+                <Modal
+                    title={<span style={{ color: textPrimary, fontWeight: 600 }}>编辑模型计费规则</span>}
+                    open={isRuleEditModalOpen}
+                    onCancel={() => { setIsRuleEditModalOpen(false); setCurrentRuleId(null); ruleForm.resetFields(); }}
+                    onOk={() => ruleForm.submit()}
+                    okText="保存"
+                    cancelText="取消"
+                    width={460}
+                    destroyOnClose
+                >
+                    <Form form={ruleForm} layout="vertical" onFinish={handleUpdateModelPriceRule}>
+                        <Form.Item
+                            name="priceCnyPerMillion"
+                            label="单价（元/百万Token）"
+                            rules={[{ required: true, message: '请输入计费单价' }]}
+                        >
+                            <InputNumber min={0} precision={8} style={{ width: '100%' }} placeholder="例如: 18.00000000" />
+                        </Form.Item>
+                        <Form.Item name="currency" label="币种" rules={[{ required: true, message: '请输入币种' }]}>
+                            <Input maxLength={16} placeholder="例如: CNY" />
+                        </Form.Item>
+                        <Form.Item name="active" label="规则状态" valuePropName="checked">
+                            <Switch checkedChildren="启用" unCheckedChildren="停用" />
                         </Form.Item>
                     </Form>
                 </Modal>

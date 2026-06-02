@@ -5,6 +5,8 @@ import com.llm.gateway.model.PageResult
 import com.llm.gateway.model.params.MasterKeyCreateParams
 import com.llm.gateway.model.params.MasterKeyPageParams
 import com.llm.gateway.model.params.ModelCreateParams
+import com.llm.gateway.model.params.ModelPriceRuleListParams
+import com.llm.gateway.model.params.ModelPriceRuleUpdateParams
 import com.llm.gateway.model.params.ModelUpdateParams
 import com.llm.gateway.model.params.VendorCreateParams
 import com.llm.gateway.model.results.MasterKeyCreateResult
@@ -12,6 +14,7 @@ import com.llm.gateway.model.results.MasterKeyListResult
 import com.llm.gateway.model.results.MasterKeyPageItemResult
 import com.llm.gateway.model.results.ModelCreateResult
 import com.llm.gateway.model.results.ModelDeleteResult
+import com.llm.gateway.model.results.ModelPriceRuleListItemResult
 import com.llm.gateway.model.results.ModelUpdateResult
 import com.llm.gateway.model.results.ModelVendorListItemResult
 import com.llm.gateway.model.results.VendorCreateResult
@@ -100,5 +103,20 @@ class AdminModelManageController(
     @GetMapping("/models")
     fun listModelVendors(): ApiResult<List<ModelVendorListItemResult>> {
         return ApiResult.success(adminModelManageService.listModelVendors())
+    }
+
+    @ApiOperation(value = "查询模型计费规则列表")
+    @GetMapping("/model-price-rules")
+    fun listModelPriceRules(@Valid params: ModelPriceRuleListParams): ApiResult<List<ModelPriceRuleListItemResult>> {
+        return ApiResult.success(adminModelManageService.listModelPriceRules(params))
+    }
+
+    @ApiOperation(value = "编辑模型计费规则")
+    @PutMapping("/model-price-rules/{ruleId}")
+    fun updateModelPriceRule(
+        @ApiParam(value = "计费规则ID", required = true) @PathVariable("ruleId") ruleId: Long,
+        @RequestBody @Valid params: ModelPriceRuleUpdateParams,
+    ): ApiResult<ModelPriceRuleListItemResult> {
+        return ApiResult.success(adminModelManageService.updateModelPriceRule(ruleId, params))
     }
 }

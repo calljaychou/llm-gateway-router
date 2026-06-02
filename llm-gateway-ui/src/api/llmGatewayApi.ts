@@ -192,9 +192,9 @@ export const quotaApi = {
         const res = await api.get<ApiResult<UserQuotaAccountSnapshot>>('/admin/user/quotas/current');
         return res.data;
     },
-    listTransactions: async (pageNum: number, pageSize: number, changeType?: string) => {
+    listTransactions: async (pageNum: number, pageSize: number, type?: string) => {
         const res = await api.get<ApiResult<PageResult<QuotaTransactionItem>>>('/admin/user/quotas/transactions', {
-            params: { pageNum, pageSize, changeType }
+            params: { pageNum, pageSize, type }
         });
         return res.data;
     },
@@ -519,8 +519,6 @@ export interface CreateModelParams {
     modelAlias: string;
     realModelName: string;
     vendorId: number;
-    inputPriceCnyPerMillion?: number;
-    outputPriceCnyPerMillion?: number;
 }
 
 export interface ModelVendorListItem {
@@ -531,8 +529,32 @@ export interface ModelVendorListItem {
     active: boolean;
     vendorId: number;
     vendorName: string; // 关联的供应商名称
-    inputPriceCnyPerMillion: number;
-    outputPriceCnyPerMillion: number;
+}
+
+export interface ModelPriceRuleListParams {
+    active?: boolean;
+    chargeItem?: string;
+    currency?: string;
+    modelId?: number;
+    vendorId?: number;
+}
+
+export interface ModelPriceRuleListItem {
+    id: number;
+    modelId: number;
+    vendorId: number;
+    chargeItem: string;
+    priceCnyPerMillion: number;
+    currency: string;
+    active: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface UpdateModelPriceRuleParams {
+    active?: boolean;
+    currency?: string;
+    priceCnyPerMillion?: number;
 }
 
 export interface CreateMasterKeyParams {
@@ -565,8 +587,6 @@ export interface UpdateModelParams {
     modelAlias: string;
     realModelName: string;
     vendorId: number;
-    inputPriceCnyPerMillion?: number;
-    outputPriceCnyPerMillion?: number;
 }
 
 export const adminGatewayApi = {
@@ -585,6 +605,14 @@ export const adminGatewayApi = {
     listModelVendors: async () => {
         // 对应新补充的查询模型供应商列表 API
         const res = await api.get<ApiResult<ModelVendorListItem[]>>('/admin/models');
+        return res.data;
+    },
+    listModelPriceRules: async (params?: ModelPriceRuleListParams) => {
+        const res = await api.get<ApiResult<ModelPriceRuleListItem[]>>('/admin/model-price-rules', { params });
+        return res.data;
+    },
+    updateModelPriceRule: async (ruleId: number, params: UpdateModelPriceRuleParams) => {
+        const res = await api.put<ApiResult<ModelPriceRuleListItem>>(`/admin/model-price-rules/${ruleId}`, params);
         return res.data;
     },
     createModel: async (params: CreateModelParams) => {

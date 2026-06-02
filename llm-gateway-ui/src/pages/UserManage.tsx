@@ -42,6 +42,7 @@ import {
     RoleListItem
 } from '../api/llmGatewayApi';
 import {RoleManage} from './RoleManage';
+import {formatAmount} from '../utils/format';
 
 const {Option} = Select;
 const {Text, Title} = Typography;
@@ -841,7 +842,7 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
                     <>
                         <Row gutter={16}>
                             <Col span={6}>
-                                <Statistic title="总配额" value={detail.quota.currentQuotaAmount}/>
+                                <Statistic title="总配额" value={detail.quota.currentQuotaAmount} formatter={(value) => formatAmount(value)}/>
                             </Col>
                             <Col span={6}>
                                 <div
@@ -852,20 +853,21 @@ const UserDetailView: React.FC<UserDetailViewProps> = ({
                                     <Statistic
                                         title="当前可用配额"
                                         value={detail.quota.availableAmount}
+                                        formatter={(value) => formatAmount(value)}
                                         valueStyle={{color: '#0969da', textDecoration: 'underline'}}
                                     />
                                 </div>
                             </Col>
                             <Col span={6}>
-                                <Statistic title="已使用配额" value={detail.quota.usedAmount}/>
+                                <Statistic title="已使用配额" value={detail.quota.usedAmount} formatter={(value) => formatAmount(value)}/>
                             </Col>
                             <Col span={6}>
-                                <Statistic title="已过期配额" value={detail.quota.expiredAmount}/>
+                                <Statistic title="已过期配额" value={detail.quota.expiredAmount} formatter={(value) => formatAmount(value)}/>
                             </Col>
                         </Row>
                         <Descriptions column={3} size="small" bordered style={{marginTop: 16}}>
-                            <Descriptions.Item label="累计转入">{detail.quota.transferredInAmount}</Descriptions.Item>
-                            <Descriptions.Item label="累计转出">{detail.quota.transferredOutAmount}</Descriptions.Item>
+                            <Descriptions.Item label="累计转入">{formatAmount(detail.quota.transferredInAmount)}</Descriptions.Item>
+                            <Descriptions.Item label="累计转出">{formatAmount(detail.quota.transferredOutAmount)}</Descriptions.Item>
                             <Descriptions.Item label="允许转配">
                                 <Switch
                                     checked={detail.quota.allowTransferOut}

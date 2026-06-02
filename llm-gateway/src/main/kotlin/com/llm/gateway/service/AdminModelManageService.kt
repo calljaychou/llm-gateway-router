@@ -10,6 +10,8 @@ import com.llm.gateway.dal.mapper.DepartmentModelPermissionsDynamicSqlSupport
 import com.llm.gateway.dal.mapper.DepartmentModelPermissionsMapper
 import com.llm.gateway.dal.mapper.MasterKeysMapper
 import com.llm.gateway.dal.mapper.MasterKeysDynamicSqlSupport
+import com.llm.gateway.dal.mapper.ModelPriceRuleDynamicSqlSupport
+import com.llm.gateway.dal.mapper.ModelPriceRuleMapper
 import com.llm.gateway.dal.mapper.ModelsDynamicSqlSupport
 import com.llm.gateway.dal.mapper.ModelsMapper
 import com.llm.gateway.dal.mapper.VendorsDynamicSqlSupport
@@ -21,12 +23,15 @@ import com.llm.gateway.dal.mapper.select
 import com.llm.gateway.dal.mapper.selectOne
 import com.llm.gateway.dal.mapper.updateByPrimaryKeySelective
 import com.llm.gateway.dal.model.MasterKeysRecord
+import com.llm.gateway.dal.model.ModelPriceRuleRecord
 import com.llm.gateway.dal.model.ModelsRecord
 import com.llm.gateway.dal.model.VendorsRecord
 import com.llm.gateway.model.PageResult
 import com.llm.gateway.model.params.MasterKeyCreateParams
 import com.llm.gateway.model.params.MasterKeyPageParams
 import com.llm.gateway.model.params.ModelCreateParams
+import com.llm.gateway.model.params.ModelPriceRuleListParams
+import com.llm.gateway.model.params.ModelPriceRuleUpdateParams
 import com.llm.gateway.model.params.ModelUpdateParams
 import com.llm.gateway.model.params.VendorCreateParams
 import com.llm.gateway.model.results.MasterKeyCreateResult
@@ -35,6 +40,7 @@ import com.llm.gateway.model.results.MasterKeyListResult
 import com.llm.gateway.model.results.MasterKeyPageItemResult
 import com.llm.gateway.model.results.ModelCreateResult
 import com.llm.gateway.model.results.ModelDeleteResult
+import com.llm.gateway.model.results.ModelPriceRuleListItemResult
 import com.llm.gateway.model.results.ModelUpdateResult
 import com.llm.gateway.model.results.ModelVendorListItemResult
 import com.llm.gateway.model.results.VendorCreateResult
@@ -60,6 +66,7 @@ class AdminModelManageService(
     private val vendorsMapper: VendorsMapper,
     private val masterKeysMapper: MasterKeysMapper,
     private val modelsMapper: ModelsMapper,
+    private val modelPriceRuleMapper: ModelPriceRuleMapper,
     private val departmentModelPermissionsMapper: DepartmentModelPermissionsMapper,
     @Value("\${gateway.aes-secret}") private val aesSecret: String,
 ) {
@@ -209,6 +216,55 @@ class AdminModelManageService(
         return models.map { mapModelVendorListItem(it, vendors) }
     }
 
+    fun listModelPriceRules(params: ModelPriceRuleListParams): List<ModelPriceRuleListItemResult> {
+        val chargeItem = params.chargeItem?.trim()?.ifBlank { null }
+        val currency = params.currency?.trim()?.ifBlank { null }
+        val records = modelPriceRuleMapper.select {
+            where { ModelPriceRuleDynamicSqlSupport.ModelPriceRule.modelId isEqualToWhenPresent params.modelId }
+            and { ModelPriceRuleDynamicSqlSupport.ModelPriceRule.vendorId isEqualToWhenPresent params.vendorId }
+            and { ModelPriceRuleDynamicSqlSupport.ModelPriceRule.chargeItem isEqualToWhenPresent chargeItem }
+            and { ModelPriceRuleDynamicSqlSupport.ModelPriceRule.currency isEqualToWhenPresent currency }
+            and { ModelPriceRuleDynamicSqlSupport.ModelPriceRule.active isEqualToWhenPresent params.active }
+            orderBy(
+                ModelPriceRuleDynamicSqlSupport.ModelPriceRule.modelId,
+                ModelPriceRuleDynamicSqlSupport.ModelPriceRule.id.descending()
+            )
+        }
+        return records.map { mapModelPriceRuleListItem(it) }
+    }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun updateModelPriceRule(ruleId: Long, params: ModelPriceRuleUpdateParams): ModelPriceRuleListItemResult {
+        val existedRule = ensureModelPriceRuleExists(ruleId)
+        val currency = params.currency?.trim()?.ifBlank {
+            throw BizException(BizException.BUSINESS_FAILED, "币种不能为空")
+        }
+        val record = ModelPriceRuleRecord(
+            id = ruleId,
+            priceCnyPerMillion = params.priceCnyPerMillion ?: existedRule.priceCnyPerMillion,
+            currency = currency ?: existedRule.currency,
+            active = params.active ?: existedRule.active,
+            updatedAt = Date(),
+        )
+        val updatedCount = modelPriceRuleMapper.updateByPrimaryKeySelective(record)
+        if (updatedCount <= 0) {
+            throw BizException(BizException.SYSTEM_FAILED, "编辑模型计费规则失败")
+        }
+
+        val updatedRule = ensureModelPriceRuleExists(ruleId)
+        log.info(
+            "编辑模型计费规则成功 ruleId={}, modelId={}, vendorId={}, chargeItem={}, priceCnyPerMillion={}, currency={}, active={}",
+            ruleId,
+            updatedRule.modelId,
+            updatedRule.vendorId,
+            updatedRule.chargeItem,
+            updatedRule.priceCnyPerMillion,
+            updatedRule.currency,
+            updatedRule.active
+        )
+        return mapModelPriceRuleListItem(updatedRule)
+    }
+
     @Transactional(rollbackFor = [Exception::class])
     fun createModel(params: ModelCreateParams): ModelCreateResult {
         val vendorId = params.vendorId ?: throw BizException(BizException.BUSINESS_FAILED, "供应商ID不能为空")
@@ -289,8 +345,6 @@ class AdminModelManageService(
             realModelName = targetRealModelName,
             vendorId = targetVendorId,
             billingType = params.billingType?.value ?: existedModel.billingType,
-            inputPriceCnyPerMillion = params.inputPriceCnyPerMillion ?: existedModel.inputPriceCnyPerMillion,
-            outputPriceCnyPerMillion = params.outputPriceCnyPerMillion ?: existedModel.outputPriceCnyPerMillion,
             active = params.active ?: existedModel.active,
             updatedTime = Date(),
         )
@@ -308,8 +362,6 @@ class AdminModelManageService(
             realModelName = updatedModel.realModelName.orEmpty(),
             vendorId = updatedModel.vendorId ?: throw BizException(BizException.SYSTEM_FAILED, "模型供应商ID异常"),
             billingType = updatedModel.billingType.orEmpty(),
-            inputPriceCnyPerMillion = updatedModel.inputPriceCnyPerMillion ?: ZERO_AMOUNT,
-            outputPriceCnyPerMillion = updatedModel.outputPriceCnyPerMillion ?: ZERO_AMOUNT,
             active = updatedModel.active ?: false,
         )
     }
@@ -364,10 +416,25 @@ class AdminModelManageService(
             vendorId = vendorId,
             vendorName = vendorName,
             billingType = record.billingType.orEmpty(),
-            inputPriceCnyPerMillion = record.inputPriceCnyPerMillion ?: ZERO_AMOUNT,
-            outputPriceCnyPerMillion = record.outputPriceCnyPerMillion ?: ZERO_AMOUNT,
             active = record.active ?: false,
             createdTime = record.createdTime,
+        )
+    }
+
+    /**
+     * 转换模型计费规则列表项。
+     */
+    private fun mapModelPriceRuleListItem(record: ModelPriceRuleRecord): ModelPriceRuleListItemResult {
+        return ModelPriceRuleListItemResult(
+            id = record.id ?: throw BizException(BizException.SYSTEM_FAILED, "计费规则ID异常"),
+            modelId = record.modelId ?: throw BizException(BizException.SYSTEM_FAILED, "模型ID异常"),
+            vendorId = record.vendorId ?: throw BizException(BizException.SYSTEM_FAILED, "供应商ID异常"),
+            chargeItem = record.chargeItem.orEmpty(),
+            priceCnyPerMillion = record.priceCnyPerMillion ?: ZERO_AMOUNT,
+            currency = record.currency.orEmpty(),
+            active = record.active ?: false,
+            createdAt = record.createdAt,
+            updatedAt = record.updatedAt,
         )
     }
 
@@ -398,6 +465,15 @@ class AdminModelManageService(
         return modelsMapper.selectOne {
             where { ModelsDynamicSqlSupport.Models.id isEqualTo modelId }
         } ?: throw BizException(BizException.BUSINESS_FAILED, "模型不存在")
+    }
+
+    /**
+     * 校验模型计费规则存在。
+     */
+    private fun ensureModelPriceRuleExists(ruleId: Long): ModelPriceRuleRecord {
+        return modelPriceRuleMapper.selectOne {
+            where { ModelPriceRuleDynamicSqlSupport.ModelPriceRule.id isEqualTo ruleId }
+        } ?: throw BizException(BizException.BUSINESS_FAILED, "模型计费规则不存在")
     }
 
     /**

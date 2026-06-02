@@ -90,12 +90,15 @@ class UserQuotaService(
 
     fun listTransactions(userId: Long, params: UserQuotaTransactionsPageParams): PageResult<UserQuotaTransactionResult> {
         ensureActiveUser(userId)
-        val normalizedChangeType = params.changeType?.trim()?.uppercase()?.takeIf { it.isNotBlank() }
         PageMethod.startPage<UserQuotaTransactionsRecord>(params.pageNum, params.pageSize)
         val records = userQuotaTransactionsMapper.select {
             where { UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.userId isEqualTo userId }
-            if (normalizedChangeType != null) {
-                and { UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.changeType isEqualTo normalizedChangeType }
+            and { UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.changeType isEqualToWhenPresent params.type?.value }
+            and {
+                UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.changeType isNotIn listOf(
+                    UserQuotaTransactionChangeType.USAGE_RESERVE.value,
+                    UserQuotaTransactionChangeType.USAGE_REFUND.value,
+                )
             }
             orderBy(
                 UserQuotaTransactionsDynamicSqlSupport.UserQuotaTransactions.createdTime.descending(),

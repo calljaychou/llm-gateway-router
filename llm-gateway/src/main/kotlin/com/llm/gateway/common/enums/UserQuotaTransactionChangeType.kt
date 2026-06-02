@@ -17,3 +17,12 @@ enum class UserQuotaTransactionChangeType(val value: String) {
         }
     }
 }
+
+enum class UserQuotaTransactionQueryType(val value: String) {
+    ADMIN_GRANT("ADMIN_GRANT"),
+    ADMIN_RECLAIM("ADMIN_RECLAIM"),
+    TRANSFER_OUT("TRANSFER_OUT"),
+    TRANSFER_IN("TRANSFER_IN"),
+    USAGE_SETTLE("USAGE_SETTLE"),
+    QUOTA_EXPIRE("QUOTA_EXPIRE"),
+}

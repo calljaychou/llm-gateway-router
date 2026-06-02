@@ -2,6 +2,7 @@ package com.llm.gateway.model.params
 
 import com.fasterxml.jackson.annotation.JsonFormat
 import com.fasterxml.jackson.annotation.JsonAlias
+import com.llm.gateway.common.enums.UserQuotaTransactionQueryType
 import com.llm.gateway.model.PageParams
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
@@ -50,6 +51,9 @@ data class UserQuotaTransferParams(
 
 @ApiModel("用户配额流水分页参数")
 class UserQuotaTransactionsPageParams : PageParams() {
-    @ApiModelProperty(value = "变更类型", required = false)
-    var changeType: String? = null
+    @ApiModelProperty(
+        value = "变更类型：ADMIN_GRANT、ADMIN_RECLAIM、TRANSFER_OUT、TRANSFER_IN、USAGE_SETTLE、QUOTA_EXPIRE；不支持查询 USAGE_RESERVE、USAGE_REFUND",
+        required = false
+    )
+    var type: UserQuotaTransactionQueryType? = null
 }
