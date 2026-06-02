@@ -5,6 +5,7 @@ import com.llm.gateway.model.PageResult
 import com.llm.gateway.model.params.MasterKeyCreateParams
 import com.llm.gateway.model.params.MasterKeyPageParams
 import com.llm.gateway.model.params.ModelCreateParams
+import com.llm.gateway.model.params.ModelPriceRuleCreateParams
 import com.llm.gateway.model.params.ModelPriceRuleListParams
 import com.llm.gateway.model.params.ModelPriceRuleUpdateParams
 import com.llm.gateway.model.params.ModelUpdateParams
@@ -109,6 +110,12 @@ class AdminModelManageController(
     @GetMapping("/model-price-rules")
     fun listModelPriceRules(@Valid params: ModelPriceRuleListParams): ApiResult<List<ModelPriceRuleListItemResult>> {
         return ApiResult.success(adminModelManageService.listModelPriceRules(params))
+    }
+
+    @ApiOperation(value = "新增模型计费规则")
+    @PostMapping("/model-price-rules")
+    fun createModelPriceRule(@RequestBody @Valid params: ModelPriceRuleCreateParams): ApiResult<ModelPriceRuleListItemResult> {
+        return ApiResult.success(adminModelManageService.createModelPriceRule(params))
     }
 
     @ApiOperation(value = "编辑模型计费规则")

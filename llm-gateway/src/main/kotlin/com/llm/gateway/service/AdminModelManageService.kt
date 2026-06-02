@@ -2,6 +2,7 @@ package com.llm.gateway.service
 
 import com.github.pagehelper.PageInfo
 import com.github.pagehelper.page.PageMethod
+import com.llm.gateway.billing.TokenChargeItem
 import com.llm.gateway.common.enums.BillingType
 import com.llm.gateway.common.enums.NormalStatus
 import com.llm.gateway.common.exceptions.BizException
@@ -30,6 +31,7 @@ import com.llm.gateway.model.PageResult
 import com.llm.gateway.model.params.MasterKeyCreateParams
 import com.llm.gateway.model.params.MasterKeyPageParams
 import com.llm.gateway.model.params.ModelCreateParams
+import com.llm.gateway.model.params.ModelPriceRuleCreateParams
 import com.llm.gateway.model.params.ModelPriceRuleListParams
 import com.llm.gateway.model.params.ModelPriceRuleUpdateParams
 import com.llm.gateway.model.params.ModelUpdateParams
@@ -231,6 +233,52 @@ class AdminModelManageService(
             )
         }
         return records.map { mapModelPriceRuleListItem(it) }
+    }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun createModelPriceRule(params: ModelPriceRuleCreateParams): ModelPriceRuleListItemResult {
+        val modelId = params.modelId ?: throw BizException(BizException.BUSINESS_FAILED, "模型ID不能为空")
+        val model = ensureModelExists(modelId)
+        val vendorId = model.vendorId ?: throw BizException(BizException.SYSTEM_FAILED, "模型供应商ID异常")
+        val chargeItem = validateModelPriceRuleChargeItem(params.chargeItem)
+        val currency = params.currency?.trim()?.ifBlank { "CNY" } ?: "CNY"
+
+        val existedRule = modelPriceRuleMapper.selectOne {
+            where { ModelPriceRuleDynamicSqlSupport.ModelPriceRule.modelId isEqualTo modelId }
+            and { ModelPriceRuleDynamicSqlSupport.ModelPriceRule.chargeItem isEqualTo chargeItem }
+        }
+        if (existedRule != null) {
+            throw BizException(BizException.BUSINESS_FAILED, "模型计费项已存在")
+        }
+
+        val now = Date()
+        val record = ModelPriceRuleRecord(
+            modelId = modelId,
+            vendorId = vendorId,
+            chargeItem = chargeItem,
+            priceCnyPerMillion = params.priceCnyPerMillion ?: ZERO_AMOUNT,
+            currency = currency,
+            active = params.active ?: true,
+            createdAt = now,
+            updatedAt = now,
+        )
+        try {
+            modelPriceRuleMapper.insert(record)
+        } catch (e: DataIntegrityViolationException) {
+            throw mapDataIntegrityException(e, "模型计费项已存在")
+        }
+
+        log.info(
+            "新增模型计费规则成功 ruleId={}, modelId={}, vendorId={}, chargeItem={}, priceCnyPerMillion={}, currency={}, active={}",
+            record.id,
+            record.modelId,
+            record.vendorId,
+            record.chargeItem,
+            record.priceCnyPerMillion,
+            record.currency,
+            record.active
+        )
+        return mapModelPriceRuleListItem(record)
     }
 
     @Transactional(rollbackFor = [Exception::class])
@@ -474,6 +522,18 @@ class AdminModelManageService(
         return modelPriceRuleMapper.selectOne {
             where { ModelPriceRuleDynamicSqlSupport.ModelPriceRule.id isEqualTo ruleId }
         } ?: throw BizException(BizException.BUSINESS_FAILED, "模型计费规则不存在")
+    }
+
+    /**
+     * 校验模型计费项枚举合法。
+     */
+    private fun validateModelPriceRuleChargeItem(chargeItem: String): String {
+        val normalizedChargeItem = chargeItem.trim()
+        val matchedChargeItem = TokenChargeItem.values().firstOrNull { it.value == normalizedChargeItem }
+        if (matchedChargeItem == null) {
+            throw BizException(BizException.BUSINESS_FAILED, "计费项不合法")
+        }
+        return matchedChargeItem.value
     }
 
     /**

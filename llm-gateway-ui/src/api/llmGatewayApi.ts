@@ -551,6 +551,14 @@ export interface ModelPriceRuleListItem {
     updatedAt?: string;
 }
 
+export interface CreateModelPriceRuleParams {
+    active?: boolean;
+    chargeItem: string;
+    currency?: string;
+    modelId: number;
+    priceCnyPerMillion: number;
+}
+
 export interface UpdateModelPriceRuleParams {
     active?: boolean;
     currency?: string;
@@ -609,6 +617,10 @@ export const adminGatewayApi = {
     },
     listModelPriceRules: async (params?: ModelPriceRuleListParams) => {
         const res = await api.get<ApiResult<ModelPriceRuleListItem[]>>('/admin/model-price-rules', { params });
+        return res.data;
+    },
+    createModelPriceRule: async (params: CreateModelPriceRuleParams) => {
+        const res = await api.post<ApiResult<ModelPriceRuleListItem>>('/admin/model-price-rules', params);
         return res.data;
     },
     updateModelPriceRule: async (ruleId: number, params: UpdateModelPriceRuleParams) => {

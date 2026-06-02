@@ -6,6 +6,20 @@ import { adminGatewayApi, ModelPriceRuleListItem, ModelVendorListItem, VendorLis
 const { Option } = Select;
 const { Text } = Typography;
 
+const chargeItemOptions = [
+    { label: '普通输入文本', value: 'INPUT_TEXT' },
+    { label: '输入缓存命中', value: 'INPUT_CACHE_HIT' },
+    { label: '输入缓存未命中', value: 'INPUT_CACHE_MISS' },
+    { label: '输入缓存写入', value: 'INPUT_CACHE_WRITE' },
+    { label: '输入音频', value: 'INPUT_AUDIO' },
+    { label: '输入图片', value: 'INPUT_IMAGE' },
+    { label: '普通输出文本', value: 'OUTPUT_TEXT' },
+    { label: '输出推理', value: 'OUTPUT_REASONING' },
+    { label: '输出音频', value: 'OUTPUT_AUDIO' },
+    { label: '已接受预测输出', value: 'OUTPUT_ACCEPTED_PREDICTION' },
+    { label: '已拒绝预测输出', value: 'OUTPUT_REJECTED_PREDICTION' },
+];
+
 export const ModelManage: React.FC = () => {
     const { message, modal } = App.useApp();
     const [models, setModels] = useState<ModelVendorListItem[]>([]);
@@ -108,6 +122,7 @@ export const ModelManage: React.FC = () => {
     const handleOpenRuleEditModal = (record: ModelPriceRuleListItem) => {
         setCurrentRuleId(record.id);
         ruleForm.setFieldsValue({
+            chargeItem: record.chargeItem,
             priceCnyPerMillion: record.priceCnyPerMillion,
             currency: record.currency,
             active: record.active,
@@ -115,15 +130,28 @@ export const ModelManage: React.FC = () => {
         setIsRuleEditModalOpen(true);
     };
 
-    const handleUpdateModelPriceRule = async (values: any) => {
-        if (!currentRuleId || !selectedModel) return;
+    const handleOpenRuleCreateModal = () => {
+        if (!selectedModel) return;
+        setCurrentRuleId(null);
+        ruleForm.resetFields();
+        ruleForm.setFieldsValue({
+            currency: 'CNY',
+            active: true,
+        });
+        setIsRuleEditModalOpen(true);
+    };
+
+    const handleSaveModelPriceRule = async (values: any) => {
+        if (!selectedModel) return;
         try {
-            const res = await adminGatewayApi.updateModelPriceRule(currentRuleId, values);
+            const res = currentRuleId
+                ? await adminGatewayApi.updateModelPriceRule(currentRuleId, values)
+                : await adminGatewayApi.createModelPriceRule({ ...values, modelId: selectedModel.id });
             if (!res.success) {
                 message.error(res.message || '保存模型计费规则失败');
                 return;
             }
-            message.success('模型计费规则已保存');
+            message.success(currentRuleId ? '模型计费规则已保存' : '模型计费规则已新增');
             setIsRuleEditModalOpen(false);
             setCurrentRuleId(null);
             ruleForm.resetFields();
@@ -315,6 +343,11 @@ export const ModelManage: React.FC = () => {
                     width={820}
                     destroyOnClose
                 >
+                    <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
+                        <Button type="primary" size="small" icon={<PlusOutlined />} onClick={handleOpenRuleCreateModal}>
+                            新增规则
+                        </Button>
+                    </div>
                     <Table
                         columns={ruleColumns}
                         dataSource={priceRules}
@@ -326,7 +359,7 @@ export const ModelManage: React.FC = () => {
                 </Modal>
 
                 <Modal
-                    title={<span style={{ color: textPrimary, fontWeight: 600 }}>编辑模型计费规则</span>}
+                    title={<span style={{ color: textPrimary, fontWeight: 600 }}>{currentRuleId ? '编辑模型计费规则' : '新增模型计费规则'}</span>}
                     open={isRuleEditModalOpen}
                     onCancel={() => { setIsRuleEditModalOpen(false); setCurrentRuleId(null); ruleForm.resetFields(); }}
                     onOk={() => ruleForm.submit()}
@@ -335,7 +368,20 @@ export const ModelManage: React.FC = () => {
                     width={460}
                     destroyOnClose
                 >
-                    <Form form={ruleForm} layout="vertical" onFinish={handleUpdateModelPriceRule}>
+                    <Form form={ruleForm} layout="vertical" onFinish={handleSaveModelPriceRule}>
+                        <Form.Item name="chargeItem" label="计费项" rules={[{ required: true, message: '请选择计费项' }]}>
+                            <Select placeholder="请选择计费项" disabled={!!currentRuleId}>
+                                {chargeItemOptions.map(item => (
+                                    <Option
+                                        key={item.value}
+                                        value={item.value}
+                                        disabled={!currentRuleId && priceRules.some(rule => rule.chargeItem === item.value)}
+                                    >
+                                        {item.label} ({item.value})
+                                    </Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
                         <Form.Item
                             name="priceCnyPerMillion"
                             label="单价（元/百万Token）"
