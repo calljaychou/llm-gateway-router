@@ -37,7 +37,7 @@ class OpenAiCompatibleController(
     ): Any {
         val authorization = request.getHeader("Authorization").orEmpty().trim()
         if (!authorization.startsWith("Bearer sk-vkey-")) {
-            return openAiError("请使用虚拟API密钥调用", "VIRTUAL_API_KEY_REQUIRED")
+            return openAiError("无效API密钥", "VIRTUAL_API_KEY_REQUIRED")
         }
         val principal = authentication.principal as? CustomUserDetails
             ?: return openAiError("未认证", "UNAUTHORIZED")
