@@ -42,6 +42,7 @@ import com.llm.gateway.model.results.MasterKeyListResult
 import com.llm.gateway.model.results.MasterKeyPageItemResult
 import com.llm.gateway.model.results.ModelCreateResult
 import com.llm.gateway.model.results.ModelDeleteResult
+import com.llm.gateway.model.results.ModelPriceRuleDeleteResult
 import com.llm.gateway.model.results.ModelPriceRuleListItemResult
 import com.llm.gateway.model.results.ModelUpdateResult
 import com.llm.gateway.model.results.ModelVendorListItemResult
@@ -311,6 +312,28 @@ class AdminModelManageService(
             updatedRule.active
         )
         return mapModelPriceRuleListItem(updatedRule)
+    }
+
+    @Transactional(rollbackFor = [Exception::class])
+    fun deleteModelPriceRule(ruleId: Long): ModelPriceRuleDeleteResult {
+        val existedRule = ensureModelPriceRuleExists(ruleId)
+        val deletedCount = try {
+            modelPriceRuleMapper.deleteByPrimaryKey(ruleId)
+        } catch (_: DataIntegrityViolationException) {
+            throw BizException(BizException.BUSINESS_FAILED, "模型计费规则已被业务数据引用，无法删除")
+        }
+        if (deletedCount <= 0) {
+            throw BizException(BizException.SYSTEM_FAILED, "删除模型计费规则失败")
+        }
+
+        log.info(
+            "删除模型计费规则成功 ruleId={}, modelId={}, vendorId={}, chargeItem={}",
+            ruleId,
+            existedRule.modelId,
+            existedRule.vendorId,
+            existedRule.chargeItem
+        )
+        return ModelPriceRuleDeleteResult(ruleId = ruleId, deleted = true)
     }
 
     @Transactional(rollbackFor = [Exception::class])

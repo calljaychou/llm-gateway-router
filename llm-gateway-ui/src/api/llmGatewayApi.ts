@@ -565,6 +565,11 @@ export interface UpdateModelPriceRuleParams {
     priceCnyPerMillion?: number;
 }
 
+export interface DeleteModelPriceRuleResult {
+    ruleId: number;
+    deleted: boolean;
+}
+
 export interface CreateMasterKeyParams {
     apiKey: string;
     status: number;
@@ -625,6 +630,10 @@ export const adminGatewayApi = {
     },
     updateModelPriceRule: async (ruleId: number, params: UpdateModelPriceRuleParams) => {
         const res = await api.put<ApiResult<ModelPriceRuleListItem>>(`/admin/model-price-rules/${ruleId}`, params);
+        return res.data;
+    },
+    deleteModelPriceRule: async (ruleId: number) => {
+        const res = await api.delete<ApiResult<DeleteModelPriceRuleResult>>(`/admin/model-price-rules/${ruleId}`);
         return res.data;
     },
     createModel: async (params: CreateModelParams) => {

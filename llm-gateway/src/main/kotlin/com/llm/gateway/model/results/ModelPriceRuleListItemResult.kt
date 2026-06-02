@@ -29,3 +29,11 @@ data class ModelPriceRuleListItemResult(
     @field:JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     val updatedAt: Date?,
 )
+
+@ApiModel("删除模型计费规则结果")
+data class ModelPriceRuleDeleteResult(
+    @ApiModelProperty(value = "计费规则ID", required = true)
+    val ruleId: Long,
+    @ApiModelProperty(value = "是否已删除", required = true)
+    val deleted: Boolean,
+)

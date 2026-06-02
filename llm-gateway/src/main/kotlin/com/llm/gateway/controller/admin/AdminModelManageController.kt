@@ -15,6 +15,7 @@ import com.llm.gateway.model.results.MasterKeyListResult
 import com.llm.gateway.model.results.MasterKeyPageItemResult
 import com.llm.gateway.model.results.ModelCreateResult
 import com.llm.gateway.model.results.ModelDeleteResult
+import com.llm.gateway.model.results.ModelPriceRuleDeleteResult
 import com.llm.gateway.model.results.ModelPriceRuleListItemResult
 import com.llm.gateway.model.results.ModelUpdateResult
 import com.llm.gateway.model.results.ModelVendorListItemResult
@@ -125,5 +126,13 @@ class AdminModelManageController(
         @RequestBody @Valid params: ModelPriceRuleUpdateParams,
     ): ApiResult<ModelPriceRuleListItemResult> {
         return ApiResult.success(adminModelManageService.updateModelPriceRule(ruleId, params))
+    }
+
+    @ApiOperation(value = "删除模型计费规则")
+    @DeleteMapping("/model-price-rules/{ruleId}")
+    fun deleteModelPriceRule(
+        @ApiParam(value = "计费规则ID", required = true) @PathVariable("ruleId") ruleId: Long,
+    ): ApiResult<ModelPriceRuleDeleteResult> {
+        return ApiResult.success(adminModelManageService.deleteModelPriceRule(ruleId))
     }
 }

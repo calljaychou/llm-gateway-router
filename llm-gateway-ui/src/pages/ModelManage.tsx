@@ -3,6 +3,7 @@ import { Card, Table, Button, Space, Tag, Modal, Form, Input, Select, Switch, Ap
 import { AppstoreAddOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ProfileOutlined } from '@ant-design/icons';
 import { adminGatewayApi, ModelPriceRuleListItem, ModelVendorListItem, VendorListItem } from '../api/llmGatewayApi';
 
+
 const { Option } = Select;
 const { Text } = Typography;
 
@@ -19,6 +20,10 @@ const chargeItemOptions = [
     { label: '已接受预测输出', value: 'OUTPUT_ACCEPTED_PREDICTION' },
     { label: '已拒绝预测输出', value: 'OUTPUT_REJECTED_PREDICTION' },
 ];
+
+const getChargeItemLabel = (value: string) => {
+    return chargeItemOptions.find(item => item.value === value)?.label || value;
+};
 
 export const ModelManage: React.FC = () => {
     const { message, modal } = App.useApp();
@@ -124,7 +129,7 @@ export const ModelManage: React.FC = () => {
         ruleForm.setFieldsValue({
             chargeItem: record.chargeItem,
             priceCnyPerMillion: record.priceCnyPerMillion,
-            currency: record.currency,
+            currency: 'CNY',
             active: record.active,
         });
         setIsRuleEditModalOpen(true);
@@ -143,10 +148,11 @@ export const ModelManage: React.FC = () => {
 
     const handleSaveModelPriceRule = async (values: any) => {
         if (!selectedModel) return;
+        const normalizedValues = { ...values, currency: 'CNY' };
         try {
             const res = currentRuleId
-                ? await adminGatewayApi.updateModelPriceRule(currentRuleId, values)
-                : await adminGatewayApi.createModelPriceRule({ ...values, modelId: selectedModel.id });
+                ? await adminGatewayApi.updateModelPriceRule(currentRuleId, normalizedValues)
+                : await adminGatewayApi.createModelPriceRule({ ...normalizedValues, modelId: selectedModel.id });
             if (!res.success) {
                 message.error(res.message || '保存模型计费规则失败');
                 return;
@@ -159,6 +165,30 @@ export const ModelManage: React.FC = () => {
         } catch (error: any) {
             message.error(error.response?.data?.message || '保存模型计费规则失败');
         }
+    };
+
+    const handleDeleteModelPriceRule = (record: ModelPriceRuleListItem) => {
+        if (!selectedModel) return;
+        modal.confirm({
+            title: '确认删除此计费规则？',
+            content: `您即将删除计费项 [${getChargeItemLabel(record.chargeItem)}] 的规则配置。删除后该计费项将无法命中直接价格规则。`,
+            okText: '确认删除',
+            okType: 'danger',
+            cancelText: '取消',
+            onOk: async () => {
+                try {
+                    const res = await adminGatewayApi.deleteModelPriceRule(record.id);
+                    if (!res.success) {
+                        message.error(res.message || '删除模型计费规则失败');
+                        return;
+                    }
+                    message.success('模型计费规则已删除');
+                    await fetchModelPriceRules(selectedModel);
+                } catch (error: any) {
+                    message.error(error.response?.data?.message || '删除模型计费规则失败');
+                }
+            }
+        });
     };
 
     // --- 处理删除 ---
@@ -244,13 +274,18 @@ export const ModelManage: React.FC = () => {
             title: '计费项',
             dataIndex: 'chargeItem',
             key: 'chargeItem',
-            render: (value: string) => <Text code style={{ backgroundColor: '#f6f8fa' }}>{value}</Text>
+            render: (value: string) => (
+                <Space size={4} direction="vertical">
+                    <Text>{getChargeItemLabel(value)}</Text>
+                    <Text code style={{ backgroundColor: '#f6f8fa' }}>{value}</Text>
+                </Space>
+            )
         },
         {
             title: '单价/百万Token',
             dataIndex: 'priceCnyPerMillion',
             key: 'priceCnyPerMillion',
-            render: (value: number) => `¥${Number(value || 0).toFixed(8)}`
+            render: (value: number) => `¥${Number(value || 0).toFixed(4)}`
         },
         {
             title: '币种',
@@ -274,9 +309,14 @@ export const ModelManage: React.FC = () => {
             title: '操作',
             key: 'action',
             render: (_: any, record: ModelPriceRuleListItem) => (
-                <Button type="text" size="small" icon={<EditOutlined />} onClick={() => handleOpenRuleEditModal(record)} style={{ color: '#0969da' }}>
-                    编辑
-                </Button>
+                <Space size="small">
+                    <Button type="text" size="small" icon={<EditOutlined />} onClick={() => handleOpenRuleEditModal(record)} style={{ color: '#0969da' }}>
+                        编辑
+                    </Button>
+                    <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => handleDeleteModelPriceRule(record)}>
+                        删除
+                    </Button>
+                </Space>
             )
         }
     ];
@@ -387,10 +427,10 @@ export const ModelManage: React.FC = () => {
                             label="单价（元/百万Token）"
                             rules={[{ required: true, message: '请输入计费单价' }]}
                         >
-                            <InputNumber min={0} precision={8} style={{ width: '100%' }} placeholder="例如: 18.00000000" />
+                            <InputNumber min={0} precision={8} style={{ width: '100%' }} placeholder="例如: 18.00" />
                         </Form.Item>
-                        <Form.Item name="currency" label="币种" rules={[{ required: true, message: '请输入币种' }]}>
-                            <Input maxLength={16} placeholder="例如: CNY" />
+                        <Form.Item name="currency" label="币种" initialValue="CNY">
+                            <Input disabled />
                         </Form.Item>
                         <Form.Item name="active" label="规则状态" valuePropName="checked">
                             <Switch checkedChildren="启用" unCheckedChildren="停用" />

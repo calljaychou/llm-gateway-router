@@ -44,6 +44,18 @@ function getQuotaChangeTypeColor(type: string): string {
     return 'blue';
 }
 
+function formatDeltaAmount(delta: number): string {
+    const amount = Number(delta);
+    if (!Number.isFinite(amount)) return formatAmount(delta);
+
+    const roundedAbsAmount = Math.round(Math.abs(amount) * 100) / 100;
+    if (amount !== 0 && roundedAbsAmount === 0) {
+        return '-小于1分';
+    }
+
+    return `${amount > 0 ? '+' : ''}${formatAmount(amount)}`;
+}
+
 export const QuotaTransactions: React.FC = () => {
     const { message } = App.useApp();
     const [activeTab, setActiveTab] = useState<string>('ledger');
@@ -139,7 +151,7 @@ export const QuotaTransactions: React.FC = () => {
                 const isNegative = delta < 0;
                 return (
                     <Text strong style={{ color: isNegative ? '#ff4d4f' : '#52c41a' }}>
-                        {isNegative ? '' : '+'}{formatAmount(delta)}
+                        {formatDeltaAmount(delta)}
                     </Text>
                 );
             }
