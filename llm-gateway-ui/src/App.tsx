@@ -6,6 +6,7 @@ import {
     AppstoreAddOutlined,
     CloudServerOutlined,
     DashboardOutlined,
+    FundProjectionScreenOutlined,
     KeyOutlined,
     LogoutOutlined,
     SafetyCertificateOutlined,
@@ -22,6 +23,7 @@ import {UserManage} from './pages/UserManage';
 import {ModelManage} from './pages/ModelManage';
 import {MasterKeyManage} from './pages/MasterKeyManage';
 import {VendorManage} from './pages/VendorManage';
+import {StatisticsUsage} from './pages/StatisticsUsage';
 
 
 const { Header, Content, Sider } = Layout;
@@ -66,9 +68,10 @@ export const App: React.FC = () => {
         {
             key: 'group-ops',
             type: 'group',
-            label: '配额度量',
+            label: '配额用量',
             children: [
                 { key: 'dashboard', icon: <DashboardOutlined />, label: '个人中心' },
+                { key: 'statistics-usage', icon: <FundProjectionScreenOutlined />, label: '数据统计' },
             ],
         },
         {
@@ -104,6 +107,7 @@ export const App: React.FC = () => {
     const renderContent = () => {
         switch (selectedKey) {
             case 'dashboard': return <QuotaDashboard onNavigate={setSelectedKey} />;
+            case 'statistics-usage': return <StatisticsUsage />;
             case 'departments': return <DepartmentManage />;
             case 'users': return <UserManage />;
             case 'vendors': return <VendorManage />;

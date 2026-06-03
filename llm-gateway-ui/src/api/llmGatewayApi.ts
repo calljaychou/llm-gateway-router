@@ -272,6 +272,91 @@ export const userUsageApi = {
     }
 };
 
+/** ==================== 2.2 管理端-数据统计类型与接口 ==================== */
+export interface AdminStatisticsUsageLogItem {
+    usageLogId: number;
+    requestId: string;
+    userId: number;
+    userName: string;
+    userAccount: string;
+    deptName: string;
+    vendorId?: number;
+    vendorName: string;
+    modelId?: number;
+    modelName: string;
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    cachedTokens: number;
+    usedAt?: string;
+    latencyMs: number;
+}
+
+export interface AdminStatisticsDepartmentUsageItem {
+    deptId: number;
+    deptName: string;
+    usageCount: number;
+    totalTokens: number;
+}
+
+export interface AdminStatisticsUserUsageItem {
+    userId: number;
+    userName: string;
+    username?: string;
+    mobile?: string;
+    email?: string;
+    deptName: string;
+    balance: number;
+    totalTokens: number;
+    usageCount: number;
+}
+
+export interface AdminStatisticsUsageLogListParams {
+    pageNum: number;
+    pageSize: number;
+    startDate?: string;
+    endDate?: string;
+    userId?: number;
+    userKeyword?: string;
+    modelId?: number;
+    modelKeyword?: string;
+    vendorId?: number;
+}
+
+export interface AdminStatisticsDepartmentUsageListParams {
+    pageNum: number;
+    pageSize: number;
+    deptName?: string;
+}
+
+export interface AdminStatisticsUserUsageListParams {
+    pageNum: number;
+    pageSize: number;
+    nickname?: string;
+    accountKeyword?: string;
+}
+
+export const adminStatisticsUsageApi = {
+    listUsageLogs: async (params: AdminStatisticsUsageLogListParams) => {
+        const res = await api.get<ApiResult<PageResult<AdminStatisticsUsageLogItem>>>('/admin/statistics/usage/logs', {
+            params
+        });
+        return res.data;
+    },
+    listDepartmentUsageStats: async (params: AdminStatisticsDepartmentUsageListParams) => {
+        const res = await api.get<ApiResult<PageResult<AdminStatisticsDepartmentUsageItem>>>('/admin/statistics/usage/departments', {
+            params
+        });
+        return res.data;
+    },
+    listUserUsageStats: async (params: AdminStatisticsUserUsageListParams) => {
+        const res = await api.get<ApiResult<PageResult<AdminStatisticsUserUsageItem>>>('/admin/statistics/usage/users', {
+            params
+        });
+        return res.data;
+    }
+};
+
 /** ==================== 3. 管理端-组织架构与用户管理 ==================== */
 export interface CreateDepartmentParams {
     deptName: string;
