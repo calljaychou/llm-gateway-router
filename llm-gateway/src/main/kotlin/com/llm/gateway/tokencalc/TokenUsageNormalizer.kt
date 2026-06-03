@@ -54,21 +54,4 @@ object TokenUsageNormalizer {
             )
         }
     }
-
-    fun summarizeDetails(details: List<TokenDetailDto>): TokenUsageSummaryDto {
-        val normalizedDetails = normalizeDetails(details)
-        val inputTokens = normalizedDetails
-            .filter { it.direction == TokenDirection.INPUT }
-            .sumOf { it.tokens }
-        val outputTokens = normalizedDetails
-            .filter { it.direction == TokenDirection.OUTPUT }
-            .sumOf { it.tokens }
-        return normalizeUsage(
-            TokenUsageSummaryDto(
-                inputTokens = inputTokens,
-                outputTokens = outputTokens,
-                totalTokens = inputTokens + outputTokens,
-            )
-        )
-    }
 }
