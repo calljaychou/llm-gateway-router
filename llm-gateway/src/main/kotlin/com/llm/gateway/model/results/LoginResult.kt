@@ -1,7 +1,9 @@
 package com.llm.gateway.model.results
 
+import com.fasterxml.jackson.annotation.JsonFormat
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
+import java.util.Date
 
 /**
  * @author JayCHou <a href="calljaychou@qq.com">Email</a>
@@ -24,4 +26,7 @@ data class LoginResult(
     val roles: List<String>,
     @ApiModelProperty(value = "是否已改初始密码", required = true)
     val passwordChanged: Boolean,
+    @ApiModelProperty(value = "登录使用时间")
+    @field:JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
+    val useTime: Date?,
 )

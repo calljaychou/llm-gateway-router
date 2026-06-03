@@ -68,6 +68,7 @@ export interface LoginResult {
     tokenType: string; // 例如: "Bearer"
     userId: number;
     username: string;
+    useTime: string;
 }
 
 export const authApi = {

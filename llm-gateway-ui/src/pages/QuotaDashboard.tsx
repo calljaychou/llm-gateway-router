@@ -39,6 +39,8 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
     const textPrimary = '#1f2328';
     const textSecondary = '#656d76';
     const loginUserName = localStorage.getItem('llm_gateway_name') || localStorage.getItem('llm_gateway_username') || '系统用户';
+    const useTime = localStorage.getItem('use_time');
+    const useDays = calculateUseDays(useTime);
     const hourlyHeatmap = MOCK_RECENT_MONTH_HOURLY_HEATMAP;
     const [availableModels, setAvailableModels] = React.useState<string[]>([]);
     const [quotaSnapshot, setQuotaSnapshot] = React.useState<UserQuotaAccountSnapshot | null>(null);
@@ -198,7 +200,7 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
             <div style={{ marginBottom: 32 }}>
                 <Title level={2} style={{ color: textPrimary, margin: 0 }}>Hello! {loginUserName}</Title>
                 <Text style={{ color: textSecondary, fontSize: 16 }}>
-                    This is your day <span style={{ color: '#0969da', fontWeight: 'bold' }}>182</span> of using TRAK.
+                    This is your day <span style={{ color: '#0969da', fontWeight: 'bold' }}>{useDays}</span> of using TRAK.
                 </Text>
                 <div style={{ marginTop: 12 }}>
                     <Space>
@@ -613,4 +615,17 @@ function offsetDate(date: Date, offsetDays: number): Date {
     const nextDate = new Date(date);
     nextDate.setDate(date.getDate() + offsetDays);
     return nextDate;
+}
+
+function calculateUseDays(useTime: string | null): number {
+    if (!useTime) return 0;
+    const datePart = useTime.split(/[ T]/)[0];
+    const [year, month, day] = datePart.split('-').map(value => Number(value));
+    if (!year || !month || !day) return 0;
+
+    const startDate = new Date(year, month - 1, day);
+    const today = new Date();
+    const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const diffDays = Math.floor((todayDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
+    return Math.max(0, diffDays);
 }

@@ -58,7 +58,8 @@ class AuthController(
                     username = user.username ?: user.email ?: "",
                     email = user.email,
                     roles = roles,
-                    passwordChanged = user.passwordChanged == true
+                    passwordChanged = user.passwordChanged == true,
+                    useTime = user.useTime
                 )
             )
         } catch (_: BadCredentialsException) {

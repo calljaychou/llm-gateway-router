@@ -23,6 +23,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 // 将凭证落盘存储
                 localStorage.setItem('llm_gateway_token', res.data.token);
                 localStorage.setItem('llm_gateway_username', res.data.username);
+                localStorage.setItem('use_time', res.data.useTime);
 
                 // 触发父级状态刷新，切入管理后台主界面
                 onLoginSuccess(res.data.token, res.data.username);
