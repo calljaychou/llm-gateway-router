@@ -342,7 +342,7 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
                 {/* Recent Model Preference */}
                 <Col span={12}>
                     <div style={{ ...cardStyle, height: MODEL_USAGE_CARD_HEIGHT, display: 'flex', flexDirection: 'column' }}>
-                        <Text style={{ color: textSecondary, display: 'block', marginBottom: 20, fontWeight: 500 }}>模型分布</Text>
+                        <Text style={{ color: textSecondary, display: 'block', marginBottom: 20, fontWeight: 500 }}>使用模型分布</Text>
                         <Space
                             direction="vertical"
                             style={{ width: '100%', flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 4 }}
