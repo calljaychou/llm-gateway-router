@@ -224,6 +224,13 @@ export interface UserUsageHourlyHeatmapResult {
     days: UserUsageHourlyHeatmapDay[];
 }
 
+export interface UserModelUsageCountResult {
+    modelId: number;
+    modelName: string;
+    vendorId: number;
+    usageCount: number;
+}
+
 export interface UserEffectivePermissionsResult {
     userId: number;
     deptId: number;
@@ -233,6 +240,10 @@ export interface UserEffectivePermissionsResult {
 export const userUsageApi = {
     getRecentMonthHourlyHeatmap: async () => {
         const res = await api.get<ApiResult<UserUsageHourlyHeatmapResult>>('/admin/user/usage/recent-month-hourly-heatmap');
+        return res.data;
+    },
+    listModelUsageCounts: async () => {
+        const res = await api.get<ApiResult<UserModelUsageCountResult[]>>('/admin/user/usage/models/usage-counts');
         return res.data;
     },
     getUserEffectivePermissions: async () => {

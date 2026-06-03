@@ -3,6 +3,8 @@ package com.llm.gateway.service
 import cn.hutool.core.date.DateUtil
 import com.llm.gateway.dal.mapper.LlmUsageLogMapperExt
 import com.llm.gateway.model.dto.UserUsageHourlyCountDto
+import com.llm.gateway.model.dto.UserUsageModelCountDto
+import com.llm.gateway.model.results.UserModelUsageCountResult
 import com.llm.gateway.model.results.UserUsageHourlyHeatmapDayResult
 import com.llm.gateway.model.results.UserUsageHourlyHeatmapHourResult
 import com.llm.gateway.model.results.UserUsageHourlyHeatmapResult
@@ -43,6 +45,10 @@ class UserUsageService(
         )
     }
 
+    fun listModelUsageCounts(userId: Long): List<UserModelUsageCountResult> {
+        return llmUsageLogMapperExt.countModelUsage(userId).map { buildModelUsageCountResult(it) }
+    }
+
     /**
      * 构建单日24小时热图数据。
      */
@@ -68,5 +74,17 @@ class UserUsageService(
      */
     private fun buildCountKey(date: String, hour: Int): String {
         return "$date:$hour"
+    }
+
+    /**
+     * 构建模型维度使用次数统计结果。
+     */
+    private fun buildModelUsageCountResult(row: UserUsageModelCountDto): UserModelUsageCountResult {
+        return UserModelUsageCountResult(
+            modelId = row.modelId,
+            modelName = row.modelName,
+            vendorId = row.vendorId,
+            usageCount = row.usageCount,
+        )
     }
 }

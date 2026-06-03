@@ -34,3 +34,15 @@ data class UserUsageHourlyHeatmapHourResult(
     @ApiModelProperty(value = "该小时请求次数", required = true)
     val requestCount: Long,
 )
+
+@ApiModel("用户模型使用次数统计")
+data class UserModelUsageCountResult(
+    @ApiModelProperty(value = "模型ID", required = true)
+    val modelId: Long,
+    @ApiModelProperty(value = "模型名称", required = true)
+    val modelName: String,
+    @ApiModelProperty(value = "模型供应商ID", required = true)
+    val vendorId: Long,
+    @ApiModelProperty(value = "使用次数", required = true)
+    val usageCount: Long,
+)

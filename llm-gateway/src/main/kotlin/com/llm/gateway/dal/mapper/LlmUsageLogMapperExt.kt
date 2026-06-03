@@ -1,6 +1,7 @@
 package com.llm.gateway.dal.mapper
 
 import com.llm.gateway.model.dto.UserUsageHourlyCountDto
+import com.llm.gateway.model.dto.UserUsageModelCountDto
 import java.util.Date
 import org.apache.ibatis.annotations.Mapper
 import org.apache.ibatis.annotations.Param
@@ -39,4 +40,32 @@ interface LlmUsageLogMapperExt : LlmUsageLogMapper {
         @Param("startTime") startTime: Date,
         @Param("endTime") endTime: Date,
     ): List<UserUsageHourlyCountDto>
+
+    @Select(
+        """
+        SELECT
+            l.model_id AS model_id,
+            m.model_alias AS model_name,
+            m.vendor_id AS vendor_id,
+            COUNT(1) AS usage_count
+        FROM llm_usage_log l
+        LEFT JOIN models m ON m.id = l.model_id
+        WHERE l.user_id = #{userId}
+          AND l.model_id IS NOT NULL
+        GROUP BY l.model_id
+        ORDER BY usage_count DESC, l.model_id ASC
+        """
+    )
+    @Results(
+        id = "UserUsageModelCountDtoResult",
+        value = [
+            Result(column = "model_id", property = "modelId", jdbcType = JdbcType.BIGINT),
+            Result(column = "model_name", property = "modelName", jdbcType = JdbcType.VARCHAR),
+            Result(column = "vendor_id", property = "vendorId", jdbcType = JdbcType.BIGINT),
+            Result(column = "usage_count", property = "usageCount", jdbcType = JdbcType.BIGINT),
+        ]
+    )
+    fun countModelUsage(
+        @Param("userId") userId: Long,
+    ): List<UserUsageModelCountDto>
 }

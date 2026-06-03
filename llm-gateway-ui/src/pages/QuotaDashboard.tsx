@@ -3,24 +3,17 @@ import { Row, Col, Typography, Space, Tag, Card, Badge, Tooltip, Progress } from
 import {
     ClockCircleOutlined,
 } from '@ant-design/icons';
-import { quotaApi, userUsageApi, virtualKeyApi, type UserQuotaAccountSnapshot, type UserUsageHourlyHeatmapResult } from '../api/llmGatewayApi';
+import {
+    quotaApi,
+    userUsageApi,
+    virtualKeyApi,
+    type UserModelUsageCountResult,
+    type UserQuotaAccountSnapshot,
+    type UserUsageHourlyHeatmapResult
+} from '../api/llmGatewayApi';
 import { formatAmount } from '../utils/format';
 
 const { Title, Text } = Typography;
-
-// --- 模拟数据 ---
-const MODEL_PREFERENCE = [
-    { name: 'gpt-4-o', count: 15 },
-    { name: 'auto', count: 11 },
-];
-const AVAILABLE_MODELS = [
-    'gpt-4o',
-    'gpt-4o-mini',
-    'claude-3.5-sonnet',
-    'deepseek-v3',
-    'qwen-max',
-    'gemini-1.5-pro',
-];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_ROW_STARTS = [0, 6, 12, 18];
 const HOURS_PER_HEATMAP_ROW = 6;
@@ -28,6 +21,7 @@ const HEATMAP_CELL_SIZE = 15;
 const HEATMAP_CELL_GAP = 3;
 const HEATMAP_DAY_WIDTH = HOURS_PER_HEATMAP_ROW * HEATMAP_CELL_SIZE + (HOURS_PER_HEATMAP_ROW - 1) * HEATMAP_CELL_GAP;
 const MOCK_RECENT_MONTH_HOURLY_HEATMAP = buildMockRecentMonthHourlyHeatmap();
+const MODEL_USAGE_CARD_HEIGHT = 240;
 
 interface QuotaDashboardProps {
     onNavigate?: (key: string) => void;
@@ -40,14 +34,16 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
     const textSecondary = '#656d76';
     const loginUserName = localStorage.getItem('llm_gateway_name') || localStorage.getItem('llm_gateway_username') || '系统用户';
     const hourlyHeatmap = MOCK_RECENT_MONTH_HOURLY_HEATMAP;
-    const [availableModels, setAvailableModels] = React.useState<string[]>(AVAILABLE_MODELS);
+    const [availableModels, setAvailableModels] = React.useState<string[]>([]);
     const [quotaSnapshot, setQuotaSnapshot] = React.useState<UserQuotaAccountSnapshot | null>(null);
     const [virtualKeySummary, setVirtualKeySummary] = React.useState({ total: 0, active: 0 });
+    const [modelUsageCounts, setModelUsageCounts] = React.useState<UserModelUsageCountResult[]>([]);
     const heatmapScrollRef = React.useRef<HTMLDivElement | null>(null);
     const totalBalance = quotaSnapshot?.currentQuotaAmount || 0;
     const currentBalance = quotaSnapshot?.availableAmount || 0;
     const usedBalance = quotaSnapshot?.usedAmount || 0;
     const usagePercent = totalBalance > 0 ? Math.min(100, Math.max(0, Math.round((usedBalance / totalBalance) * 100))) : 0;
+    const maxModelUsageCount = Math.max(1, ...modelUsageCounts.map(model => model.usageCount));
     const gatewayBaseUrl = `${window.location.origin}/v1/chat/completions`;
 
     React.useEffect(() => {
@@ -98,6 +94,23 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
                 }
             })
             .catch(() => undefined);
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    React.useEffect(() => {
+        let ignore = false;
+        userUsageApi.listModelUsageCounts()
+            .then(res => {
+                if (!ignore) {
+                    setModelUsageCounts(res.success && res.data ? res.data : []);
+                }
+            })
+            .catch(() => {
+                if (!ignore) setModelUsageCounts([]);
+            });
 
         return () => {
             ignore = true;
@@ -328,19 +341,38 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
 
                 {/* Recent Model Preference */}
                 <Col span={12}>
-                    <div style={{ ...cardStyle, height: '100%' }}>
-                        <Text style={{ color: textSecondary, display: 'block', marginBottom: 20, fontWeight: 500 }}>Recent Model Invocation Preference</Text>
-                        <Space direction="vertical" style={{ width: '100%' }} size="large">
-                            {MODEL_PREFERENCE.map(model => (
-                                <div key={model.name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                    <Badge color={model.name === 'auto' ? '#8c959f' : '#0969da'} />
-                                    <Text style={{ color: textPrimary, width: 100, fontWeight: 500 }}>{model.name}</Text>
+                    <div style={{ ...cardStyle, height: MODEL_USAGE_CARD_HEIGHT, display: 'flex', flexDirection: 'column' }}>
+                        <Text style={{ color: textSecondary, display: 'block', marginBottom: 20, fontWeight: 500 }}>模型分布</Text>
+                        <Space
+                            direction="vertical"
+                            style={{ width: '100%', flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 4 }}
+                            size="large"
+                        >
+                            {modelUsageCounts.map(model => (
+                                <div key={`${model.modelId}-${model.vendorId}`} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <Badge color="#0969da" />
+                                    <Text
+                                        title={model.modelName}
+                                        style={{
+                                            color: textPrimary,
+                                            width: 120,
+                                            fontWeight: 500,
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
+                                        }}
+                                    >
+                                        {model.modelName}
+                                    </Text>
                                     <div style={{ flexGrow: 1, height: 8, backgroundColor: '#eaeef2', borderRadius: 4 }}>
-                                        <div style={{ width: `${(model.count / 26) * 100}%`, height: '100%', backgroundColor: model.name === 'auto' ? '#8c959f' : '#0969da', borderRadius: 4 }} />
+                                        <div style={{ width: `${(model.usageCount / maxModelUsageCount) * 100}%`, height: '100%', backgroundColor: '#0969da', borderRadius: 4 }} />
                                     </div>
-                                    <Text style={{ color: textSecondary, fontWeight: 600 }}>{model.count}</Text>
+                                    <Text style={{ color: textSecondary, fontWeight: 600 }}>{model.usageCount}</Text>
                                 </div>
                             ))}
+                            {modelUsageCounts.length === 0 && (
+                                <div style={{ color: textSecondary, fontSize: 13, padding: '4px 0' }}>暂无模型调用记录</div>
+                            )}
                         </Space>
                     </div>
                 </Col>

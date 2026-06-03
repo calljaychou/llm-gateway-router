@@ -3,6 +3,7 @@ package com.llm.gateway.controller.admin
 import com.llm.gateway.model.ApiResult
 import com.llm.gateway.model.results.AdminUserQuotaConfigResult
 import com.llm.gateway.model.results.UserEffectivePermissionsResult
+import com.llm.gateway.model.results.UserModelUsageCountResult
 import com.llm.gateway.model.results.UserUsageHourlyHeatmapResult
 import com.llm.gateway.security.SecurityUtil
 import com.llm.gateway.service.AdminUserPermissionService
@@ -29,6 +30,12 @@ class AdminUserUsageController(
     @GetMapping("/recent-month-hourly-heatmap")
     fun getRecentMonthHourlyHeatmap(authentication: Authentication): ApiResult<UserUsageHourlyHeatmapResult> {
         return ApiResult.success(userUsageService.getRecentMonthHourlyHeatmap(SecurityUtil.getRequiredUserId(authentication)))
+    }
+
+    @ApiOperation("查询当前用户各模型使用次数统计")
+    @GetMapping("/models/usage-counts")
+    fun listModelUsageCounts(authentication: Authentication): ApiResult<List<UserModelUsageCountResult>> {
+        return ApiResult.success(userUsageService.listModelUsageCounts(SecurityUtil.getRequiredUserId(authentication)))
     }
 
     @ApiOperation("查询用户生效权限")
