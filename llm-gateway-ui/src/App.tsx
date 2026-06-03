@@ -66,9 +66,9 @@ export const App: React.FC = () => {
         {
             key: 'group-ops',
             type: 'group',
-            label: '运维大盘',
+            label: '配额度量',
             children: [
-                { key: 'dashboard', icon: <DashboardOutlined />, label: '配额度量仪表盘' },
+                { key: 'dashboard', icon: <DashboardOutlined />, label: '个人中心' },
             ],
         },
         {

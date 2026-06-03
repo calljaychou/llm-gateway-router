@@ -1,6 +1,5 @@
 package com.llm.gateway.controller.admin
 
-import com.llm.gateway.common.exceptions.BizException
 import com.llm.gateway.model.ApiResult
 import com.llm.gateway.model.PageParams
 import com.llm.gateway.model.PageResult
@@ -8,7 +7,7 @@ import com.llm.gateway.model.params.AdminUserQuotaAdjustmentParams
 import com.llm.gateway.model.params.AdminUserQuotaTransferPermissionParams
 import com.llm.gateway.model.results.UserQuotaAccountResult
 import com.llm.gateway.model.results.UserQuotaGrantResult
-import com.llm.gateway.security.CustomUserDetails
+import com.llm.gateway.security.SecurityUtil
 import com.llm.gateway.service.UserQuotaService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -60,7 +59,7 @@ class AdminUserQuotaManageController(
             userQuotaService.adjustQuota(
                 userId = userId,
                 params = params,
-                operatorUserId = currentUserId(authentication),
+                operatorUserId = SecurityUtil.getCurrentUserId(authentication),
             )
         )
     }
@@ -76,13 +75,8 @@ class AdminUserQuotaManageController(
             userQuotaService.updateTransferPermission(
                 userId = userId,
                 params = params,
-                operatorUserId = currentUserId(authentication),
+                operatorUserId = SecurityUtil.getCurrentUserId(authentication),
             )
         )
-    }
-
-    private fun currentUserId(authentication: Authentication): Long? {
-        val principal = authentication.principal as? CustomUserDetails ?: return null
-        return principal.getUser().id ?: throw BizException(BizException.UNAUTHORIZED, "用户ID缺失")
     }
 }

@@ -1,21 +1,33 @@
 import React from 'react';
-import { Row, Col, Typography, Space, Tag, Card, Badge } from 'antd';
+import { Row, Col, Typography, Space, Tag, Card, Badge, Tooltip, Progress } from 'antd';
 import {
-    UserOutlined,
-    MessageOutlined,
     ClockCircleOutlined,
-    GlobalOutlined
 } from '@ant-design/icons';
+import { quotaApi, userUsageApi, type UserQuotaAccountSnapshot, type UserUsageHourlyHeatmapResult } from '../api/llmGatewayApi';
+import { formatAmount } from '../utils/format';
 
 const { Title, Text } = Typography;
 
 // --- 模拟数据 ---
-const ACTIVITY_DATA = Array.from({ length: 52 * 7 }, () => Math.floor(Math.random() * 5));
 const MODEL_PREFERENCE = [
     { name: 'gpt-4-o', count: 15 },
     { name: 'auto', count: 11 },
 ];
+const AVAILABLE_MODELS = [
+    'gpt-4o',
+    'gpt-4o-mini',
+    'claude-3.5-sonnet',
+    'deepseek-v3',
+    'qwen-max',
+    'gemini-1.5-pro',
+];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const HOUR_ROW_STARTS = [0, 6, 12, 18];
+const HOURS_PER_HEATMAP_ROW = 6;
+const HEATMAP_CELL_SIZE = 15;
+const HEATMAP_CELL_GAP = 3;
+const HEATMAP_DAY_WIDTH = HOURS_PER_HEATMAP_ROW * HEATMAP_CELL_SIZE + (HOURS_PER_HEATMAP_ROW - 1) * HEATMAP_CELL_GAP;
+const MOCK_RECENT_MONTH_HOURLY_HEATMAP = buildMockRecentMonthHourlyHeatmap();
 
 export const QuotaDashboard: React.FC = () => {
     // 定义通用样式变量以保证统一
@@ -23,6 +35,49 @@ export const QuotaDashboard: React.FC = () => {
     const textPrimary = '#1f2328';
     const textSecondary = '#656d76';
     const loginUserName = localStorage.getItem('llm_gateway_name') || localStorage.getItem('llm_gateway_username') || '系统用户';
+    const hourlyHeatmap = MOCK_RECENT_MONTH_HOURLY_HEATMAP;
+    const [availableModels, setAvailableModels] = React.useState<string[]>(AVAILABLE_MODELS);
+    const [quotaSnapshot, setQuotaSnapshot] = React.useState<UserQuotaAccountSnapshot | null>(null);
+    const heatmapScrollRef = React.useRef<HTMLDivElement | null>(null);
+    const totalBalance = quotaSnapshot?.currentQuotaAmount || 0;
+    const currentBalance = quotaSnapshot?.availableAmount || 0;
+    const usedBalance = quotaSnapshot?.usedAmount || 0;
+    const usagePercent = totalBalance > 0 ? Math.min(100, Math.max(0, Math.round((usedBalance / totalBalance) * 100))) : 0;
+
+    React.useEffect(() => {
+        const heatmapScroll = heatmapScrollRef.current;
+        if (heatmapScroll) heatmapScroll.scrollLeft = heatmapScroll.scrollWidth;
+    }, [hourlyHeatmap.days.length]);
+
+    React.useEffect(() => {
+        let ignore = false;
+        userUsageApi.getUserEffectivePermissions()
+            .then(res => {
+                if (!ignore && res.success && res.data) {
+                    setAvailableModels(res.data.allowedModels || []);
+                }
+            })
+            .catch(() => undefined);
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    React.useEffect(() => {
+        let ignore = false;
+        quotaApi.getCurrentSnapshot()
+            .then(res => {
+                if (!ignore && res.success && res.data) {
+                    setQuotaSnapshot(res.data);
+                }
+            })
+            .catch(() => undefined);
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
 
     return (
         <div style={{ backgroundColor: '#f6f8fa', minHeight: '100%', padding: '24px', color: textPrimary }}>
@@ -42,85 +97,161 @@ export const QuotaDashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* 2. Active Days (GitHub Light Style Heatmap) */}
+            {/* 2. Recent Month Hourly Usage Heatmap */}
             <Card bordered={false} bodyStyle={{ ...cardStyle, padding: 24 }} style={{ marginBottom: 24, background: 'transparent' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <Text style={{ color: textPrimary, fontWeight: 'bold' }}>Active Days</Text>
-                    <Space size="small">
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+                        <Text style={{ color: textPrimary, fontWeight: 'bold' }}>用量情况</Text>
+                        <div style={{ color: textSecondary, fontSize: 12 }}>
+                            {hourlyHeatmap.startDate} - {hourlyHeatmap.endDate}
+                            <span style={{ marginLeft: 12, color: textPrimary, fontWeight: 600 }}>{hourlyHeatmap.totalCount}</span>
+                            <span style={{ marginLeft: 4 }}>requests</span>
+                            <span style={{ marginLeft: 12 }}>peak</span>
+                            <span style={{ marginLeft: 4, color: textPrimary, fontWeight: 600 }}>{hourlyHeatmap.maxHourlyCount}</span>
+                        </div>
+                    </div>
+                    <Space size="small" style={{ minHeight: 22 }}>
                         <span style={{ fontSize: 12, color: textSecondary }}>Less</span>
                         {[0, 1, 2, 3, 4].map(v => (
-                            <div key={v} style={{ width: 10, height: 10, backgroundColor: getHeatmapColor(v), borderRadius: 2 }} />
+                            <div key={v} style={{ width: 12, height: 12, backgroundColor: getHourlyHeatmapColor(v, 4), borderRadius: 2, border: '1px solid rgba(31,35,40,0.06)' }} />
                         ))}
                         <span style={{ fontSize: 12, color: textSecondary }}>More</span>
                     </Space>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(52, 1fr)', gap: 3 }}>
-                    {ACTIVITY_DATA.map((val, i) => (
-                        <div
-                            key={i}
-                            style={{
-                                aspectRatio: '1/1',
-                                backgroundColor: getHeatmapColor(val),
-                                borderRadius: 2
-                            }}
-                        />
-                    ))}
+                <div ref={heatmapScrollRef} style={{ overflowX: 'auto', paddingBottom: 2 }}>
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: `48px repeat(${hourlyHeatmap.days.length}, ${HEATMAP_DAY_WIDTH}px)`,
+                            gridTemplateRows: `18px repeat(4, ${HEATMAP_CELL_SIZE}px)`,
+                            columnGap: 7,
+                            rowGap: HEATMAP_CELL_GAP,
+                            alignItems: 'center',
+                            minWidth: 48 + hourlyHeatmap.days.length * (HEATMAP_DAY_WIDTH + 7),
+                        }}
+                    >
+                        <div />
+                        {hourlyHeatmap.days.map((day, dayIndex) => (
+                            <div key={day.date} style={{ color: textSecondary, fontSize: 10, textAlign: 'left', lineHeight: '14px' }}>
+                                {dayIndex % 3 === 0 || dayIndex === hourlyHeatmap.days.length - 1 ? formatHeatmapDateLabel(day.date) : ''}
+                            </div>
+                        ))}
+                        {HOUR_ROW_STARTS.map(rowStartHour => (
+                            <React.Fragment key={rowStartHour}>
+                                <div style={{ color: textSecondary, fontSize: 10, lineHeight: '10px', whiteSpace: 'nowrap' }}>
+                                    {formatHourRangeLabel(rowStartHour)}
+                                </div>
+                                {hourlyHeatmap.days.map(day => (
+                                    <div
+                                        key={`${day.date}-${rowStartHour}`}
+                                        style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: `repeat(${HOURS_PER_HEATMAP_ROW}, ${HEATMAP_CELL_SIZE}px)`,
+                                            gap: HEATMAP_CELL_GAP,
+                                        }}
+                                    >
+                                        {day.hours
+                                            .slice(rowStartHour, rowStartHour + HOURS_PER_HEATMAP_ROW)
+                                            .map(hour => (
+                                                <Tooltip
+                                                    key={`${day.date}-${hour.hour}`}
+                                                    title={`${day.date} ${formatHourLabel(hour.hour)} · ${hour.requestCount} requests`}
+                                                >
+                                                    <div
+                                                        aria-label={`${day.date} ${formatHourLabel(hour.hour)} ${hour.requestCount} requests`}
+                                                        style={{
+                                                            width: HEATMAP_CELL_SIZE,
+                                                            height: HEATMAP_CELL_SIZE,
+                                                            backgroundColor: getHourlyHeatmapColor(hour.requestCount, hourlyHeatmap.maxHourlyCount),
+                                                            borderRadius: 2,
+                                                            border: '1px solid rgba(31,35,40,0.06)',
+                                                        }}
+                                                    />
+                                                </Tooltip>
+                                            ))}
+                                    </div>
+                                ))}
+                            </React.Fragment>
+                        ))}
+                    </div>
                 </div>
             </Card>
 
-            {/* 3. Small Stats Counters */}
-            <Row gutter={24} style={{ marginBottom: 24 }}>
-                <Col span={12}>
-                    <div style={{ ...cardStyle, height: '100%' }}>
-                        <div style={{ color: textSecondary, marginBottom: 8, fontWeight: 500 }}>AI Code Accepted <GlobalOutlined /></div>
-                        <div style={{ fontSize: 32, color: textPrimary, marginBottom: 16, fontWeight: 600 }}>41</div>
-                        <div style={{ display: 'flex', gap: 4, height: 24 }}>
-                            <div style={{ flex: 8, backgroundColor: '#0969da', borderRadius: '4px 0 0 4px', display: 'flex', alignItems: 'center', paddingLeft: 8, fontSize: 12, color: '#fff' }}>markdown</div>
-                            <div style={{ flex: 3, backgroundColor: '#54aeff', display: 'flex', alignItems: 'center', paddingLeft: 8, fontSize: 12, color: '#fff' }}>js</div>
-                            <div style={{ flex: 29, backgroundColor: '#eaeef2', borderRadius: '0 4px 4px 0', display: 'flex', alignItems: 'center', paddingLeft: 8, fontSize: 12, color: textSecondary }}>others</div>
-                        </div>
-                    </div>
-                </Col>
-                <Col span={12}>
-                    <Row gutter={16} style={{ height: '100%' }}>
-                        <Col span={12}>
-                            <div style={cardStyle}>
-                                <div style={{ color: textSecondary, fontWeight: 500 }}>Chat Count <MessageOutlined /></div>
-                                <div style={{ fontSize: 32, color: textPrimary, fontWeight: 600 }}>26</div>
+            {/* 3. Available Models */}
+            <div style={{ ...cardStyle, marginBottom: 24 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
+                    <Text style={{ color: textPrimary, fontWeight: 700 }}>可用模型</Text>
+                    <Text style={{ color: textSecondary, fontSize: 12 }}>{availableModels.length} models</Text>
+                </div>
+                <Row gutter={[12, 12]}>
+                    {availableModels.map(modelName => (
+                        <Col key={modelName} xs={24} sm={12} md={8} lg={6} xl={4}>
+                            <div
+                                style={{
+                                    height: 76,
+                                    border: '1px solid #d0d7de',
+                                    borderRadius: 8,
+                                    backgroundColor: '#f6f8fa',
+                                    padding: '12px 14px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'flex-start',
+                                    justifyContent: 'center',
+                                    gap: 8,
+                                }}
+                            >
+                                <Text
+                                    title={modelName}
+                                    style={{
+                                        color: textPrimary,
+                                        fontWeight: 600,
+                                        width: '100%',
+                                        textAlign: 'left',
+                                        minWidth: 0,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    {modelName}
+                                </Text>
+                                <Tag color="success" style={{ marginInlineEnd: 0 }}>可用</Tag>
                             </div>
                         </Col>
-                        <Col span={12}>
-                            <div style={cardStyle}>
-                                <div style={{ color: textSecondary, fontWeight: 500 }}>Agent <UserOutlined /></div>
-                                <div style={{ fontSize: 32, color: textPrimary, fontWeight: 600 }}>36</div>
-                            </div>
+                    ))}
+                    {availableModels.length === 0 && (
+                        <Col span={24}>
+                            <div style={{ color: textSecondary, fontSize: 13, padding: '12px 0' }}>暂无可用模型</div>
                         </Col>
-                    </Row>
-                </Col>
-            </Row>
+                    )}
+                </Row>
+            </div>
 
             {/* 4. Preference Section */}
             <Row gutter={24} style={{ marginBottom: 24 }}>
-                {/* Most Frequent AI Partner */}
                 <Col span={12}>
                     <div style={{ ...cardStyle, height: '100%' }}>
-                        <Text style={{ color: textSecondary, display: 'block', marginBottom: 20, fontWeight: 500 }}>Most Frequent AI Partner</Text>
-                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 24 }}>
-                            <div style={{ textAlign: 'center' }}>
-                                <div style={{ width: 80, height: 80, backgroundColor: '#dafbe1', border: '1px solid #4ac26b', borderRadius: 12, display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
-                                    <UserOutlined style={{ fontSize: 40, color: '#1a7f37' }} />
-                                </div>
-                                <div style={{ color: '#1a7f37', fontWeight: 'bold' }}>@SOLO Agent</div>
+                        <Text style={{ color: textSecondary, display: 'block', marginBottom: 20, fontWeight: 500 }}>用户余额概览</Text>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 18 }}>
+                            <div>
+                                <div style={{ color: textSecondary, fontSize: 12, marginBottom: 4 }}>当前余额¥</div>
+                                <div style={{ color: textPrimary, fontSize: 30, lineHeight: 1.1, fontWeight: 700 }}>{formatAmount(currentBalance)}</div>
                             </div>
-                            <div style={{ flexGrow: 1 }}>
-                                <div style={{ color: textSecondary, fontSize: 12 }}>Number of conversations</div>
-                                <div style={{ fontSize: 32, color: textPrimary, marginBottom: 8, fontWeight: 600 }}>15</div>
-                                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 40 }}>
-                                    {[2, 4, 3, 6, 8, 4, 2].map((h, i) => (
-                                        <div key={i} style={{ flex: 1, backgroundColor: i === 4 ? '#1a7f37' : '#eaeef2', height: `${h * 10}%`, borderRadius: 2 }} />
-                                    ))}
-                                </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ color: textSecondary, fontSize: 12, marginBottom: 4 }}>总余额¥</div>
+                                <div style={{ color: textPrimary, fontSize: 22, lineHeight: 1.2, fontWeight: 600 }}>{formatAmount(totalBalance)}</div>
                             </div>
+                        </div>
+                        <Progress
+                            percent={usagePercent}
+                            showInfo={false}
+                            strokeColor="#0969da"
+                            trailColor="#eaeef2"
+                            strokeLinecap="round"
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, color: textSecondary, fontSize: 12 }}>
+                            <span>使用比例</span>
+                            <span style={{ color: textPrimary, fontWeight: 600 }}>{usagePercent}%</span>
                         </div>
                     </div>
                 </Col>
@@ -194,14 +325,78 @@ export const QuotaDashboard: React.FC = () => {
     );
 };
 
-// 辅助函数：根据数值获取 GitHub 风格的明亮主题绿色渐变
-function getHeatmapColor(value: number) {
-    switch (value) {
-        case 0: return '#ebedf0'; // 空白浅灰
-        case 1: return '#9be9a8'; // 浅绿
-        case 2: return '#40c463'; // 中绿
-        case 3: return '#30a14e'; // 深绿
-        case 4: return '#216e39'; // 极深绿
-        default: return '#ebedf0';
-    }
+function buildMockRecentMonthHourlyHeatmap(): UserUsageHourlyHeatmapResult {
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - 29);
+
+    const days = Array.from({ length: 30 }, (_, dayIndex) => {
+        const currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + dayIndex);
+        const date = formatDate(currentDate);
+        const hours = HOURS.map(hour => ({
+            hour,
+            requestCount: getMockHourlyRequestCount(dayIndex, hour, currentDate),
+        }));
+        return {
+            date,
+            totalCount: hours.reduce((sum, item) => sum + item.requestCount, 0),
+            hours,
+        };
+    });
+    const totalCount = days.reduce((sum, day) => sum + day.totalCount, 0);
+    const maxHourlyCount = days.reduce(
+        (max, day) => Math.max(max, ...day.hours.map(hour => hour.requestCount)),
+        0
+    );
+
+    return {
+        startDate: formatDate(startDate),
+        endDate: formatDate(today),
+        totalCount,
+        maxHourlyCount,
+        days,
+    };
+}
+
+function getMockHourlyRequestCount(dayIndex: number, hour: number, date: Date): number {
+    const weekday = date.getDay();
+    const weekendFactor = weekday === 0 || weekday === 6 ? 0.45 : 1;
+    const morningPeak = hour >= 9 && hour <= 11 ? 5 : 0;
+    const afternoonPeak = hour >= 14 && hour <= 18 ? 7 : 0;
+    const eveningWork = hour >= 20 && hour <= 22 ? 2 : 0;
+    const base = hour >= 8 && hour <= 23 ? 1 : 0;
+    const rhythm = (dayIndex * 3 + hour * 2) % 5;
+    const requestCount = Math.round((base + morningPeak + afternoonPeak + eveningWork + rhythm) * weekendFactor);
+    return Math.max(0, requestCount);
+}
+
+function getHourlyHeatmapColor(value: number, maxValue: number) {
+    if (value <= 0 || maxValue <= 0) return '#ebedf0';
+    const ratio = value / maxValue;
+    if (ratio < 0.25) return '#dbeafe';
+    if (ratio < 0.5) return '#93c5fd';
+    if (ratio < 0.75) return '#3b82f6';
+    return '#1d4ed8';
+}
+
+function formatHeatmapDateLabel(date: string): string {
+    const [, month, day] = date.split('-');
+    return `${month}/${day}`;
+}
+
+function formatHourLabel(hour: number): string {
+    return `${hour.toString().padStart(2, '0')}:00`;
+}
+
+function formatHourRangeLabel(startHour: number): string {
+    const endHour = startHour + HOURS_PER_HEATMAP_ROW - 1;
+    return `${startHour.toString().padStart(2, '0')}-${endHour.toString().padStart(2, '0')}`;
+}
+
+function formatDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }

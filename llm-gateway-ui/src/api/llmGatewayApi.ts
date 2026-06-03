@@ -204,6 +204,43 @@ export const quotaApi = {
     }
 };
 
+/** ==================== 2.1 用户端-使用情况类型与接口 ==================== */
+export interface UserUsageHourlyHeatmapHour {
+    hour: number;
+    requestCount: number;
+}
+
+export interface UserUsageHourlyHeatmapDay {
+    date: string;
+    totalCount: number;
+    hours: UserUsageHourlyHeatmapHour[];
+}
+
+export interface UserUsageHourlyHeatmapResult {
+    startDate: string;
+    endDate: string;
+    totalCount: number;
+    maxHourlyCount: number;
+    days: UserUsageHourlyHeatmapDay[];
+}
+
+export interface UserEffectivePermissionsResult {
+    userId: number;
+    deptId: number;
+    allowedModels: string[];
+}
+
+export const userUsageApi = {
+    getRecentMonthHourlyHeatmap: async () => {
+        const res = await api.get<ApiResult<UserUsageHourlyHeatmapResult>>('/admin/user/usage/recent-month-hourly-heatmap');
+        return res.data;
+    },
+    getUserEffectivePermissions: async () => {
+        const res = await api.get<ApiResult<UserEffectivePermissionsResult>>('/admin/user/usage/users/permissions/effective');
+        return res.data;
+    }
+};
+
 /** ==================== 3. 管理端-组织架构与用户管理 ==================== */
 export interface CreateDepartmentParams {
     deptName: string;

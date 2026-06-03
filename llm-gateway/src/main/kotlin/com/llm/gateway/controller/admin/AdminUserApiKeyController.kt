@@ -1,17 +1,15 @@
 package com.llm.gateway.controller.admin
 
-import com.llm.gateway.common.exceptions.BizException
 import com.llm.gateway.model.ApiResult
 import com.llm.gateway.model.params.ApiKeyCreateParams
 import com.llm.gateway.model.results.ApiKeyCreateResult
 import com.llm.gateway.model.results.ApiKeyListResult
 import com.llm.gateway.model.results.ApiKeyRevokeResult
-import com.llm.gateway.security.CustomUserDetails
+import com.llm.gateway.security.SecurityUtil
 import com.llm.gateway.service.VirtualApiKeyService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import javax.validation.Valid
-import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -33,14 +31,14 @@ class AdminUserApiKeyController(
         @RequestBody @Valid params: ApiKeyCreateParams,
         authentication: Authentication,
     ): ApiResult<ApiKeyCreateResult> {
-        val userId = requireUserId(authentication)
+        val userId = SecurityUtil.getRequiredUserId(authentication)
         return ApiResult.Companion.success(virtualApiKeyService.createApiKey(userId, params))
     }
 
     @ApiOperation("查询虚拟密钥列表")
     @GetMapping("/user/keys")
     fun listApiKeys(authentication: Authentication): ApiResult<ApiKeyListResult> {
-        val userId = requireUserId(authentication)
+        val userId = SecurityUtil.getRequiredUserId(authentication)
         return ApiResult.Companion.success(virtualApiKeyService.listApiKeys(userId))
     }
 
@@ -50,13 +48,7 @@ class AdminUserApiKeyController(
         @PathVariable("id") keyId: Long,
         authentication: Authentication,
     ): ApiResult<ApiKeyRevokeResult> {
-        val userId = requireUserId(authentication)
+        val userId = SecurityUtil.getRequiredUserId(authentication)
         return ApiResult.Companion.success(virtualApiKeyService.revokeApiKey(userId, keyId))
-    }
-
-    private fun requireUserId(authentication: Authentication): Long {
-        val principal = authentication.principal as? CustomUserDetails
-            ?: throw BizException(BizException.Companion.UNAUTHORIZED, "未认证")
-        return principal.getUser().id ?: throw BizException(BizException.Companion.UNAUTHORIZED, "用户ID缺失")
     }
 }

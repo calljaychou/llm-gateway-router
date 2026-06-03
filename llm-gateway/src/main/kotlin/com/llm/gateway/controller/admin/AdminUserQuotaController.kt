@@ -1,6 +1,5 @@
 package com.llm.gateway.controller.admin
 
-import com.llm.gateway.common.exceptions.BizException
 import com.llm.gateway.model.ApiResult
 import com.llm.gateway.model.PageParams
 import com.llm.gateway.model.params.UserQuotaTransactionsPageParams
@@ -10,7 +9,7 @@ import com.llm.gateway.model.results.UserQuotaAccountResult
 import com.llm.gateway.model.results.UserQuotaGrantResult
 import com.llm.gateway.model.results.UserQuotaTransactionResult
 import com.llm.gateway.model.results.UserQuotaTransferResult
-import com.llm.gateway.security.CustomUserDetails
+import com.llm.gateway.security.SecurityUtil
 import com.llm.gateway.service.UserQuotaService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -32,7 +31,7 @@ class AdminUserQuotaController(
     @ApiOperation("用户查看自己的当前配额")
     @GetMapping("/current")
     fun getCurrentQuota(authentication: Authentication): ApiResult<UserQuotaAccountResult> {
-        return ApiResult.Companion.success(userQuotaService.getCurrentQuota(requireUserId(authentication)))
+        return ApiResult.Companion.success(userQuotaService.getCurrentQuota(SecurityUtil.getRequiredUserId(authentication)))
     }
 
     @ApiOperation("用户查看自己的已过期配额列表")
@@ -41,7 +40,7 @@ class AdminUserQuotaController(
         @Valid params: PageParams,
         authentication: Authentication,
     ): ApiResult<PageResult<UserQuotaGrantResult>> {
-        return ApiResult.Companion.success(userQuotaService.listExpiredGrants(requireUserId(authentication), params))
+        return ApiResult.Companion.success(userQuotaService.listExpiredGrants(SecurityUtil.getRequiredUserId(authentication), params))
     }
 
     @ApiOperation("查询当前用户的配额流水")
@@ -50,7 +49,7 @@ class AdminUserQuotaController(
         @Valid params: UserQuotaTransactionsPageParams,
         authentication: Authentication,
     ): ApiResult<PageResult<UserQuotaTransactionResult>> {
-        return ApiResult.Companion.success(userQuotaService.listTransactions(requireUserId(authentication), params))
+        return ApiResult.Companion.success(userQuotaService.listTransactions(SecurityUtil.getRequiredUserId(authentication), params))
     }
 
     @ApiOperation("用户将剩余额度转配给其他用户")
@@ -59,12 +58,6 @@ class AdminUserQuotaController(
         @RequestBody @Valid params: UserQuotaTransferParams,
         authentication: Authentication,
     ): ApiResult<UserQuotaTransferResult> {
-        return ApiResult.Companion.success(userQuotaService.transferQuota(requireUserId(authentication), params))
-    }
-
-    private fun requireUserId(authentication: Authentication): Long {
-        val principal = authentication.principal as? CustomUserDetails
-            ?: throw BizException(BizException.Companion.UNAUTHORIZED, "未认证")
-        return principal.getUser().id ?: throw BizException(BizException.Companion.UNAUTHORIZED, "用户ID缺失")
+        return ApiResult.Companion.success(userQuotaService.transferQuota(SecurityUtil.getRequiredUserId(authentication), params))
     }
 }

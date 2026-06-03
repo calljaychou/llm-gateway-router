@@ -1,7 +1,7 @@
 package com.llm.gateway.controller
 
 import com.llm.gateway.common.annotation.ExcludeResultHandler
-import com.llm.gateway.security.CustomUserDetails
+import com.llm.gateway.security.SecurityUtil
 import com.llm.gateway.service.OpenAiForwardFacade
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -39,7 +39,7 @@ class OpenAiCompatibleController(
         if (!authorization.startsWith("Bearer sk-vkey-")) {
             return openAiError("无效API密钥", "VIRTUAL_API_KEY_REQUIRED")
         }
-        val principal = authentication.principal as? CustomUserDetails
+        val principal = SecurityUtil.getCurrentUserDetails(authentication)
             ?: return openAiError("未认证", "UNAUTHORIZED")
         val user = principal.getUser()
         val userId = user.id

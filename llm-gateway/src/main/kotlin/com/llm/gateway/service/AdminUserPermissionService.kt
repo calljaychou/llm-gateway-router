@@ -540,13 +540,16 @@ class AdminUserPermissionService(
     /**
      * 查询用户配额配置详情，未配置时返回空。
      */
-    private fun getUserQuotaConfig(userId: Long): AdminUserQuotaConfigResult? {
+    fun getUserQuotaConfig(userId: Long): AdminUserQuotaConfigResult {
         return userQuotaAccountsMapper.selectOne {
             where { UserQuotaAccountsDynamicSqlSupport.UserQuotaAccounts.userId isEqualTo userId }
         }?.let { mapUserQuotaConfig(it) } ?: emptyQuota(userId)
     }
 
-    private fun emptyQuota(userId: Long): AdminUserQuotaConfigResult? {
+    /**
+     * 构建未配置配额时的空额度结果。
+     */
+    private fun emptyQuota(userId: Long): AdminUserQuotaConfigResult {
         return AdminUserQuotaConfigResult(
             userId = userId,
             currentQuotaAmount = ZERO_AMOUNT,
