@@ -38,6 +38,9 @@ const ACTIVITY_CHART_LEFT = 40;
 const ACTIVITY_CHART_TOP = 20;
 const ACTIVITY_CHART_WIDTH = 520;
 const ACTIVITY_CHART_HEIGHT = 140;
+const ACTIVITY_CHART_SVG_HEIGHT = 220;
+const MOCK_TODAY_USAGE_ENABLED = false;
+const MOCK_TODAY_USAGE_COUNTS = [0, 1, 0, 0, 2, 4, 9, 18, 32, 48, 61, 45, 72, 96, 118, 86, 74, 103, 137, 112, 69, 38, 21, 8];
 
 interface QuotaDashboardProps {
     onNavigate?: (key: string) => void;
@@ -71,7 +74,9 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
     const maxModelUsageCount = Math.max(1, ...modelUsageCounts.map(model => model.usageCount));
     const gatewayBaseUrl = `${window.location.origin}/v1/chat/completions`;
     const todayDate = formatDate(new Date());
-    const todayHeatmapDay = hourlyHeatmap.days.find(day => day.date === todayDate) || hourlyHeatmap.days[hourlyHeatmap.days.length - 1];
+    const apiTodayHeatmapDay = hourlyHeatmap.days.find(day => day.date === todayDate) || hourlyHeatmap.days[hourlyHeatmap.days.length - 1];
+    const mockTodayHeatmapDay = buildMockTodayUsageDay(todayDate);
+    const todayHeatmapDay = MOCK_TODAY_USAGE_ENABLED ? mockTodayHeatmapDay : apiTodayHeatmapDay;
     const todayHourlyUsageMap = new Map((todayHeatmapDay?.hours || []).map(hour => [hour.hour, hour.requestCount]));
     const todayMaxHourlyCount = todayHeatmapDay?.hours.reduce((max, hour) => Math.max(max, hour.requestCount), 0) || 0;
     const activityLinePoints = HOURS.map(hour => buildActivityChartPoint(hour, todayHourlyUsageMap.get(hour) || 0, todayMaxHourlyCount)).join(' ');
@@ -231,6 +236,54 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
         { title: '耗时', dataIndex: 'latencyMs', key: 'latencyMs', width: 92, align: 'right', render: (latencyMs: number) => `${latencyMs || 0} ms` },
     ];
 
+    const todayUsageLineChart = (
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+            <div style={{ position: 'relative', minHeight: ACTIVITY_CHART_SVG_HEIGHT, display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
+                <svg width="100%" height={ACTIVITY_CHART_SVG_HEIGHT} viewBox={`0 0 600 ${ACTIVITY_CHART_SVG_HEIGHT}`}>
+                    <line
+                        x1={ACTIVITY_CHART_LEFT}
+                        y1={ACTIVITY_CHART_TOP + ACTIVITY_CHART_HEIGHT}
+                        x2={ACTIVITY_CHART_LEFT + ACTIVITY_CHART_WIDTH}
+                        y2={ACTIVITY_CHART_TOP + ACTIVITY_CHART_HEIGHT}
+                        stroke="#d0d7de"
+                        strokeWidth="1"
+                    />
+                    <polyline
+                        points={activityLinePoints}
+                        fill="none"
+                        stroke="#0969da"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    />
+                    {HOURS.map(h => {
+                        const requestCount = todayHourlyUsageMap.get(h) || 0;
+                        const isActive = requestCount > 0;
+                        const [cx, cy] = buildActivityChartPoint(h, requestCount, todayMaxHourlyCount).split(',').map(Number);
+                        return (
+                            <g key={h}>
+                                <title>{`${todayHeatmapDay?.date || todayDate} ${formatHourLabel(h)} · ${requestCount} requests`}</title>
+                                <circle
+                                    cx={cx} cy={cy}
+                                    r={isActive ? 6 : 4}
+                                    fill={isActive ? getHourlyHeatmapColor(requestCount, todayMaxHourlyCount) : '#ffffff'}
+                                    stroke={isActive ? getHourlyHeatmapColor(requestCount, todayMaxHourlyCount) : '#d0d7de'}
+                                    strokeWidth="2"
+                                    opacity={isActive ? 1 : 0.8}
+                                />
+                                {h % 6 === 0 && (
+                                    <text x={cx} y={ACTIVITY_CHART_TOP + ACTIVITY_CHART_HEIGHT + 22} fill="#656d76" fontSize="12" textAnchor="middle" fontWeight="500">
+                                        {h.toString().padStart(2, '0')}:00
+                                    </text>
+                                )}
+                            </g>
+                        );
+                    })}
+                </svg>
+            </div>
+        </div>
+    );
+
     return (
         <div style={{ backgroundColor: '#f6f8fa', minHeight: '100%', padding: '24px', color: textPrimary }}>
             {/* 1. Header Section */}
@@ -355,6 +408,47 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
 
             {/* 4. Available Models */}
             <div style={{ ...cardStyle, marginBottom: 24 }}>
+                <div style={{ marginBottom: 20, paddingBottom: 18, borderBottom: '1px solid #d0d7de' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
+                        <Text style={{ color: textPrimary, fontWeight: 700 }}>用户虚拟密钥</Text>
+                        <div style={{ color: textSecondary, fontSize: 14 }}>
+                            当前密钥数量&nbsp;
+                            <button
+                                type="button"
+                                onClick={() => onNavigate?.('keys')}
+                                style={{
+                                    border: 'none',
+                                    background: 'transparent',
+                                    padding: 0,
+                                    color: '#0969da',
+                                    fontSize: 18,
+                                    lineHeight: 1.1,
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                }}
+                            >{virtualKeySummary.total}
+                            </button>
+                        </div>
+                    </div>
+                    <div style={{ color: textSecondary, fontSize: 12, marginBottom: 6 }}>BaseURL</div>
+                    <div
+                        title={gatewayBaseUrl}
+                        style={{
+                            color: textPrimary,
+                            backgroundColor: '#f6f8fa',
+                            border: '1px solid #d0d7de',
+                            borderRadius: 6,
+                            padding: '8px 10px',
+                            fontSize: 13,
+                            fontFamily: 'ui-monospace, SFMono-Regular, SFMono-Regular, Consolas, monospace',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        {gatewayBaseUrl}
+                    </div>
+                </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
                     <Text style={{ color: textPrimary, fontWeight: 700 }}>可用模型</Text>
                     <Text style={{ color: textSecondary, fontSize: 12 }}>{availableModels.length} models</Text>
@@ -406,50 +500,9 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
             {/* 5. Preference Section */}
             <Row gutter={24} style={{ marginBottom: 24 }}>
                 <Col span={12}>
-                    <div style={{ ...cardStyle, height: '100%' }}>
-                        <Text style={{ color: textSecondary, display: 'block', marginBottom: 20, fontWeight: 500 }}>用户虚拟密钥</Text>
-                        <div style={{ marginBottom: 18 }}>
-                            <div style={{ color: textSecondary, fontSize: 12, marginBottom: 6 }}>BaseURL</div>
-                            <div
-                                title={gatewayBaseUrl}
-                                style={{
-                                    color: textPrimary,
-                                    backgroundColor: '#f6f8fa',
-                                    border: '1px solid #d0d7de',
-                                    borderRadius: 6,
-                                    padding: '8px 10px',
-                                    fontSize: 13,
-                                    fontFamily: 'ui-monospace, SFMono-Regular, SFMono-Regular, Consolas, monospace',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                }}
-                            >
-                                {gatewayBaseUrl}
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-end' }}>
-                            <div>
-                                <div style={{ color: textSecondary, fontSize: 18, marginBottom: 4 }}>
-                                    当前密钥数量&nbsp;&nbsp;
-                                    <button
-                                        type="button"
-                                        onClick={() => onNavigate?.('keys')}
-                                        style={{
-                                            border: 'none',
-                                            background: 'transparent',
-                                            padding: 0,
-                                            color: '#0969da',
-                                            fontSize: 20,
-                                            lineHeight: 1.1,
-                                            fontWeight: 700,
-                                            cursor: 'pointer',
-                                        }}
-                                    >{virtualKeySummary.total}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                    <div style={{ ...cardStyle, height: MODEL_USAGE_CARD_HEIGHT, display: 'flex', flexDirection: 'column' }}>
+                        <Text style={{ color: textSecondary, display: 'block', marginBottom: 12, fontWeight: 500 }}>今天用量 <ClockCircleOutlined /></Text>
+                        {todayUsageLineChart}
                     </div>
                 </Col>
 
@@ -523,54 +576,6 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
                 />
             </div>
 
-            {/* 6. Coding Activity Periods (SVG Arc) */}
-            <Card bordered={false} bodyStyle={{ ...cardStyle, textAlign: 'center' }} style={{ background: 'transparent' }}>
-                <Text style={{ color: textSecondary, display: 'block', textAlign: 'left', marginBottom: 12, fontWeight: 500 }}>今天用量 <ClockCircleOutlined /></Text>
-                <div style={{ position: 'relative', height: 200, display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
-                    <svg width="600" height="200" viewBox="0 0 600 200">
-                        <line
-                            x1={ACTIVITY_CHART_LEFT}
-                            y1={ACTIVITY_CHART_TOP + ACTIVITY_CHART_HEIGHT}
-                            x2={ACTIVITY_CHART_LEFT + ACTIVITY_CHART_WIDTH}
-                            y2={ACTIVITY_CHART_TOP + ACTIVITY_CHART_HEIGHT}
-                            stroke="#d0d7de"
-                            strokeWidth="1"
-                        />
-                        <polyline
-                            points={activityLinePoints}
-                            fill="none"
-                            stroke="#0969da"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        />
-                        {HOURS.map(h => {
-                            const requestCount = todayHourlyUsageMap.get(h) || 0;
-                            const isActive = requestCount > 0;
-                            const [cx, cy] = buildActivityChartPoint(h, requestCount, todayMaxHourlyCount).split(',').map(Number);
-                            return (
-                                <g key={h}>
-                                    <title>{`${todayHeatmapDay?.date || todayDate} ${formatHourLabel(h)} · ${requestCount} requests`}</title>
-                                    <circle
-                                        cx={cx} cy={cy}
-                                        r={isActive ? 6 : 4}
-                                        fill={isActive ? getHourlyHeatmapColor(requestCount, todayMaxHourlyCount) : '#ffffff'}
-                                        stroke={isActive ? getHourlyHeatmapColor(requestCount, todayMaxHourlyCount) : '#d0d7de'}
-                                        strokeWidth="2"
-                                        opacity={isActive ? 1 : 0.8}
-                                    />
-                                    {h % 6 === 0 && (
-                                        <text x={cx} y={ACTIVITY_CHART_TOP + ACTIVITY_CHART_HEIGHT + 22} fill="#656d76" fontSize="12" textAnchor="middle" fontWeight="500">
-                                            {h.toString().padStart(2, '0')}:00
-                                        </text>
-                                    )}
-                                </g>
-                            );
-                        })}
-                    </svg>
-                </div>
-            </Card>
-
             <div style={{ textAlign: 'left', marginTop: 16, color: '#656d76', fontSize: 12 }}>
                 The page updates daily at 00:00 (UTC+8). Last updated: 23:59:59.
             </div>
@@ -619,6 +624,17 @@ function buildActivityChartPoint(hour: number, requestCount: number, maxHourlyCo
     const ratio = maxHourlyCount > 0 ? requestCount / maxHourlyCount : 0;
     const y = ACTIVITY_CHART_TOP + ACTIVITY_CHART_HEIGHT - ratio * ACTIVITY_CHART_HEIGHT;
     return `${x},${y}`;
+}
+
+function buildMockTodayUsageDay(date: string) {
+    return {
+        date,
+        totalCount: MOCK_TODAY_USAGE_COUNTS.reduce((total, requestCount) => total + requestCount, 0),
+        hours: HOURS.map(hour => ({
+            hour,
+            requestCount: MOCK_TODAY_USAGE_COUNTS[hour] || 0,
+        })),
+    };
 }
 
 function calculateUseDays(useTime: string | null): number {
