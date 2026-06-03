@@ -1,5 +1,7 @@
 import React from 'react';
-import { Row, Col, Typography, Space, Tag, Card, Badge, Tooltip, Progress } from 'antd';
+import { Row, Col, Typography, Space, Tag, Card, Badge, Tooltip, Progress, Table, DatePicker } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import dayjs from 'dayjs';
 import {
     ClockCircleOutlined,
 } from '@ant-design/icons';
@@ -9,6 +11,7 @@ import {
     virtualKeyApi,
     type UserModelUsageCountResult,
     type UserQuotaAccountSnapshot,
+    type UserUsageLogListItem,
     type UserUsageHourlyHeatmapResult
 } from '../api/llmGatewayApi';
 import { formatAmount } from '../utils/format';
@@ -22,6 +25,9 @@ const HEATMAP_CELL_GAP = 3;
 const HEATMAP_DAY_WIDTH = HOURS_PER_HEATMAP_ROW * HEATMAP_CELL_SIZE + (HOURS_PER_HEATMAP_ROW - 1) * HEATMAP_CELL_GAP;
 const MOCK_RECENT_MONTH_HOURLY_HEATMAP = buildMockRecentMonthHourlyHeatmap();
 const MODEL_USAGE_CARD_HEIGHT = 240;
+const USAGE_LOG_PAGE_SIZE = 6;
+const DEFAULT_USAGE_LOG_END_DATE = formatDate(new Date());
+const DEFAULT_USAGE_LOG_START_DATE = formatDate(offsetDate(new Date(), -29));
 
 interface QuotaDashboardProps {
     onNavigate?: (key: string) => void;
@@ -38,6 +44,12 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
     const [quotaSnapshot, setQuotaSnapshot] = React.useState<UserQuotaAccountSnapshot | null>(null);
     const [virtualKeySummary, setVirtualKeySummary] = React.useState({ total: 0, active: 0 });
     const [modelUsageCounts, setModelUsageCounts] = React.useState<UserModelUsageCountResult[]>([]);
+    const [usageLogs, setUsageLogs] = React.useState<UserUsageLogListItem[]>([]);
+    const [usageLogsLoading, setUsageLogsLoading] = React.useState<boolean>(false);
+    const [usageLogsPage, setUsageLogsPage] = React.useState<number>(1);
+    const [usageLogsTotal, setUsageLogsTotal] = React.useState<number>(0);
+    const [usageLogsStartDate, setUsageLogsStartDate] = React.useState<string>(DEFAULT_USAGE_LOG_START_DATE);
+    const [usageLogsEndDate, setUsageLogsEndDate] = React.useState<string>(DEFAULT_USAGE_LOG_END_DATE);
     const heatmapScrollRef = React.useRef<HTMLDivElement | null>(null);
     const totalBalance = quotaSnapshot?.currentQuotaAmount || 0;
     const currentBalance = quotaSnapshot?.availableAmount || 0;
@@ -116,6 +128,69 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
             ignore = true;
         };
     }, []);
+
+    React.useEffect(() => {
+        let ignore = false;
+        setUsageLogsLoading(true);
+        userUsageApi.listUsageLogs(usageLogsPage, USAGE_LOG_PAGE_SIZE, usageLogsStartDate, usageLogsEndDate)
+            .then(res => {
+                if (!ignore) {
+                    setUsageLogs(res.success && res.data ? res.data.list || [] : []);
+                    setUsageLogsTotal(res.success && res.data ? res.data.total || 0 : 0);
+                }
+            })
+            .catch(() => {
+                if (!ignore) {
+                    setUsageLogs([]);
+                    setUsageLogsTotal(0);
+                }
+            })
+            .finally(() => {
+                if (!ignore) setUsageLogsLoading(false);
+            });
+
+        return () => {
+            ignore = true;
+        };
+    }, [usageLogsPage, usageLogsStartDate, usageLogsEndDate]);
+
+    const handleUsageLogDateChange = (_dates: any, dateStrings: [string, string]) => {
+        if (!dateStrings[0] || !dateStrings[1]) return;
+        setUsageLogsStartDate(dateStrings[0]);
+        setUsageLogsEndDate(dateStrings[1]);
+        setUsageLogsPage(1);
+    };
+
+    const usageLogColumns: ColumnsType<UserUsageLogListItem> = [
+        {
+            title: '请求ID',
+            dataIndex: 'requestId',
+            key: 'requestId',
+            width: 250,
+            ellipsis: true,
+            render: (requestId: string) => <Text code title={requestId} style={{ color: textSecondary }}>{requestId || '-'}</Text>,
+        },
+        {
+            title: '供应商',
+            dataIndex: 'vendorName',
+            key: 'vendorName',
+            width: 120,
+            render: (vendorName: string) => vendorName ? <Tag color="blue" style={{ marginInlineEnd: 0 }}>{vendorName}</Tag> : '-',
+        },
+        {
+            title: '模型',
+            dataIndex: 'modelName',
+            key: 'modelName',
+            ellipsis: true,
+            render: (modelName: string) => <Text title={modelName} style={{ color: textPrimary, fontWeight: 600 }}>{modelName || '-'}</Text>,
+        },
+        { title: '输入Token', dataIndex: 'inputTokens', key: 'inputTokens', width: 86, align: 'right' },
+        { title: '输出Token', dataIndex: 'outputTokens', key: 'outputTokens', width: 86, align: 'right' },
+        { title: '缓存Token', dataIndex: 'cachedTokens', key: 'cachedTokens', width: 86, align: 'right' },
+        { title: '总Token', dataIndex: 'totalTokens', key: 'totalTokens', width: 86, align: 'right' },
+        { title: '使用时间', dataIndex: 'usedAt', key: 'usedAt', width: 170, render: (usedAt?: string) => usedAt || '-' },
+        { title: '耗时', dataIndex: 'latencyMs', key: 'latencyMs', width: 92, align: 'right', render: (latencyMs: number) => `${latencyMs || 0} ms` },
+    ];
 
     return (
         <div style={{ backgroundColor: '#f6f8fa', minHeight: '100%', padding: '24px', color: textPrimary }}>
@@ -378,6 +453,37 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
                 </Col>
             </Row>
 
+            {/* 6. Usage Token Logs */}
+            <div style={{ ...cardStyle, marginBottom: 24 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
+                    <Text style={{ color: textPrimary, fontWeight: 700 }}>使用Token日志</Text>
+                    <DatePicker.RangePicker
+                        allowClear={false}
+                        defaultValue={[dayjs(DEFAULT_USAGE_LOG_START_DATE), dayjs(DEFAULT_USAGE_LOG_END_DATE)]}
+                        format="YYYY-MM-DD"
+                        onChange={handleUsageLogDateChange}
+                        placeholder={['开始日期', '结束日期']}
+                        style={{ width: 260 }}
+                    />
+                </div>
+                <Table<UserUsageLogListItem>
+                    columns={usageLogColumns}
+                    dataSource={usageLogs}
+                    rowKey="usageLogId"
+                    loading={usageLogsLoading}
+                    size="small"
+                    scroll={{ x: 1080 }}
+                    pagination={{
+                        current: usageLogsPage,
+                        pageSize: USAGE_LOG_PAGE_SIZE,
+                        total: usageLogsTotal,
+                        showSizeChanger: false,
+                        showTotal: (total) => `${total} records`,
+                        onChange: (page) => setUsageLogsPage(page),
+                    }}
+                />
+            </div>
+
             {/* 6. Coding Activity Periods (SVG Arc) */}
             <Card bordered={false} bodyStyle={{ ...cardStyle, textAlign: 'center' }} style={{ background: 'transparent' }}>
                 <Text style={{ color: textSecondary, display: 'block', textAlign: 'left', marginBottom: 12, fontWeight: 500 }}>Coding Activity Periods <ClockCircleOutlined /></Text>
@@ -501,4 +607,10 @@ function formatDate(date: Date): string {
     const month = `${date.getMonth() + 1}`.padStart(2, '0');
     const day = `${date.getDate()}`.padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+function offsetDate(date: Date, offsetDays: number): Date {
+    const nextDate = new Date(date);
+    nextDate.setDate(date.getDate() + offsetDays);
+    return nextDate;
 }

@@ -1,7 +1,9 @@
 package com.llm.gateway.model.results
 
+import com.fasterxml.jackson.annotation.JsonFormat
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
+import java.util.Date
 
 @ApiModel("用户最近一个月小时使用次数热图")
 data class UserUsageHourlyHeatmapResult(
@@ -45,4 +47,29 @@ data class UserModelUsageCountResult(
     val vendorId: Long,
     @ApiModelProperty(value = "使用次数", required = true)
     val usageCount: Long,
+)
+
+@ApiModel("用户使用日志列表项")
+data class UserUsageLogListItemResult(
+    @ApiModelProperty(value = "使用日志ID", required = true)
+    val usageLogId: Long,
+    @ApiModelProperty(value = "请求ID", required = true)
+    val requestId: String,
+    @ApiModelProperty(value = "供应商名称", required = true)
+    val vendorName: String,
+    @ApiModelProperty(value = "模型名称", required = true)
+    val modelName: String,
+    @ApiModelProperty(value = "输入Token", required = true)
+    val inputTokens: Int,
+    @ApiModelProperty(value = "输出Token", required = true)
+    val outputTokens: Int,
+    @ApiModelProperty(value = "总Token", required = true)
+    val totalTokens: Int,
+    @ApiModelProperty(value = "缓存Token", required = true)
+    val cachedTokens: Int,
+    @ApiModelProperty(value = "使用时间", required = false)
+    @field:JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
+    val usedAt: Date?,
+    @ApiModelProperty(value = "耗时，单位毫秒", required = true)
+    val latencyMs: Int,
 )

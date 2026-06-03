@@ -231,6 +231,19 @@ export interface UserModelUsageCountResult {
     usageCount: number;
 }
 
+export interface UserUsageLogListItem {
+    usageLogId: number;
+    requestId: string;
+    vendorName: string;
+    modelName: string;
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    cachedTokens: number;
+    usedAt?: string;
+    latencyMs: number;
+}
+
 export interface UserEffectivePermissionsResult {
     userId: number;
     deptId: number;
@@ -244,6 +257,12 @@ export const userUsageApi = {
     },
     listModelUsageCounts: async () => {
         const res = await api.get<ApiResult<UserModelUsageCountResult[]>>('/admin/user/usage/models/usage-counts');
+        return res.data;
+    },
+    listUsageLogs: async (pageNum: number, pageSize: number, startDate?: string, endDate?: string) => {
+        const res = await api.get<ApiResult<PageResult<UserUsageLogListItem>>>('/admin/user/usage/logs', {
+            params: { pageNum, pageSize, startDate, endDate }
+        });
         return res.data;
     },
     getUserEffectivePermissions: async () => {

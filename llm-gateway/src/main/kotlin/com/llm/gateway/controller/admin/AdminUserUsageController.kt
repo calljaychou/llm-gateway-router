@@ -1,15 +1,19 @@
 package com.llm.gateway.controller.admin
 
 import com.llm.gateway.model.ApiResult
+import com.llm.gateway.model.PageResult
+import com.llm.gateway.model.params.UserUsageLogPageParams
 import com.llm.gateway.model.results.AdminUserQuotaConfigResult
 import com.llm.gateway.model.results.UserEffectivePermissionsResult
 import com.llm.gateway.model.results.UserModelUsageCountResult
+import com.llm.gateway.model.results.UserUsageLogListItemResult
 import com.llm.gateway.model.results.UserUsageHourlyHeatmapResult
 import com.llm.gateway.security.SecurityUtil
 import com.llm.gateway.service.AdminUserPermissionService
 import com.llm.gateway.service.UserUsageService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
+import javax.validation.Valid
 import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -36,6 +40,15 @@ class AdminUserUsageController(
     @GetMapping("/models/usage-counts")
     fun listModelUsageCounts(authentication: Authentication): ApiResult<List<UserModelUsageCountResult>> {
         return ApiResult.success(userUsageService.listModelUsageCounts(SecurityUtil.getRequiredUserId(authentication)))
+    }
+
+    @ApiOperation("分页查询当前用户使用日志")
+    @GetMapping("/logs")
+    fun listUsageLogs(
+        @Valid params: UserUsageLogPageParams,
+        authentication: Authentication,
+    ): ApiResult<PageResult<UserUsageLogListItemResult>> {
+        return ApiResult.success(userUsageService.listUsageLogs(SecurityUtil.getRequiredUserId(authentication), params))
     }
 
     @ApiOperation("查询用户生效权限")
