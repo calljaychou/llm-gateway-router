@@ -23,11 +23,21 @@ const HOURS_PER_HEATMAP_ROW = 6;
 const HEATMAP_CELL_SIZE = 15;
 const HEATMAP_CELL_GAP = 3;
 const HEATMAP_DAY_WIDTH = HOURS_PER_HEATMAP_ROW * HEATMAP_CELL_SIZE + (HOURS_PER_HEATMAP_ROW - 1) * HEATMAP_CELL_GAP;
-const MOCK_RECENT_MONTH_HOURLY_HEATMAP = buildMockRecentMonthHourlyHeatmap();
+const EMPTY_RECENT_MONTH_HOURLY_HEATMAP: UserUsageHourlyHeatmapResult = {
+    startDate: '',
+    endDate: '',
+    totalCount: 0,
+    maxHourlyCount: 0,
+    days: [],
+};
 const MODEL_USAGE_CARD_HEIGHT = 240;
 const USAGE_LOG_PAGE_SIZE = 6;
 const DEFAULT_USAGE_LOG_END_DATE = formatDate(new Date());
 const DEFAULT_USAGE_LOG_START_DATE = formatDate(offsetDate(new Date(), -29));
+const ACTIVITY_CHART_LEFT = 40;
+const ACTIVITY_CHART_TOP = 20;
+const ACTIVITY_CHART_WIDTH = 520;
+const ACTIVITY_CHART_HEIGHT = 140;
 
 interface QuotaDashboardProps {
     onNavigate?: (key: string) => void;
@@ -41,7 +51,8 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
     const loginUserName = localStorage.getItem('llm_gateway_name') || localStorage.getItem('llm_gateway_username') || '系统用户';
     const useTime = localStorage.getItem('use_time');
     const useDays = calculateUseDays(useTime);
-    const hourlyHeatmap = MOCK_RECENT_MONTH_HOURLY_HEATMAP;
+    const [hourlyHeatmap, setHourlyHeatmap] = React.useState<UserUsageHourlyHeatmapResult>(EMPTY_RECENT_MONTH_HOURLY_HEATMAP);
+    const [hourlyHeatmapLoading, setHourlyHeatmapLoading] = React.useState<boolean>(false);
     const [availableModels, setAvailableModels] = React.useState<string[]>([]);
     const [quotaSnapshot, setQuotaSnapshot] = React.useState<UserQuotaAccountSnapshot | null>(null);
     const [virtualKeySummary, setVirtualKeySummary] = React.useState({ total: 0, active: 0 });
@@ -59,11 +70,37 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
     const usagePercent = totalBalance > 0 ? Math.min(100, Math.max(0, Math.round((usedBalance / totalBalance) * 100))) : 0;
     const maxModelUsageCount = Math.max(1, ...modelUsageCounts.map(model => model.usageCount));
     const gatewayBaseUrl = `${window.location.origin}/v1/chat/completions`;
+    const todayDate = formatDate(new Date());
+    const todayHeatmapDay = hourlyHeatmap.days.find(day => day.date === todayDate) || hourlyHeatmap.days[hourlyHeatmap.days.length - 1];
+    const todayHourlyUsageMap = new Map((todayHeatmapDay?.hours || []).map(hour => [hour.hour, hour.requestCount]));
+    const todayMaxHourlyCount = todayHeatmapDay?.hours.reduce((max, hour) => Math.max(max, hour.requestCount), 0) || 0;
+    const activityLinePoints = HOURS.map(hour => buildActivityChartPoint(hour, todayHourlyUsageMap.get(hour) || 0, todayMaxHourlyCount)).join(' ');
 
     React.useEffect(() => {
         const heatmapScroll = heatmapScrollRef.current;
         if (heatmapScroll) heatmapScroll.scrollLeft = heatmapScroll.scrollWidth;
     }, [hourlyHeatmap.days.length]);
+
+    React.useEffect(() => {
+        let ignore = false;
+        setHourlyHeatmapLoading(true);
+        userUsageApi.getRecentMonthHourlyHeatmap()
+            .then(res => {
+                if (!ignore) {
+                    setHourlyHeatmap(res.success && res.data ? res.data : EMPTY_RECENT_MONTH_HOURLY_HEATMAP);
+                }
+            })
+            .catch(() => {
+                if (!ignore) setHourlyHeatmap(EMPTY_RECENT_MONTH_HOURLY_HEATMAP);
+            })
+            .finally(() => {
+                if (!ignore) setHourlyHeatmapLoading(false);
+            });
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
 
     React.useEffect(() => {
         let ignore = false;
@@ -213,7 +250,7 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
             </div>
 
             {/* 2. Recent Month Hourly Usage Heatmap */}
-            <Card bordered={false} bodyStyle={{ ...cardStyle, padding: 24 }} style={{ marginBottom: 24, background: 'transparent' }}>
+            <Card bordered={false} loading={hourlyHeatmapLoading} bodyStyle={{ ...cardStyle, padding: 24 }} style={{ marginBottom: 24, background: 'transparent' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 18, alignItems: 'center', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
                         <Text style={{ color: textPrimary, fontWeight: 'bold' }}>用量情况</Text>
@@ -488,36 +525,42 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
 
             {/* 6. Coding Activity Periods (SVG Arc) */}
             <Card bordered={false} bodyStyle={{ ...cardStyle, textAlign: 'center' }} style={{ background: 'transparent' }}>
-                <Text style={{ color: textSecondary, display: 'block', textAlign: 'left', marginBottom: 12, fontWeight: 500 }}>Coding Activity Periods <ClockCircleOutlined /></Text>
+                <Text style={{ color: textSecondary, display: 'block', textAlign: 'left', marginBottom: 12, fontWeight: 500 }}>今天用量 <ClockCircleOutlined /></Text>
                 <div style={{ position: 'relative', height: 200, display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
                     <svg width="600" height="200" viewBox="0 0 600 200">
-                        {/* 弧线轨迹 */}
-                        <path
-                            d="M 50 180 A 250 150 0 0 1 550 180"
-                            fill="none"
+                        <line
+                            x1={ACTIVITY_CHART_LEFT}
+                            y1={ACTIVITY_CHART_TOP + ACTIVITY_CHART_HEIGHT}
+                            x2={ACTIVITY_CHART_LEFT + ACTIVITY_CHART_WIDTH}
+                            y2={ACTIVITY_CHART_TOP + ACTIVITY_CHART_HEIGHT}
                             stroke="#d0d7de"
-                            strokeWidth="2"
-                            strokeDasharray="5,5"
+                            strokeWidth="1"
                         />
-                        {/* 刻度点 */}
+                        <polyline
+                            points={activityLinePoints}
+                            fill="none"
+                            stroke="#0969da"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        />
                         {HOURS.map(h => {
-                            const angle = Math.PI + (h / 23) * Math.PI;
-                            const rx = 250; const ry = 150;
-                            const cx = 300 + rx * Math.cos(angle);
-                            const cy = 180 + ry * Math.sin(angle);
-                            const isActive = h > 10 && h < 18;
+                            const requestCount = todayHourlyUsageMap.get(h) || 0;
+                            const isActive = requestCount > 0;
+                            const [cx, cy] = buildActivityChartPoint(h, requestCount, todayMaxHourlyCount).split(',').map(Number);
                             return (
                                 <g key={h}>
+                                    <title>{`${todayHeatmapDay?.date || todayDate} ${formatHourLabel(h)} · ${requestCount} requests`}</title>
                                     <circle
                                         cx={cx} cy={cy}
                                         r={isActive ? 6 : 4}
-                                        fill={isActive ? '#0969da' : '#ffffff'}
-                                        stroke={isActive ? '#0969da' : '#d0d7de'}
+                                        fill={isActive ? getHourlyHeatmapColor(requestCount, todayMaxHourlyCount) : '#ffffff'}
+                                        stroke={isActive ? getHourlyHeatmapColor(requestCount, todayMaxHourlyCount) : '#d0d7de'}
                                         strokeWidth="2"
                                         opacity={isActive ? 1 : 0.8}
                                     />
                                     {h % 6 === 0 && (
-                                        <text x={cx} y={cy + 20} fill="#656d76" fontSize="12" textAnchor="middle" fontWeight="500">
+                                        <text x={cx} y={ACTIVITY_CHART_TOP + ACTIVITY_CHART_HEIGHT + 22} fill="#656d76" fontSize="12" textAnchor="middle" fontWeight="500">
                                             {h.toString().padStart(2, '0')}:00
                                         </text>
                                     )}
@@ -534,52 +577,6 @@ export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) =>
         </div>
     );
 };
-
-function buildMockRecentMonthHourlyHeatmap(): UserUsageHourlyHeatmapResult {
-    const today = new Date();
-    const startDate = new Date(today);
-    startDate.setDate(today.getDate() - 29);
-
-    const days = Array.from({ length: 30 }, (_, dayIndex) => {
-        const currentDate = new Date(startDate);
-        currentDate.setDate(startDate.getDate() + dayIndex);
-        const date = formatDate(currentDate);
-        const hours = HOURS.map(hour => ({
-            hour,
-            requestCount: getMockHourlyRequestCount(dayIndex, hour, currentDate),
-        }));
-        return {
-            date,
-            totalCount: hours.reduce((sum, item) => sum + item.requestCount, 0),
-            hours,
-        };
-    });
-    const totalCount = days.reduce((sum, day) => sum + day.totalCount, 0);
-    const maxHourlyCount = days.reduce(
-        (max, day) => Math.max(max, ...day.hours.map(hour => hour.requestCount)),
-        0
-    );
-
-    return {
-        startDate: formatDate(startDate),
-        endDate: formatDate(today),
-        totalCount,
-        maxHourlyCount,
-        days,
-    };
-}
-
-function getMockHourlyRequestCount(dayIndex: number, hour: number, date: Date): number {
-    const weekday = date.getDay();
-    const weekendFactor = weekday === 0 || weekday === 6 ? 0.45 : 1;
-    const morningPeak = hour >= 9 && hour <= 11 ? 5 : 0;
-    const afternoonPeak = hour >= 14 && hour <= 18 ? 7 : 0;
-    const eveningWork = hour >= 20 && hour <= 22 ? 2 : 0;
-    const base = hour >= 8 && hour <= 23 ? 1 : 0;
-    const rhythm = (dayIndex * 3 + hour * 2) % 5;
-    const requestCount = Math.round((base + morningPeak + afternoonPeak + eveningWork + rhythm) * weekendFactor);
-    return Math.max(0, requestCount);
-}
 
 function getHourlyHeatmapColor(value: number, maxValue: number) {
     if (value <= 0 || maxValue <= 0) return '#ebedf0';
@@ -615,6 +612,13 @@ function offsetDate(date: Date, offsetDays: number): Date {
     const nextDate = new Date(date);
     nextDate.setDate(date.getDate() + offsetDays);
     return nextDate;
+}
+
+function buildActivityChartPoint(hour: number, requestCount: number, maxHourlyCount: number): string {
+    const x = ACTIVITY_CHART_LEFT + (hour / 23) * ACTIVITY_CHART_WIDTH;
+    const ratio = maxHourlyCount > 0 ? requestCount / maxHourlyCount : 0;
+    const y = ACTIVITY_CHART_TOP + ACTIVITY_CHART_HEIGHT - ratio * ACTIVITY_CHART_HEIGHT;
+    return `${x},${y}`;
 }
 
 function calculateUseDays(useTime: string | null): number {
