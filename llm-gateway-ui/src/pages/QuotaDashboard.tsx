@@ -3,7 +3,7 @@ import { Row, Col, Typography, Space, Tag, Card, Badge, Tooltip, Progress } from
 import {
     ClockCircleOutlined,
 } from '@ant-design/icons';
-import { quotaApi, userUsageApi, type UserQuotaAccountSnapshot, type UserUsageHourlyHeatmapResult } from '../api/llmGatewayApi';
+import { quotaApi, userUsageApi, virtualKeyApi, type UserQuotaAccountSnapshot, type UserUsageHourlyHeatmapResult } from '../api/llmGatewayApi';
 import { formatAmount } from '../utils/format';
 
 const { Title, Text } = Typography;
@@ -29,7 +29,11 @@ const HEATMAP_CELL_GAP = 3;
 const HEATMAP_DAY_WIDTH = HOURS_PER_HEATMAP_ROW * HEATMAP_CELL_SIZE + (HOURS_PER_HEATMAP_ROW - 1) * HEATMAP_CELL_GAP;
 const MOCK_RECENT_MONTH_HOURLY_HEATMAP = buildMockRecentMonthHourlyHeatmap();
 
-export const QuotaDashboard: React.FC = () => {
+interface QuotaDashboardProps {
+    onNavigate?: (key: string) => void;
+}
+
+export const QuotaDashboard: React.FC<QuotaDashboardProps> = ({ onNavigate }) => {
     // 定义通用样式变量以保证统一
     const cardStyle = { backgroundColor: '#ffffff', padding: 20, borderRadius: 12, border: '1px solid #d0d7de' };
     const textPrimary = '#1f2328';
@@ -38,11 +42,13 @@ export const QuotaDashboard: React.FC = () => {
     const hourlyHeatmap = MOCK_RECENT_MONTH_HOURLY_HEATMAP;
     const [availableModels, setAvailableModels] = React.useState<string[]>(AVAILABLE_MODELS);
     const [quotaSnapshot, setQuotaSnapshot] = React.useState<UserQuotaAccountSnapshot | null>(null);
+    const [virtualKeySummary, setVirtualKeySummary] = React.useState({ total: 0, active: 0 });
     const heatmapScrollRef = React.useRef<HTMLDivElement | null>(null);
     const totalBalance = quotaSnapshot?.currentQuotaAmount || 0;
     const currentBalance = quotaSnapshot?.availableAmount || 0;
     const usedBalance = quotaSnapshot?.usedAmount || 0;
     const usagePercent = totalBalance > 0 ? Math.min(100, Math.max(0, Math.round((usedBalance / totalBalance) * 100))) : 0;
+    const gatewayBaseUrl = `${window.location.origin}/v1/chat/completions`;
 
     React.useEffect(() => {
         const heatmapScroll = heatmapScrollRef.current;
@@ -70,6 +76,25 @@ export const QuotaDashboard: React.FC = () => {
             .then(res => {
                 if (!ignore && res.success && res.data) {
                     setQuotaSnapshot(res.data);
+                }
+            })
+            .catch(() => undefined);
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    React.useEffect(() => {
+        let ignore = false;
+        virtualKeyApi.listKeys()
+            .then(res => {
+                if (!ignore && res.success && res.data) {
+                    const keys = res.data.keys || [];
+                    setVirtualKeySummary({
+                        total: keys.length,
+                        active: keys.filter(key => key.status === 1).length,
+                    });
                 }
             })
             .catch(() => undefined);
@@ -177,7 +202,31 @@ export const QuotaDashboard: React.FC = () => {
                 </div>
             </Card>
 
-            {/* 3. Available Models */}
+            {/* 3. Balance Overview */}
+            <div style={{ ...cardStyle, marginBottom: 24 }}>
+                <Text style={{ color: textSecondary, display: 'block', marginBottom: 20, fontWeight: 500 }}>用户余额概览</Text>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
+                    <div>
+                        <div style={{ color: textPrimary, fontSize: 15, marginBottom: 4 }}>当前余额¥ {formatAmount(currentBalance)}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                        <div style={{ color: textPrimary, fontSize: 15, marginBottom: 4 }}>总余额¥ {formatAmount(totalBalance)}</div>
+                    </div>
+                </div>
+                <Progress
+                    percent={usagePercent}
+                    showInfo={false}
+                    strokeColor="#0969da"
+                    trailColor="#eaeef2"
+                    strokeLinecap="round"
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, color: textSecondary, fontSize: 12 }}>
+                    <span>使用比例</span>
+                    <span style={{ color: textPrimary, fontWeight: 600 }}>{usagePercent}%</span>
+                </div>
+            </div>
+
+            {/* 4. Available Models */}
             <div style={{ ...cardStyle, marginBottom: 24 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
                     <Text style={{ color: textPrimary, fontWeight: 700 }}>可用模型</Text>
@@ -227,31 +276,52 @@ export const QuotaDashboard: React.FC = () => {
                 </Row>
             </div>
 
-            {/* 4. Preference Section */}
+            {/* 5. Preference Section */}
             <Row gutter={24} style={{ marginBottom: 24 }}>
                 <Col span={12}>
                     <div style={{ ...cardStyle, height: '100%' }}>
-                        <Text style={{ color: textSecondary, display: 'block', marginBottom: 20, fontWeight: 500 }}>用户余额概览</Text>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 18 }}>
-                            <div>
-                                <div style={{ color: textSecondary, fontSize: 12, marginBottom: 4 }}>当前余额¥</div>
-                                <div style={{ color: textPrimary, fontSize: 30, lineHeight: 1.1, fontWeight: 700 }}>{formatAmount(currentBalance)}</div>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <div style={{ color: textSecondary, fontSize: 12, marginBottom: 4 }}>总余额¥</div>
-                                <div style={{ color: textPrimary, fontSize: 22, lineHeight: 1.2, fontWeight: 600 }}>{formatAmount(totalBalance)}</div>
+                        <Text style={{ color: textSecondary, display: 'block', marginBottom: 20, fontWeight: 500 }}>用户虚拟密钥</Text>
+                        <div style={{ marginBottom: 18 }}>
+                            <div style={{ color: textSecondary, fontSize: 12, marginBottom: 6 }}>BaseURL</div>
+                            <div
+                                title={gatewayBaseUrl}
+                                style={{
+                                    color: textPrimary,
+                                    backgroundColor: '#f6f8fa',
+                                    border: '1px solid #d0d7de',
+                                    borderRadius: 6,
+                                    padding: '8px 10px',
+                                    fontSize: 13,
+                                    fontFamily: 'ui-monospace, SFMono-Regular, SFMono-Regular, Consolas, monospace',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                }}
+                            >
+                                {gatewayBaseUrl}
                             </div>
                         </div>
-                        <Progress
-                            percent={usagePercent}
-                            showInfo={false}
-                            strokeColor="#0969da"
-                            trailColor="#eaeef2"
-                            strokeLinecap="round"
-                        />
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, color: textSecondary, fontSize: 12 }}>
-                            <span>使用比例</span>
-                            <span style={{ color: textPrimary, fontWeight: 600 }}>{usagePercent}%</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-end' }}>
+                            <div>
+                                <div style={{ color: textSecondary, fontSize: 18, marginBottom: 4 }}>
+                                    当前密钥数量&nbsp;&nbsp;
+                                    <button
+                                        type="button"
+                                        onClick={() => onNavigate?.('keys')}
+                                        style={{
+                                            border: 'none',
+                                            background: 'transparent',
+                                            padding: 0,
+                                            color: '#0969da',
+                                            fontSize: 20,
+                                            lineHeight: 1.1,
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                        }}
+                                    >{virtualKeySummary.total}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </Col>
@@ -276,7 +346,7 @@ export const QuotaDashboard: React.FC = () => {
                 </Col>
             </Row>
 
-            {/* 5. Coding Activity Periods (SVG Arc) */}
+            {/* 6. Coding Activity Periods (SVG Arc) */}
             <Card bordered={false} bodyStyle={{ ...cardStyle, textAlign: 'center' }} style={{ background: 'transparent' }}>
                 <Text style={{ color: textSecondary, display: 'block', textAlign: 'left', marginBottom: 12, fontWeight: 500 }}>Coding Activity Periods <ClockCircleOutlined /></Text>
                 <div style={{ position: 'relative', height: 200, display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>

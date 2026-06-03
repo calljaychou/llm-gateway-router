@@ -103,7 +103,7 @@ export const App: React.FC = () => {
 
     const renderContent = () => {
         switch (selectedKey) {
-            case 'dashboard': return <QuotaDashboard />;
+            case 'dashboard': return <QuotaDashboard onNavigate={setSelectedKey} />;
             case 'departments': return <DepartmentManage />;
             case 'users': return <UserManage />;
             case 'vendors': return <VendorManage />;
@@ -111,7 +111,7 @@ export const App: React.FC = () => {
             case 'master-keys': return <MasterKeyManage />;
             case 'keys': return <VirtualKeyManage />;
             case 'transactions': return <QuotaTransactions />;
-            default: return <QuotaDashboard />;
+            default: return <QuotaDashboard onNavigate={setSelectedKey} />;
         }
     };
 
