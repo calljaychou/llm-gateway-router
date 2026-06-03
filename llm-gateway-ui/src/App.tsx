@@ -29,12 +29,25 @@ import {StatisticsUsage} from './pages/StatisticsUsage';
 const { Header, Content, Sider } = Layout;
 const { Title, Text } = Typography;
 
+const ALL_MENU_ROLE_KEYS = ['ROLE_admin', 'ROLE_llm-lead'];
+const USER_MENU_KEYS = ['dashboard', 'keys', 'transactions'];
+
+const readStoredRoles = (): string[] => {
+    try {
+        const roles = JSON.parse(localStorage.getItem('llm_gateway_roles') || '[]');
+        return Array.isArray(roles) ? roles.filter((role): role is string => typeof role === 'string') : [];
+    } catch {
+        return [];
+    }
+};
 
 export const App: React.FC = () => {
     // 挂载响应式状态：读取落盘的鉴权凭证
     const [token, setToken] = useState<string | null>(localStorage.getItem('llm_gateway_token'));
     const [username, setUsername] = useState<string | null>(localStorage.getItem('llm_gateway_username'));
+    const [roles, setRoles] = useState<string[]>(readStoredRoles());
     const [selectedKey, setSelectedKey] = useState<string>('dashboard');
+    const canViewAllMenus = roles.some(role => ALL_MENU_ROLE_KEYS.includes(role));
 
     useEffect(() => {
         // 注册全局核心鉴权拦截监听器
@@ -42,6 +55,8 @@ export const App: React.FC = () => {
         const handleUnauthorized = () => {
             setToken(null);
             setUsername(null);
+            setRoles([]);
+            setSelectedKey('dashboard');
         };
 
         window.addEventListener('llm-gateway-unauthorized', handleUnauthorized);
@@ -50,20 +65,30 @@ export const App: React.FC = () => {
         };
     }, []);
 
-    const handleLoginSuccess = (newToken: string, newUsername: string) => {
+    useEffect(() => {
+        if (!canViewAllMenus && !USER_MENU_KEYS.includes(selectedKey)) {
+            setSelectedKey('dashboard');
+        }
+    }, [canViewAllMenus, selectedKey]);
+
+    const handleLoginSuccess = (newToken: string, newUsername: string, newRoles: string[]) => {
         setToken(newToken);
         setUsername(newUsername);
+        setRoles(newRoles);
         setSelectedKey('dashboard'); // 登录后默认直达大盘
     };
 
     const handleLogout = () => {
         localStorage.removeItem('llm_gateway_token');
         localStorage.removeItem('llm_gateway_username');
+        localStorage.removeItem('llm_gateway_roles');
         setToken(null);
         setUsername(null);
+        setRoles([]);
+        setSelectedKey('dashboard');
     };
 
-    const menuItems: MenuProps['items'] = [
+    const allMenuItems: MenuProps['items'] = [
         // 分组必须带 key + type: 'group'
         {
             key: 'group-ops',
@@ -103,8 +128,29 @@ export const App: React.FC = () => {
             ],
         },
     ];
+    const menuItems: MenuProps['items'] = canViewAllMenus ? allMenuItems : [
+        {
+            key: 'group-ops',
+            type: 'group',
+            label: '配额用量',
+            children: [
+                { key: 'dashboard', icon: <DashboardOutlined />, label: '个人中心' },
+            ],
+        },
+        {
+            key: 'group-user',
+            type: 'group',
+            label: '用户自助层',
+            children: [
+                { key: 'keys', icon: <KeyOutlined />, label: '应用虚拟密钥' },
+                { key: 'transactions', icon: <TransactionOutlined />, label: '配额流水与转配' },
+            ],
+        },
+    ];
 
     const renderContent = () => {
+        if (!canViewAllMenus && !USER_MENU_KEYS.includes(selectedKey)) return <QuotaDashboard onNavigate={setSelectedKey} />;
+
         switch (selectedKey) {
             case 'dashboard': return <QuotaDashboard onNavigate={setSelectedKey} />;
             case 'statistics-usage': return <StatisticsUsage />;

@@ -28,6 +28,7 @@ api.interceptors.response.use(
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
             localStorage.removeItem('llm_gateway_token');
             localStorage.removeItem('llm_gateway_username');
+            localStorage.removeItem('llm_gateway_roles');
 
             // 触发全局自定义事件，通知最顶层的 App 组件切换回登录视图
             window.dispatchEvent(new Event('llm-gateway-unauthorized'));
