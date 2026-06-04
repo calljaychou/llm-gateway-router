@@ -296,6 +296,13 @@ mvn spring-boot:run
 http://localhost:8080
 ```
 
+初始化后登录账号密码：
+
+```text
+admin
+123456
+```
+
 关键配置：
 
 ```yaml
