@@ -419,4 +419,13 @@ CREATE TABLE `vendors` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=37 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='供应商表';
 
+INSERT INTO `llm-gateway`.`department` (`id`, `parent_id`, `dept_name`, `order_num`, `leader_name`, `tel`, `status`, `del_flag`, `created_time`, `updated_time`) VALUES (1, 0, '中国轻研科技', 0, NULL, '17799999999', 1, 0, NULL, NULL);
+INSERT INTO `llm-gateway`.`users` (`id`, `name`, `dept_id`, `username`, `email`, `mobile`, `gender`, `avatar_url`, `password`, `password_changed`, `remark`, `status`, `del_flag`, `use_time`, `created_time`, `updated_time`) VALUES (100, 'admin', 1, 'admin', 'admin@qy.com', '17799999999', 3, NULL, '$2a$10$c0oiCRigE6py.94Bqj14We76fP29Wh2GD4l507ikniNuitKv/OaSq', 0, NULL, 1, 0, '2026-05-30 01:01:26', '2026-04-21 16:12:18', '2026-04-21 16:12:18');
+INSERT INTO `llm-gateway`.`roles` (`id`, `role_name`, `role_key`, `role_sort`, `created_by`, `created_time`, `updated_by`, `updated_time`) VALUES (100, '超级管理员', 'admin', 1, '', '2026-04-21 16:27:27', '', '2026-05-28 21:52:14');
+INSERT INTO `llm-gateway`.`roles` (`id`, `role_name`, `role_key`, `role_sort`, `created_by`, `created_time`, `updated_by`, `updated_time`) VALUES (101, '普通角色', 'common', 3, '', '2026-04-21 16:27:30', '', '2026-05-28 21:52:14');
+INSERT INTO `llm-gateway`.`roles` (`id`, `role_name`, `role_key`, `role_sort`, `created_by`, `created_time`, `updated_by`, `updated_time`) VALUES (103, 'QRoute负责人', 'llm-lead', 2, '', '2026-05-28 21:52:07', '', '2026-05-28 21:52:12');
+INSERT INTO `llm-gateway`.`user_role_rel` (`user_id`, `role_id`) VALUES (100, 100);
+
+
+
 SET FOREIGN_KEY_CHECKS = 1;
