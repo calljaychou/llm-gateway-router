@@ -4,9 +4,9 @@
 
 
     <groupId>com.jaychou</groupId>
-    <artifactId>advance-ai</artifactId>
+    <artifactId>llm</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>advance-ai</name>
+    <name>llm</name>
 
     <modules>
         <module>llm-gateway</module>
